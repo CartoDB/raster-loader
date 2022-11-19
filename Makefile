@@ -20,9 +20,7 @@ test:
 	$(BIN)/pytest tests --cov=raster_loader --verbose
 
 docs:
-	$(BIN)/lazydocs raster_loader --validate --output-path="docs" --overview-file="README.md"
-	cd docs; bash post.sh;
-
+	cd docs; make clean html
 
 publish-pypi:
 	rm -rf $(DIST) $(BUILD) *.egg-info
