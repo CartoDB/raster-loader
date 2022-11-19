@@ -12,3 +12,5 @@ pydocstyle==6.1.1
 lazydocs==0.4.8
 pre-commit==2.20.0
 pytest-cov==3.0.0
+sphinx-click==4.3.0
+click==8.1.3
