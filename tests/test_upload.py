@@ -5,7 +5,7 @@ import pytest
 from raster_loader import errors, RasterLoader
 
 
-@patch.object(bigquery.Client, "load_table_from_dataframe", return_value=None)
+@patch('google.cloud.bigquery.Client', autospec=True)
 def test_upload_to_bigquery_successful(*args, **kwargs):
     raster_loader = RasterLoader(file_path="tests/fixtures/mosaic.tif", dst_crs=4326)
 
@@ -16,6 +16,7 @@ def test_upload_to_bigquery_successful(*args, **kwargs):
     )
 
 
+@patch('google.cloud.client.ClientWithProject', autospec=True)
 @patch.object(
     bigquery.Client,
     "load_table_from_dataframe",
