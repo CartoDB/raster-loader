@@ -1,12 +1,32 @@
+from unittest.mock import patch
+
+from google.cloud import bigquery
 import pytest
-import pathlib
-
-from datetime import datetime, timedelta
-
-from raster_loader import RasterLoader, UploadError
-
-HERE = pathlib.Path(__file__).parent
+from raster_loader import errors, RasterLoader
 
 
-def test_some():
-    assert True
+@patch.object(bigquery.Client, "load_table_from_dataframe", return_value=None)
+def test_upload_to_bigquery_successful(*args, **kwargs):
+    raster_loader = RasterLoader(file_path="tests/fixtures/mosaic.tif", dst_crs=4326)
+
+    raster_loader.to_bigquery(
+        project="mock_project",
+        dataset="mock_dataset",
+        table="raster_data",
+    )
+
+
+@patch.object(
+    bigquery.Client,
+    "load_table_from_dataframe",
+    side_effect=errors.UploadError,
+)
+def test_upload_to_bigquery_unsuccessful(*args, **kwargs):
+    raster_loader = RasterLoader(file_path="tests/fixtures/mosaic.tif", dst_crs=4326)
+
+    with pytest.raises(errors.UploadError):
+        raster_loader.to_bigquery(
+            project="mock_project",
+            dataset="mock_dataset",
+            table="raster_data",
+        )
