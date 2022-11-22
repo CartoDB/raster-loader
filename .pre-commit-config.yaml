@@ -1,15 +1,12 @@
+files: 'raster_loader\/'
 repos:
-- repo: local
-  hooks:
-    - id: lint
-      name: Run linter
-      entry: make lint
-      language: system
-      types: [python]
-      require_serial: true
-    - id: test
-      name: Run tests
-      entry: make test
-      language: system
-      types: [python]
-      require_serial: true
+    - repo: https://github.com/psf/black
+      rev: 22.3.0
+      hooks:
+          - id: black
+            language_version: python3
+    - repo: https://github.com/pycqa/flake8
+      rev: 5.0.4
+      hooks:
+          - id: flake8
+            language: python_venv
