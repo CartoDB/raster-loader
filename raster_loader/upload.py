@@ -101,6 +101,14 @@ class RasterLoader:
 
         return data_df
 
+    def _bigquery_client(self):  # pragma: no cover
+        """Create a BigQuery client.
+
+        Returns:
+            google.cloud.bigquery.client.Client: A BigQuery client object.
+        """
+        return bigquery.Client()
+
     def to_bigquery(self, project, dataset, table, chunk_size=100):
         """Upload the raster file to BigQuery.
 
@@ -111,7 +119,10 @@ class RasterLoader:
             chunk_size (int, default = 100): The number of pixels to upload in each
                 chunk.
         """
-        bigquery_client = bigquery.Client()
+        try:
+            bigquery_client = self._bigquery_client()
+        except Exception as e:
+            raise errors.ClientError(e)
 
         with rasterio.open(self.file_path) as raster_dataset:
             src_crs = utils.get_dataset_crs(raster_dataset)

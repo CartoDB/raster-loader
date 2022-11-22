@@ -1,11 +1,16 @@
 from unittest.mock import patch
 
-from google.cloud import bigquery
 import pytest
+
 from raster_loader import errors, RasterLoader
+from tests import mocks
 
 
-@patch('google.cloud.bigquery.Client', autospec=True)
+@patch.object(
+    RasterLoader,
+    "_bigquery_client",
+    return_value=mocks.bigquery_client()
+)
 def test_upload_to_bigquery_successful(*args, **kwargs):
     raster_loader = RasterLoader(file_path="tests/fixtures/mosaic.tif", dst_crs=4326)
 
@@ -16,13 +21,28 @@ def test_upload_to_bigquery_successful(*args, **kwargs):
     )
 
 
-@patch('google.cloud.client.ClientWithProject', autospec=True)
 @patch.object(
-    bigquery.Client,
-    "load_table_from_dataframe",
-    side_effect=errors.UploadError,
+    RasterLoader,
+    "_bigquery_client",
+    side_effect=errors.ClientError,
 )
-def test_upload_to_bigquery_unsuccessful(*args, **kwargs):
+def test_upload_to_bigquery_unsuccessful_client_error(*args, **kwargs):
+    raster_loader = RasterLoader(file_path="tests/fixtures/mosaic.tif", dst_crs=4326)
+
+    with pytest.raises(errors.ClientError):
+        raster_loader.to_bigquery(
+            project="mock_project",
+            dataset="mock_dataset",
+            table="raster_data",
+        )
+
+
+@patch.object(
+    RasterLoader,
+    "_bigquery_client",
+    return_value=mocks.bigquery_client(load_error=True)
+)
+def test_upload_to_bigquery_unsuccessful_load_error(*args, **kwargs):
     raster_loader = RasterLoader(file_path="tests/fixtures/mosaic.tif", dst_crs=4326)
 
     with pytest.raises(errors.UploadError):
