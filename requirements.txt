@@ -1,4 +1,4 @@
 google-cloud-bigquery==2.34.4
 pandas==1.3.4
-pyproj==3.4.0
+pyproj==3.2.1
 rasterio==1.3a3
