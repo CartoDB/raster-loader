@@ -4,7 +4,7 @@
 [![PyPI downloads](https://img.shields.io/pypi/dm/raster-loader.svg)](https://pypistats.org/packages/raster-loader)
 [![Tests](https://github.com/cartodb/raster-loader/actions/workflows/ci.yml/badge.svg)](https://github.com/cartodb/raster-loader/actions)
 
-Python library to authenticate with [CARTO](carto.com).
+Python library for uploading geo raster data to cloud storage.
 
 ## Install
 
