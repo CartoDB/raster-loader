@@ -21,6 +21,7 @@ def bigquery(args=None):
     "--chunk_size", help="The number of pixels to upload in each chunk.", default=100
 )
 def upload(file_path, project, dataset, table, dst_crs, chunk_size):
+    click.echo("Uploading raster file to Google BigQuery")
     raster_loader = RasterLoader(
         file_path=file_path,
         dst_crs=dst_crs,
@@ -32,3 +33,4 @@ def upload(file_path, project, dataset, table, dst_crs, chunk_size):
         table=table,
         chunk_size=chunk_size,
     )
+    click.echo("Raster file uploaded to Google BigQuery")
