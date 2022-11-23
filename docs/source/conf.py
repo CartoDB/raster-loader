@@ -20,6 +20,9 @@ release = version = raster_loader.__version__
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.coverage',
+    "sphinx_click",
     "sphinx_rtd_theme",
     "sphinx.ext.napoleon",
 ]
