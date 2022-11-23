@@ -1,20 +1,14 @@
-# TBD can be removed once main package is available
-import sys
-
-sys.path.append("../")
-
 from click.testing import CliRunner
-from cli import raster_loader_cli
-
+from raster_loader.raster_loader_cli import raster_loader_cli
 
 def test_info():
     """Test the info command."""
     runner = CliRunner()
     result = runner.invoke(raster_loader_cli, ["info"])
+    print(result.output)
     assert result.exit_code == 0
     assert "Python version" in result.output
     assert "Operating system" in result.output
-
 
 def test_raster():
     """Test the raster command."""
