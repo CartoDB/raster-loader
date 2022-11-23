@@ -5,26 +5,8 @@
 
 import sphinx_rtd_theme
 import datetime as dt
-from os import popen
-from shutil import which
 
-
-def get_version() -> str:
-    """Use git to read version from most recent tag.
-
-    Returns:
-        str: Version number
-    """
-    release = "dev"
-    if which("git"):
-        release = popen("git describe --tags --always").read().strip()
-        if release and release[0] == "v":
-            release = release[1:]
-        else:
-            release = f"dev-{release}"
-
-    return release
-
+import raster_loader
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -32,7 +14,7 @@ def get_version() -> str:
 project = "Raster Loader"
 copyright = f"{dt.datetime.now().year}, Carto"
 author = "Carto"
-release = version = get_version()
+release = version = raster_loader.__version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
