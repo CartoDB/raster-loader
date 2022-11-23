@@ -19,3 +19,4 @@ TBD:
    :caption: Contents:
 
    cli
+   modules/modules
