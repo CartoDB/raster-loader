@@ -6,11 +6,7 @@ from raster_loader import errors, RasterLoader
 from tests import mocks
 
 
-@patch.object(
-    RasterLoader,
-    "_bigquery_client",
-    return_value=mocks.bigquery_client()
-)
+@patch.object(RasterLoader, "_bigquery_client", return_value=mocks.bigquery_client())
 def test_upload_to_bigquery_successful(*args, **kwargs):
     raster_loader = RasterLoader(file_path="tests/fixtures/mosaic.tif", dst_crs=4326)
 
@@ -40,7 +36,7 @@ def test_upload_to_bigquery_unsuccessful_client_error(*args, **kwargs):
 @patch.object(
     RasterLoader,
     "_bigquery_client",
-    return_value=mocks.bigquery_client(load_error=True)
+    return_value=mocks.bigquery_client(load_error=True),
 )
 def test_upload_to_bigquery_unsuccessful_load_error(*args, **kwargs):
     raster_loader = RasterLoader(file_path="tests/fixtures/mosaic.tif", dst_crs=4326)
