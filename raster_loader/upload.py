@@ -133,7 +133,7 @@ class RasterLoader:
             windows = [window for _, window in raster_dataset.block_windows()]
             for window_chunk in utils.chunks(
                 windows, chunk_size
-            ):  # tune the number of elem in chunck depending on your RAM
+            ):  # tune the number of elem in chunk depending on your RAM
                 data_df = self._structure_data(
                     transformer, raster_dataset, window_chunk
                 )
