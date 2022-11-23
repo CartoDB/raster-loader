@@ -1,21 +1,9 @@
-"""Command-line interface for the raster loader."""
+"""CLI functions for raster loader CLI"""
 
 import click
 
 from cli_info import system_info
 from cli_raster import raster
-
-# from ..raster_loader.utils import some_function
-
-# TBD: Won't be necessary once the main package is available
-import sys
-
-sys.path.append("../../")
-
-# # importing
-from raster_loader.utils import some_function
-
-# import raster_loader
 
 
 @click.group()
@@ -32,7 +20,6 @@ raster_loader_cli.add_command(raster)
 def info():
     """Print system information for debugging."""
     system_info()
-    sys.exit()
 
 
 if __name__ == "__main__":
