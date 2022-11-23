@@ -19,7 +19,7 @@ setup(
     packages=find_packages(exclude=["examples", "tests"]),
     python_requires=">=3.7",
     install_requires=["requests", "pyyaml"],
-    extras_require={"carto-dw": ["google-auth", "google-cloud-bigquery>=2.34.4"]},
+    extras_require={"carto-dw": ["google-auth"]},
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
