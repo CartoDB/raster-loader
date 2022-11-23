@@ -27,8 +27,16 @@ def load(file, table):
 
     # load the FILE into TABLE
     click.echo(f"Loading {file} to {table}")
-    raster_loader = RasterLoader(file)
+    loader = RasterLoader(file)
     project = table_args[0]
     dataset = table_args[1]
     table = table_args[2]
-    # raster_loader.to_bigquery("raster-loader", project, dataset, table)
+    # TBD: Check BigQuery authentication!
+    loader.to_bigquery("raster-loader", project, dataset, table)
+
+@raster.command()
+@click.argument("file", type=click.Path(exists=True))
+def setup(file):
+    """Setup BigQuery credentials using a service account key file"""
+    # TBD
+    raise NotImplementedError

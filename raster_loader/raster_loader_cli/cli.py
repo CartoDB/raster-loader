@@ -15,6 +15,7 @@ def raster_loader_cli():
 # add subcommands for raster operations
 raster_loader_cli.add_command(raster)
 
+
 # add command for system info
 @raster_loader_cli.command()
 def info():
