@@ -31,4 +31,9 @@ setup(
         "Programming Language :: Python :: 3.9",
     ],
     zip_safe=False,
+    entry_points={
+        "console_scripts": [
+            "carto = raster_loader.raster_loader_cli.cli:raster_loader_cli",
+        ],
+    },
 )
