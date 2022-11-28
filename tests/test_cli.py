@@ -36,7 +36,7 @@ def test_info(*args, **kwargs):
     result = runner.invoke(main, ["info"])
 
     assert result.exit_code == 0
-    assert "CLI version" in result.output
+    assert "Raster Loader version" in result.output
     assert "Python version" in result.output
     assert "Platform" in result.output
     assert "System version" in result.output

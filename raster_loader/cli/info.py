@@ -6,9 +6,9 @@ import click
 import raster_loader
 
 
-@click.command(help="Shows system information.")
+@click.command(help="Display system information.")
 def info():
-    click.echo(f"CLI version: {raster_loader.__version__}")
+    click.echo(f"Raster Loader version: {raster_loader.__version__}")
     click.echo(f"Python version: {sys.version.split(' (')[0]}")
     click.echo(f"Platform: {platform.platform()}")
     click.echo(f"System version: {platform.system()} {platform.release()}")
