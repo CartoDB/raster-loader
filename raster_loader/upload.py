@@ -2,6 +2,7 @@ from google.cloud import bigquery
 import pandas as pd
 import pyproj
 import rasterio
+from tqdm import tqdm
 
 from . import errors, utils
 
@@ -131,17 +132,21 @@ class RasterLoader:
             )  # compute lat and lon
 
             windows = [window for _, window in raster_dataset.block_windows()]
-            for window_chunk in utils.chunks(
-                windows, chunk_size
-            ):  # tune the number of elem in chunk depending on your RAM
-                data_df = self._structure_data(
-                    transformer, raster_dataset, window_chunk
-                )
+            pbar_len = len(range(0, len(windows), chunk_size))
+            with tqdm(total=pbar_len) as pbar:
+                for window_chunk in utils.chunks(
+                    windows, chunk_size
+                ):  # tune the number of elem in chunk depending on your RAM
+                    data_df = self._structure_data(
+                        transformer, raster_dataset, window_chunk
+                    )
 
-                if data_df.size:
-                    try:
-                        bigquery_client.load_table_from_dataframe(
-                            data_df, f"{project}.{dataset}.{table}"
-                        )
-                    except Exception as e:
-                        raise errors.UploadError(e)
+                    if data_df.size:
+                        try:
+                            bigquery_client.load_table_from_dataframe(
+                                data_df, f"{project}.{dataset}.{table}"
+                            )
+                        except Exception as e:
+                            raise errors.UploadError(e)
+
+                    pbar.update(1)
