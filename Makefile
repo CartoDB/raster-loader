@@ -13,8 +13,8 @@ init:
 	$(BIN)/pip install -e .
 
 lint:
-	$(BIN)/black raster_loader tests examples setup.py
-	$(BIN)/flake8 raster_loader tests examples setup.py
+	$(BIN)/black raster_loader examples setup.py
+	$(BIN)/flake8 raster_loader examples setup.py
 
 test:
 	$(BIN)/pytest raster_loader --cov=raster_loader --verbose
