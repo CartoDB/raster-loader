@@ -17,7 +17,7 @@ lint:
 	$(BIN)/flake8 raster_loader tests examples setup.py
 
 test:
-	$(BIN)/pytest tests --cov=raster_loader --verbose
+	$(BIN)/pytest raster_loader --cov=raster_loader --verbose
 
 docs:
 	$(BIN)/lazydocs raster_loader --validate --output-path="docs" --overview-file="README.md"

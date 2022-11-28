@@ -5,7 +5,7 @@ from raster_loader import utils
 
 
 def test_calculate_coordinate():
-    raster_dataset = rasterio.open("tests/fixtures/mosaic.tif")
+    raster_dataset = rasterio.open("raster_loader/tests/fixtures/mosaic.tif")
 
     src_crs = pyproj.CRS.from_wkt(raster_dataset.crs.to_wkt())
     transformer = pyproj.Transformer.from_crs(src_crs, 4326)
@@ -23,7 +23,7 @@ def test_calculate_coordinate():
 
 
 def test_chunks():
-    raster_dataset = rasterio.open("tests/fixtures/mosaic.tif")
+    raster_dataset = rasterio.open("raster_loader/tests/fixtures/mosaic.tif")
 
     windows = [window for _, window in raster_dataset.block_windows()]
 
@@ -32,7 +32,7 @@ def test_chunks():
 
 
 def test_get_dataset_crs():
-    raster_dataset = rasterio.open("tests/fixtures/mosaic.tif")
+    raster_dataset = rasterio.open("raster_loader/tests/fixtures/mosaic.tif")
 
     crs = utils.get_dataset_crs(raster_dataset)
 

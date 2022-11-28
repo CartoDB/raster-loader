@@ -4,7 +4,7 @@ from click.testing import CliRunner
 
 from raster_loader import RasterLoader
 from raster_loader.cli import main
-from tests import mocks
+from raster_loader.tests import mocks
 
 
 @patch.object(RasterLoader, "_bigquery_client", return_value=mocks.bigquery_client())
@@ -16,7 +16,7 @@ def test_bigquery_upload(*args, **kwargs):
             "bigquery",
             "upload",
             "--file_path",
-            "tests/fixtures/mosaic.tif",
+            "raster_loader/tests/fixtures/mosaic.tif",
             "--project",
             "carto-ml-dev",
             "--dataset",
