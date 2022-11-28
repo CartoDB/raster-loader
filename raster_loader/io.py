@@ -2,6 +2,7 @@ from types import GeneratorType
 
 from affine import Affine
 import numpy as np
+import pandas as pd
 
 
 def array_to_record(
@@ -65,8 +66,6 @@ def rasterio_to_record(file_path: str, band: int = 1) -> dict:
         return array_to_record(
             raster_dataset.read(band),
             raster_dataset.transform,
-            raster_dataset.height,
-            raster_dataset.width,
         )
 
 
@@ -81,8 +80,6 @@ def rasterio_windows_to_records(file_path: str, band: int = 1) -> GeneratorType:
                 raster_dataset.transform,
                 window.row_off,
                 window.col_off,
-                window.height,
-                window.width,
             )
 
 
@@ -101,21 +98,32 @@ def import_bigquery():
         raise ImportError(msg)
 
 
-def record_to_bigquery(record: dict, table_id: str, dataset_id: str, project_id: str):
+def records_to_bigquery(
+    records: GeneratorType, table_id: str, dataset_id: str, project_id: str
+):
     """Write a record to a BigQuery table."""
+
+    # TODO: Need to test it and see if the load_table style is better..
     bigquery = import_bigquery()
 
     client = bigquery.Client(project=project_id)
 
-    table_ref = client.dataset(dataset_id).table(table_id)
-    table = client.get_table(table_ref)
+    data_df = pd.DataFrame(records)
 
-    errors = client.insert_rows_json(table, [record])
-    if errors:
-        raise RuntimeError(errors)
+    client.load_table_from_dataframe(data_df, f"{project_id}.{dataset_id}.{table_id}")
+
+
+def rasterio_to_bigquery(
+    file_path: str, table_id: str, dataset_id: str, project_id: str
+):
+    """Write a raster file to a BigQuery table."""
+    records_gen = rasterio_windows_to_records(file_path)
+    records_to_bigquery(records_gen, table_id, dataset_id, project_id)
 
 
 '''
+FUTURE IDEAS:
+
 def import_redshift():
     try:
         import psycopg2
