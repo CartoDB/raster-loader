@@ -3,6 +3,8 @@
 Raster Loader
 =============
 
+Add raster support to data warehouses that don't natively support it.
+
 This is the documentation for the Raster Loader, a tool for loading raster
 data into a standard cloud-based data warehouse such as BigQuery.
 
