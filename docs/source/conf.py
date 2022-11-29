@@ -14,7 +14,9 @@ import raster_loader
 project = "Raster Loader"
 copyright = f"{dt.datetime.now().year}, Carto"
 author = "Carto"
+copyright = author
 release = version = raster_loader.__version__
+language = "en"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
