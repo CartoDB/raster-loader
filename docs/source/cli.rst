@@ -4,10 +4,11 @@ Using the Raster Loader CLI
 ===========================
 
 Most functions of the raster loader are accessible through the carto
-command-line interface (CLI).
+command-line interface (CLI). To start the CLI, use the ``carto`` command in a
+terminal.
 
-In a terminal, use the ``carto`` command to access the CLI.
+The following is an overview of all of the CLI's subcommands and options:
 
-.. .. click:: raster_loader.raster_loader_cli:raster_loader_cli
-..    :prog: raster_loader_cli
-..    :nested: full
+.. click:: raster_loader.cli:main
+   :prog: carto
+   :nested: full

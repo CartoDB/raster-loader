@@ -20,8 +20,8 @@ release = version = raster_loader.__version__
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.coverage',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.coverage",
     "sphinx_click",
     "sphinx_rtd_theme",
     "sphinx.ext.napoleon",
@@ -46,3 +46,6 @@ html_context = {
     "github_version": "main/docs/",
 }
 html_favicon = "_static/carto-logo.png"
+html_css_files = [
+    "custom.css",
+]

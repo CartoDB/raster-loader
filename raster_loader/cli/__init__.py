@@ -8,7 +8,7 @@ from click_plugins import with_plugins
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
 def main(args=None):
     """
-    carto command line interface.
+    The ``carto`` command line interface.
     """
     pass
 
