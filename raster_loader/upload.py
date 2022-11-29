@@ -90,13 +90,13 @@ class RasterLoader:
 
         return data_df
 
-    def _bigquery_client(self):  # pragma: no cover
+    def _bigquery_client(self, project=None):  # pragma: no cover
         """Create a BigQuery client.
 
         Returns:
             google.cloud.bigquery.client.Client: A BigQuery client object.
         """
-        return bigquery.Client()
+        return bigquery.Client(project=project)
 
     def to_bigquery(self, project, dataset, table, chunk_size=100):
         """Upload the raster file to BigQuery.
@@ -109,7 +109,7 @@ class RasterLoader:
               chunk.
         """
         try:
-            bigquery_client = self._bigquery_client()
+            bigquery_client = self._bigquery_client(project)
         except Exception as e:
             raise errors.ClientError(e)
 
