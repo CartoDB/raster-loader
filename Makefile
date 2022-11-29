@@ -8,7 +8,7 @@ BIN=$(VENV)/bin
 init:
 	test `command -v python3` || echo Please install python3
 	[ -d $(VENV) ] || python3 -m venv $(VENV)
-	$(BIN)/pip install -r requirements_dev.txt
+	$(BIN)/pip install -r requirements-dev.txt
 	$(BIN)/pre-commit install
 	$(BIN)/pip install -e .
 
