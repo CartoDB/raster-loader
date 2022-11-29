@@ -22,7 +22,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Initialize environment
         run: make init
-      - name: Check linter
+      - name: Run linter
         run: make lint
       - name: Run tests
         run: make test
+      - name: Check docs
+        run: cd docs && make html SPHINXOPTS="-W --keep-going -n"
