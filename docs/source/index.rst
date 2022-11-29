@@ -1,24 +1,29 @@
-.. docs_index
+.. _docs_index:
 
 Raster Loader
 =============
 
-Add raster support to data warehouses that don't natively support it.
+The Raster Loader is a tool for loading GIS raster data to standard cloud-based data
+warehouses that don't natively support raster data.
 
-This is the documentation for the Raster Loader, a tool for loading raster
-data into a standard cloud-based data warehouse such as BigQuery.
+You can use this package in two ways:
 
-TBD:
+* As a standalone tool using the command line interface.
+* As a Python library that you can import and use in your Python projects.
 
-* Setup and installation instructions
-* Using the CLI
-* Modules documentation
-* How to contribute
-
+This documentation contains the following sections:
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :caption: Using Raster Loader
+   :maxdepth: 1
 
-   cli
-   modules/raster_loader
+   user_guide/installation
+   user_guide/cli
+   user_guide/usage_examples
+
+.. toctree::
+   :caption: Contributing to Raster Loader
+   :maxdepth: 1
+
+   developer_guide/contribute
+   developer_guide/modules/raster_loader
