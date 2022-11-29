@@ -21,4 +21,4 @@ TBD:
    :caption: Contents:
 
    cli
-   modules/modules
+   modules/raster_loader
