@@ -1,3 +1,5 @@
+"""Module for bigquery-related subcommands."""
+
 import click
 
 from raster_loader import RasterLoader

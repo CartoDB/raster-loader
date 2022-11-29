@@ -1,0 +1,23 @@
+#carto dt {
+    border: none;
+    border-left: 3px solid #ccc;
+    background: #f0f0f0;
+    color: #555;
+  }
+
+  #carto h3 {
+    border-top: 3px solid #6ab0de;
+    background: #e7f2fa;
+    padding: 6px;
+  }
+
+  #carto h4 {
+    font-size: 100%;
+    border-top: 3px solid #6ab0de;
+    background: #e7f2fa;
+    padding: 4px;
+  }
+
+  #carto > section > section {
+    margin-left: 8%;
+  }

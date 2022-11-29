@@ -13,22 +13,10 @@ class RasterLoader:
     Args:
         file_path (str): The path to the raster file.
         dst_crs (int, default = 4326): The EPSG code of the destination CRS.
-        dst_columns (
-            list,
-            default = [
-                'lat_NW',
-                'lon_NW',
-                'lat_NE',
-                'lon_NE',
-                'lat_SE',
-                'lon_SE',
-                'lat_SW',
-                'lon_SW',
-                'block_height',
-                'block_width',
-                'land_usage_cat_int8'
-            ]
-        ): The columns of the destination table.
+        dst_columns (list, default = ['lat_NW', 'lon_NW', 'lat_NE', 'lon_NE', \
+            'lat_SE', 'lon_SE', 'lat_SW', 'lon_SW', 'block_height', \
+            'block_width', 'land_usage_cat_int8']): The columns of the \
+            destination table.
     """
 
     def __init__(
@@ -117,8 +105,8 @@ class RasterLoader:
             project (str): The name of the Google Cloud project.
             dataset (str): The name of the dataset.
             table (str): The name of the table.
-            chunk_size (int, default = 100): The number of pixels to upload in each
-                chunk.
+            chunk_size (int, default = 100): The number of pixels to upload in each \
+              chunk.
         """
         try:
             bigquery_client = self._bigquery_client()
