@@ -105,8 +105,8 @@ class RasterLoader:
             project (str): The name of the Google Cloud project.
             dataset (str): The name of the dataset.
             table (str): The name of the table.
-            chunk_size (int, default = 100): The number of pixels to upload in each
-                chunk.
+            chunk_size (int, default = 100): The number of pixels to upload in each \
+              chunk.
         """
         try:
             bigquery_client = self._bigquery_client()

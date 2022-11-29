@@ -22,6 +22,9 @@ test:
 docs:
 	cd docs; make clean html
 
+test-docs:
+	$(BIN)/sphinx-build -a -W --keep-going docs/source/ docs/build/
+
 publish-pypi:
 	rm -rf $(DIST) $(BUILD) *.egg-info
 	$(BIN)/python setup.py sdist bdist_wheel

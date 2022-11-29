@@ -27,4 +27,4 @@ jobs:
       - name: Run tests
         run: make test
       - name: Check docs
-        run: cd docs && make html SPHINXOPTS="-W --keep-going -n"
+        run: make test-docs
