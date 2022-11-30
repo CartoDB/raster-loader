@@ -1,4 +1,4 @@
-from types import GeneratorType
+from typing import Iterable
 
 from affine import Affine
 import numpy as np
@@ -43,7 +43,7 @@ def array_to_record(
 
 def import_rasterio():
     try:
-        import rasterio  # noqa
+        import rasterio
 
         return rasterio
     except ImportError:
@@ -69,7 +69,7 @@ def rasterio_to_record(file_path: str, band: int = 1) -> dict:
         )
 
 
-def rasterio_windows_to_records(file_path: str, band: int = 1) -> GeneratorType:
+def rasterio_windows_to_records(file_path: str, band: int = 1) -> Iterable:
     """Open a raster file with rasterio."""
     rasterio = import_rasterio()
 
@@ -85,7 +85,9 @@ def rasterio_windows_to_records(file_path: str, band: int = 1) -> GeneratorType:
 
 def import_bigquery():
     try:
-        from google.cloud import bigquery  # noqa
+        from google.cloud import bigquery
+
+        return bigquery
     except ImportError:
 
         msg = (
@@ -99,7 +101,7 @@ def import_bigquery():
 
 
 def records_to_bigquery(
-    records: GeneratorType, table_id: str, dataset_id: str, project_id: str
+    records: Iterable, table_id: str, dataset_id: str, project_id: str
 ):
     """Write a record to a BigQuery table."""
 
@@ -114,11 +116,32 @@ def records_to_bigquery(
 
 
 def rasterio_to_bigquery(
-    file_path: str, table_id: str, dataset_id: str, project_id: str
+    file_path: str,
+    table_id: str,
+    dataset_id: str,
+    project_id: str,
+    chunk_size: int = None,
 ):
     """Write a raster file to a BigQuery table."""
+    print("Loading raster file to BigQuery...")
+
     records_gen = rasterio_windows_to_records(file_path)
-    records_to_bigquery(records_gen, table_id, dataset_id, project_id)
+
+    if chunk_size is None:
+        records_to_bigquery(records_gen, table_id, dataset_id, project_id)
+    else:
+        records = []
+        for record in records_gen:
+            records.append(record)
+
+            if len(records) >= chunk_size:
+                records_to_bigquery(records, table_id, dataset_id, project_id)
+                records = []
+
+        if len(records) > 0:
+            records_to_bigquery(records, table_id, dataset_id, project_id)
+
+    print("Done.")
 
 
 '''
