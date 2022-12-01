@@ -3,8 +3,6 @@ import uuid
 
 import click
 
-from raster_loader import RasterLoader
-
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
 def bigquery(args=None):
@@ -12,31 +10,6 @@ def bigquery(args=None):
     Manage Google BigQuery resources.
     """
     pass
-
-
-@bigquery.command(help="Upload a raster file to Google BigQuery.")
-@click.option("--file_path", help="The path to the raster file.", required=True)
-@click.option("--project", help="The name of the Google Cloud project.", required=True)
-@click.option("--dataset", help="The name of the dataset.", required=True)
-@click.option("--table", help="The name of the table.", required=True)
-@click.option("--input_crs", help="The EPSG code of the input dataset.", default=4326)
-@click.option(
-    "--chunk_size", help="The number of blocks to upload in each chunk.", default=100
-)
-def upload(file_path, project, dataset, table, input_crs, chunk_size):
-    click.echo("Uploading raster file to Google BigQuery")
-    raster_loader = RasterLoader(
-        file_path=file_path,
-        input_crs=input_crs,
-    )
-
-    raster_loader.to_bigquery(
-        project=project,
-        dataset=dataset,
-        table=table,
-        chunk_size=chunk_size,
-    )
-    click.echo("Raster file uploaded to Google BigQuery")
 
 
 @bigquery.command(help="Upload a raster file to Google BigQuery.")
@@ -51,11 +24,11 @@ def upload(file_path, project, dataset, table, input_crs, chunk_size):
 @click.option(
     "--input_crs", help="The EPSG code of the input raster's CRS.", default=None
 )
-def upload2(file_path, project, dataset, table, band, chunk_size, input_crs):
+def upload(file_path, project, dataset, table, band, chunk_size, input_crs):
 
     from raster_loader.io import rasterio_to_bigquery
 
-    # TODO: implement hint
+    # TODO: implement --hint
     click.echo("Uploading raster file to Google BigQuery")
     if table is None:
         table = os.path.basename(file_path).split(".")[0]
