@@ -21,7 +21,6 @@ def array_to_record(
 
     height, width = arr.shape
 
-    # verify if this is center or outer bounds corner
     lon_NW, lat_NW = geotransform * (col_off, row_off)
     lon_NE, lat_NE = geotransform * (col_off + width, row_off)
     lon_SE, lat_SE = geotransform * (col_off + width, row_off + height)
@@ -53,14 +52,17 @@ def array_to_record(
         "block_height": height,
         "block_width": width,
         "attrs": json.dumps(attrs),
-        value_field: arr.tobytes(),
+        value_field: arr.tobytes(),  # add in endian flag?
     }
 
     return record
 
 
-def record_to_array(record: dict, value_field: str = "band_1_int8") -> np.ndarray:
+def record_to_array(record: dict, value_field: str = None) -> np.ndarray:
     """Convert a record to a numpy array."""
+
+    if value_field is None:
+        value_field = json.loads(record["attrs"])["value_field"]
 
     # determine dtype
     try:
@@ -275,6 +277,9 @@ def rasterio_to_bigquery(
     chunk_size: int = None,
     input_crs: int = None,
 ):
+
+    # TODO: If BigQuery has error then user should be notified,
+    # TODO: make more error resilient
 
     if isinstance(input_crs, int):
         input_crs = "EPSG:{}".format(input_crs)
