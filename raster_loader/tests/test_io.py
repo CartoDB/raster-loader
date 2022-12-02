@@ -5,8 +5,11 @@ import pytest
 
 from affine import Affine
 
+from raster_loader.tests import mocks
+
 from raster_loader.io import array_to_record
 from raster_loader.io import record_to_array
+from raster_loader.io import rasterio_to_bigquery
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -152,19 +155,17 @@ def test_bigquery_to_records():
         assert records1[c].equals(records2[c])
 
 
-# OLDER TESTS
-"""
-@patch.object(RasterLoader, "_bigquery_client", return_value=mocks.bigquery_client())
-def test_upload_to_bigquery_successful(*args, **kwargs):
-    raster_loader = RasterLoader(file_path="raster_loader/tests/fixtures/mosaic.tif")
+def test_rasterio_to_bigquery():
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "mosaic.tif")
 
-    raster_loader.to_bigquery(
-        project="mock_project",
-        dataset="mock_dataset",
-        table="raster_data",
+    success = rasterio_to_bigquery(
+        test_file, project_id="test", dataset_id="test", table_id="test", client=client
     )
+    assert success
 
 
+"""
 @patch.object(
     RasterLoader,
     "_bigquery_client",
@@ -179,7 +180,6 @@ def test_upload_to_bigquery_unsuccessful_client_error(*args, **kwargs):
             dataset="mock_dataset",
             table="raster_data",
         )
-
 
 @patch.object(
     RasterLoader,

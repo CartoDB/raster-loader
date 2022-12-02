@@ -24,20 +24,56 @@ def bigquery(args=None):
 @click.option(
     "--input_crs", help="The EPSG code of the input raster's CRS.", default=None
 )
-def upload(file_path, project, dataset, table, band, chunk_size, input_crs):
+@click.option("--test", help="Use Mock BigQuery Client", default=False, is_flag=True)
+def upload(file_path, project, dataset, table, band, chunk_size, input_crs, test=False):
 
+    from raster_loader.tests.mocks import bigquery_client
+    from raster_loader.io import import_bigquery
     from raster_loader.io import rasterio_to_bigquery
+    from raster_loader.io import get_number_of_blocks
+    from raster_loader.io import print_band_information
+    from raster_loader.io import get_block_dims
+    from raster_loader.io import print_gdalinfo
 
-    # TODO: implement --hint
-    click.echo("Uploading raster file to Google BigQuery")
+    # create default table name if not provided
     if table is None:
         table = os.path.basename(file_path).split(".")[0]
         table = "_".join([table, "band", str(band), str(uuid.uuid4())])
 
+    # swap out BigQuery client for testing purposes
+    if test:
+        client = bigquery_client()
+    else:
+        bigquery = import_bigquery()
+        client = bigquery.Client(project=project)
+
+    # introspect raster file
+    num_blocks = get_number_of_blocks(file_path)
+    file_size_mb = os.path.getsize(file_path) / 1024 / 1024
+
+    click.echo("Preparing to upload raster file to BigQuery...")
+    click.echo("File Path: {}".format(file_path))
+    print_gdalinfo(file_path)
+    click.echo("File Size: {} MB".format(file_size_mb))
+    print_band_information(file_path)
+    click.echo("Source Band: {}".format(band))
+    click.echo("Number of Blocks: {}".format(num_blocks))
+    click.echo("Block Dims: {}".format(get_block_dims(file_path)))
+    click.echo("Project: {}".format(project))
+    click.echo("Dataset: {}".format(dataset))
+    click.echo("Table: {}".format(table))
+    click.echo("Number of Records Per BigQuery Append: {}".format(chunk_size))
+    click.echo("Input CRS: {}".format(input_crs))
+
+    click.echo("Uploading Raster to BigQuery")
+
+    # TODO: what do we want this to return?
     rasterio_to_bigquery(
-        file_path, table, dataset, project, band, chunk_size, input_crs
+        file_path, table, dataset, project, band, chunk_size, input_crs, client=client
     )
+
     click.echo("Raster file uploaded to Google BigQuery")
+    return 0
 
 
 @bigquery.command(help="Pull and Describe Table from BigQuery")

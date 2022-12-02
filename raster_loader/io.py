@@ -219,14 +219,15 @@ def import_bigquery():
 
 
 def records_to_bigquery(
-    records: Iterable, table_id: str, dataset_id: str, project_id: str
+    records: Iterable, table_id: str, dataset_id: str, project_id: str, client=None
 ):
     """Write a record to a BigQuery table."""
 
     # TODO: Need to test it and see if the load_table style is better..
     bigquery = import_bigquery()
 
-    client = bigquery.Client(project=project_id)
+    if client is None:
+        client = bigquery.Client(project=project_id)
 
     data_df = pd.DataFrame(records)
 
@@ -276,10 +277,39 @@ def rasterio_to_bigquery(
     band: int = 1,
     chunk_size: int = None,
     input_crs: int = None,
-):
+    client=None,
+) -> bool:
+    """Write a rasterio-compatible file to a BigQuery table.
 
-    # TODO: If BigQuery has error then user should be notified,
-    # TODO: make more error resilient
+    Parameters
+    ----------
+    file_path : str
+        Path to the raster file.
+    table_id : str
+        BigQuery table name.
+    dataset_id : str
+        BigQuery dataset name.
+    project_id : str
+        BigQuery project name.
+    band : int, optional
+        Band number to read from the raster file, by default 1
+    chunk_size : int, optional
+        Number of records to write to BigQuery at a time, by default None
+    input_crs : int, optional
+        Input CRS, by default None
+    client : [bigquery.Client()], optional
+        BigQuery client, by default None
+
+    Returns
+    -------
+    bool
+        True if successful.
+
+    Notes
+    -----
+    - TODO: If BigQuery has error then user should be notified
+    - TODO: Make generally more error resilient
+    """
 
     if isinstance(input_crs, int):
         input_crs = "EPSG:{}".format(input_crs)
@@ -290,17 +320,94 @@ def rasterio_to_bigquery(
     records_gen = rasterio_windows_to_records(file_path, band, input_crs)
 
     if chunk_size is None:
-        records_to_bigquery(records_gen, table_id, dataset_id, project_id)
+        records_to_bigquery(
+            records_gen, table_id, dataset_id, project_id, client=client
+        )
     else:
+        from tqdm.auto import tqdm
+
+        total_blocks = get_number_of_blocks(file_path)
+
         records = []
-        for record in records_gen:
-            records.append(record)
+        with tqdm(total=total_blocks) as pbar:
+            for record in records_gen:
+                records.append(record)
 
-            if len(records) >= chunk_size:
-                records_to_bigquery(records, table_id, dataset_id, project_id)
-                records = []
+                if len(records) >= chunk_size:
+                    records_to_bigquery(
+                        records, table_id, dataset_id, project_id, client=client
+                    )
+                    pbar.update(chunk_size)
+                    records = []
 
-        if len(records) > 0:
-            records_to_bigquery(records, table_id, dataset_id, project_id)
+            if len(records) > 0:
+                records_to_bigquery(
+                    records, table_id, dataset_id, project_id, client=client
+                )
+                pbar.update(len(records))
 
     print("Done.")
+    return True
+
+
+def get_number_of_blocks(file_path: str) -> int:
+    """Get the number of blocks in a raster file."""
+    rasterio = import_rasterio()
+
+    with rasterio.open(file_path) as raster_dataset:
+        return len(list(raster_dataset.block_windows()))
+
+
+def print_gdalinfo(file_path: str):
+    """Print out the output of gdalinfo."""
+    import subprocess
+
+    print("Running gdalinfo...")
+    subprocess.run(["gdalinfo", file_path])
+
+
+def size_mb_of_each_block(file_path: str) -> int:
+    """Get the size in MB of each block in a raster file."""
+    rasterio = import_rasterio()
+
+    with rasterio.open(file_path) as raster_dataset:
+        height = raster_dataset.block_shapes[0][0]
+        width = raster_dataset.block_shapes[0][1]
+        size = np.dtype(raster_dataset.dtypes[0]).itemsize
+        return (height * width * size) / 1024 / 1024
+
+
+def size_mb_of_rasterio_band(file_path: str, band: int = 1) -> int:
+    """Get the size in MB of a rasterio band."""
+    rasterio = import_rasterio()
+
+    with rasterio.open(file_path) as raster_dataset:
+        W = raster_dataset.width
+        H = raster_dataset.height
+        S = np.dtype(raster_dataset.dtypes[band - 1]).itemsize
+        return (W * H * S) / 1024 / 1024
+
+
+def print_band_information(file_path: str):
+    """Print out information about the bands in a raster file."""
+    rasterio = import_rasterio()
+
+    with rasterio.open(file_path) as raster_dataset:
+        print("Number of bands: {}".format(raster_dataset.count))
+        print("Band types: {}".format(raster_dataset.dtypes))
+        print(
+            "Band sizes (MB): {}".format(
+                [
+                    size_mb_of_rasterio_band(file_path, band + 1)
+                    for band in range(raster_dataset.count)
+                ]
+            )
+        )
+
+
+def get_block_dims(file_path: str) -> tuple:
+    """Get the dimensions of a raster file's blocks."""
+    rasterio = import_rasterio()
+
+    with rasterio.open(file_path) as raster_dataset:
+        return raster_dataset.block_shapes[0]
