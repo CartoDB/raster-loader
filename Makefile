@@ -20,9 +20,10 @@ test:
 	$(BIN)/pytest raster_loader --cov=raster_loader --verbose
 
 docs:
-	$(BIN)/lazydocs raster_loader --validate --output-path="docs" --overview-file="README.md"
-	cd docs; bash post.sh;
+	cd docs; make clean html
 
+test-docs:
+	$(BIN)/sphinx-build -a -W --keep-going docs/source/ docs/build/
 
 publish-pypi:
 	rm -rf $(DIST) $(BUILD) *.egg-info
