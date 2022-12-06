@@ -1,15 +1,12 @@
 import json
 import os
+
+from affine import Affine
 import numpy as np
 import pytest
 
-from affine import Affine
-
+from raster_loader import io
 from raster_loader.tests import mocks
-
-from raster_loader.io import array_to_record
-from raster_loader.io import record_to_array
-from raster_loader.io import rasterio_to_bigquery
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -21,7 +18,7 @@ def test_array_to_record():
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     crs = "EPSG:4326"
     band = 1
-    record = array_to_record(arr, geotransform, crs=crs, band=band)
+    record = io.array_to_record(arr, geotransform, crs=crs, band=band)
 
     assert record["lat_NW"] == 90.0
     assert record["lon_NW"] == -180.0
@@ -52,7 +49,7 @@ def test_array_to_record():
 def test_array_to_record_offset():
     arr = np.linspace(0, 100, 160 * 340).reshape(160, 340)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-    record = array_to_record(arr, geotransform, row_off=20, col_off=20)
+    record = io.array_to_record(arr, geotransform, row_off=20, col_off=20)
 
     assert record["lat_NW"] == 70.0
     assert record["lon_NW"] == -160.0
@@ -85,11 +82,22 @@ def test_record_to_array():
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     crs = "EPSG:4326"
     band = 1
-    record = array_to_record(arr, geotransform, crs=crs, band=band)
-    arr2 = record_to_array(record)
+    record = io.array_to_record(arr, geotransform, crs=crs, band=band)
+    arr2 = io.record_to_array(record)
     assert np.allclose(arr, arr2)
     assert arr.dtype == arr2.dtype
     assert arr.shape == arr2.shape
+
+
+def test_record_to_array_invalid_dtype():
+    arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
+    geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
+    crs = "EPSG:4326"
+    band = 1
+    record = io.array_to_record(arr, geotransform, crs=crs, band=band)
+
+    with pytest.raises(TypeError):
+        io.record_to_array(record, "band_1_dtype")
 
 
 def test_rasterio_to_record():
@@ -100,7 +108,7 @@ def test_rasterio_to_record():
     band = 1
 
     with rasterio.open(test_file) as src:
-        record = array_to_record(
+        record = io.array_to_record(
             src.read(band), src.transform, crs=src.crs.to_string(), band=band
         )
 
@@ -159,40 +167,52 @@ def test_rasterio_to_bigquery():
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
 
-    success = rasterio_to_bigquery(
+    success = io.rasterio_to_bigquery(
         test_file, project_id="test", dataset_id="test", table_id="test", client=client
     )
     assert success
 
 
-"""
-@patch.object(
-    RasterLoader,
-    "_bigquery_client",
-    side_effect=errors.ClientError,
-)
-def test_upload_to_bigquery_unsuccessful_client_error(*args, **kwargs):
-    raster_loader = RasterLoader(file_path="raster_loader/tests/fixtures/mosaic.tif")
+def test_rasterio_to_bigquery_with_chunk_size():
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "mosaic.tif")
 
-    with pytest.raises(errors.ClientError):
-        raster_loader.to_bigquery(
-            project="mock_project",
-            dataset="mock_dataset",
-            table="raster_data",
-        )
+    success = io.rasterio_to_bigquery(
+        test_file,
+        project_id="test",
+        dataset_id="test",
+        table_id="test",
+        client=client,
+        chunk_size=100,
+    )
+    assert success
 
-@patch.object(
-    RasterLoader,
-    "_bigquery_client",
-    return_value=mocks.bigquery_client(load_error=True),
-)
-def test_upload_to_bigquery_unsuccessful_load_error(*args, **kwargs):
-    raster_loader = RasterLoader(file_path="raster_loader/tests/fixtures/mosaic.tif")
 
-    with pytest.raises(errors.UploadError):
-        raster_loader.to_bigquery(
-            project="mock_project",
-            dataset="mock_dataset",
-            table="raster_data",
-        )
-"""
+def test_rasterio_to_bigquery_with_one_chunk_size():
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+
+    success = io.rasterio_to_bigquery(
+        test_file,
+        project_id="test",
+        dataset_id="test",
+        table_id="test",
+        client=client,
+        chunk_size=1,
+    )
+    assert success
+
+
+def test_rasterio_to_bigquery_invalid_input_crs():
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+
+    success = io.rasterio_to_bigquery(
+        test_file,
+        project_id="test",
+        dataset_id="test",
+        table_id="test",
+        client=client,
+        input_crs=3232,
+    )
+    assert success

@@ -43,7 +43,7 @@ def upload(file_path, project, dataset, table, band, chunk_size, input_crs, test
     # swap out BigQuery client for testing purposes
     if test:
         client = bigquery_client()
-    else:
+    else:  # pragma: no cover
         bigquery = import_bigquery()
         client = bigquery.Client(project=project)
 
@@ -67,7 +67,6 @@ def upload(file_path, project, dataset, table, band, chunk_size, input_crs, test
 
     click.echo("Uploading Raster to BigQuery")
 
-    # TODO: what do we want this to return?
     rasterio_to_bigquery(
         file_path, table, dataset, project, band, chunk_size, input_crs, client=client
     )
