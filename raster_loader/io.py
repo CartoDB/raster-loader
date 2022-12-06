@@ -68,8 +68,8 @@ def record_to_array(record: dict, value_field: str = None) -> np.ndarray:
     try:
         dtype_str = value_field.split("_")[-1]
         dtype = np.dtype(dtype_str)
-    except ValueError:
-        raise ValueError(f"Invalid dtype: {dtype_str}")
+    except TypeError:
+        raise TypeError(f"Invalid dtype: {dtype_str}")
 
     # determine shape
     shape = (record["block_height"], record["block_width"])
@@ -80,7 +80,7 @@ def record_to_array(record: dict, value_field: str = None) -> np.ndarray:
     return arr
 
 
-def import_rasterio():
+def import_rasterio():  # pragma: no cover
     try:
         import rasterio
 
@@ -97,75 +97,6 @@ def import_rasterio():
         raise ImportError(msg)
 
 
-def _record_to_file(
-    record: dict,
-    file_path: str,
-    value_field: str = "band_1_int8",
-    driver: str = "GTiff",
-) -> None:
-    """Write a record to a file."""
-
-    rasterio = import_rasterio()
-
-    arr = record_to_array(record, value_field)
-
-    h, w = arr.shape[-2:]
-
-    xrange = (record["lon_NW"], record["lon_NE"])
-    yrange = (record["lat_SW"], record["lat_NW"])
-
-    transform = rasterio.transform.from_bounds(*xrange, *yrange, w, h)
-
-    with rasterio.open(
-        file_path,
-        "w",
-        driver=driver,
-        height=h,
-        width=w,
-        count=1,
-        dtype=arr.dtype,
-        transform=transform,
-    ) as dst:
-        dst.write(arr, 1)
-        print("Wrote to {}".format(file_path))
-
-
-def bigquery_to_file(
-    table_id: str,
-    dataset_id: str,
-    project_id: str,
-    file_path: str,
-    driver: str = "GTiff",
-):
-    """Write BigQuery Raster to File"""
-    import os
-
-    path, ext = os.path.splitext(file_path)
-
-    df = bigquery_to_records(table_id, dataset_id, project_id)
-
-    for i, record in df.iterrows():
-        out_path = path + "_part" + str(i) + ext
-        _record_to_file(record, out_path, driver=driver)
-
-
-def rasterio_to_record(file_path: str, band: int = 1, input_crs: str = None) -> dict:
-    """Open a raster file with rasterio."""
-    rasterio = import_rasterio()
-
-    with rasterio.open(file_path) as raster_dataset:
-
-        if input_crs is None:
-            input_crs = raster_dataset.crs.to_string()
-
-        return array_to_record(
-            raster_dataset.read(band),
-            raster_dataset.transform,
-            crs=input_crs,
-            band=band,
-        )
-
-
 def rasterio_windows_to_records(
     file_path: str, band: int = 1, input_crs: str = None
 ) -> Iterable:
@@ -178,11 +109,10 @@ def rasterio_windows_to_records(
 
         if input_crs is None:
             input_crs = raster_crs
-
         elif input_crs != raster_crs:
             print(f"WARNING: Input CRS({input_crs}) != raster CRS({raster_crs}).")
 
-        if not input_crs:
+        if not input_crs:  # pragma: no cover
             raise ValueError("Unable to find valid input_crs.")
 
         for _, window in raster_dataset.block_windows():
@@ -201,7 +131,7 @@ def rasterio_windows_to_records(
             yield rec
 
 
-def import_bigquery():
+def import_bigquery():  # pragma: no cover
     try:
         from google.cloud import bigquery
 
@@ -223,10 +153,9 @@ def records_to_bigquery(
 ):
     """Write a record to a BigQuery table."""
 
-    # TODO: Need to test it and see if the load_table style is better..
     bigquery = import_bigquery()
 
-    if client is None:
+    if client is None:  # pragma: no cover
         client = bigquery.Client(project=project_id)
 
     data_df = pd.DataFrame(records)
@@ -236,7 +165,7 @@ def records_to_bigquery(
 
 def bigquery_to_records(
     table_id: str, dataset_id: str, project_id: str, limit=10
-) -> pd.DataFrame:
+) -> pd.DataFrame:  # pragma: no cover
     """Read a BigQuery table into a records pandas.DataFrame."""
     bigquery = import_bigquery()
 
@@ -262,7 +191,8 @@ def reproject_record(record: dict, src_crs: str, dst_crs: str = "EPSG:4326") -> 
         ("lon_SE", "lat_SE"),
     ]:
 
-        x, y = pyproj.transform(src_crs, dst_crs, record[lon_col], record[lat_col])
+        transformer = pyproj.Transformer.from_crs(src_crs, dst_crs)
+        x, y = transformer.transform(record[lon_col], record[lat_col])
         record[lon_col] = x
         record[lat_col] = y
 
@@ -304,11 +234,6 @@ def rasterio_to_bigquery(
     -------
     bool
         True if successful.
-
-    Notes
-    -----
-    - TODO: If BigQuery has error then user should be notified
-    - TODO: Make generally more error resilient
     """
 
     if isinstance(input_crs, int):
@@ -364,17 +289,6 @@ def print_gdalinfo(file_path: str):
 
     print("Running gdalinfo...")
     subprocess.run(["gdalinfo", file_path])
-
-
-def size_mb_of_each_block(file_path: str) -> int:
-    """Get the size in MB of each block in a raster file."""
-    rasterio = import_rasterio()
-
-    with rasterio.open(file_path) as raster_dataset:
-        height = raster_dataset.block_shapes[0][0]
-        width = raster_dataset.block_shapes[0][1]
-        size = np.dtype(raster_dataset.dtypes[0]).itemsize
-        return (height * width * size) / 1024 / 1024
 
 
 def size_mb_of_rasterio_band(file_path: str, band: int = 1) -> int:
