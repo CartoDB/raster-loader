@@ -1,15 +1,9 @@
-import os
 from unittest.mock import patch
 
 from click.testing import CliRunner
 import pandas as pd
 
 from raster_loader.cli import main
-
-
-here = os.path.dirname(os.path.abspath(__file__))
-fixtures = os.path.join(here, "fixtures")
-tiff = os.path.join(fixtures, "mosaic.tif")
 
 
 @patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
@@ -21,7 +15,7 @@ def test_bigquery_upload(mocker):
             "bigquery",
             "upload",
             "--file_path",
-            f"{tiff}",
+            "raster_loader/tests/fixtures/mosaic.tif",
             "--project",
             "project",
             "--dataset",
@@ -49,7 +43,7 @@ def test_bigquery_upload_no_table_name(mocker):
             "bigquery",
             "upload",
             "--file_path",
-            f"{tiff}",
+            "raster_loader/tests/fixtures/mosaic.tif",
             "--project",
             "project",
             "--dataset",
