@@ -12,10 +12,10 @@ Subpackages
 Submodules
 ----------
 
-raster\_loader.errors module
-----------------------------
+raster\_loader.io module
+------------------------
 
-.. automodule:: raster_loader.errors
+.. automodule:: raster_loader.io
    :members:
    :undoc-members:
    :show-inheritance:
@@ -24,14 +24,6 @@ raster\_loader.upload module
 ----------------------------
 
 .. automodule:: raster_loader.upload
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-raster\_loader.utils module
----------------------------
-
-.. automodule:: raster_loader.utils
    :members:
    :undoc-members:
    :show-inheritance:
