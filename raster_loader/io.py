@@ -283,7 +283,7 @@ def get_number_of_blocks(file_path: str) -> int:
         return len(list(raster_dataset.block_windows()))
 
 
-def print_gdalinfo(file_path: str):
+def print_gdalinfo(file_path: str):  # pragma: no cover
     """Print out the output of gdalinfo."""
     import subprocess
 

@@ -1,3 +1,4 @@
+import os
 from unittest.mock import patch
 
 from click.testing import CliRunner
@@ -6,8 +7,14 @@ import pandas as pd
 from raster_loader.cli import main
 
 
+here = os.path.dirname(os.path.abspath(__file__))
+fixtures = os.path.join(here, "fixtures")
+tiff = os.path.join(fixtures, "mosaic.tif")
+
+
+@patch("raster_loader.io.print_gdalinfo", return_value=None)
 @patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
-def test_bigquery_upload(mocker):
+def test_bigquery_upload(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
         main,
@@ -15,7 +22,7 @@ def test_bigquery_upload(mocker):
             "bigquery",
             "upload",
             "--file_path",
-            "raster_loader/tests/fixtures/mosaic.tif",
+            f"{tiff}",
             "--project",
             "project",
             "--dataset",
@@ -34,8 +41,9 @@ def test_bigquery_upload(mocker):
     assert result.exit_code == 0
 
 
+@patch("raster_loader.io.print_gdalinfo", return_value=None)
 @patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
-def test_bigquery_upload_no_table_name(mocker):
+def test_bigquery_upload_no_table_name(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
         main,
@@ -43,7 +51,7 @@ def test_bigquery_upload_no_table_name(mocker):
             "bigquery",
             "upload",
             "--file_path",
-            "raster_loader/tests/fixtures/mosaic.tif",
+            f"{tiff}",
             "--project",
             "project",
             "--dataset",
