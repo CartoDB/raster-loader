@@ -1,3 +1,5 @@
+.. _api_reference:
+
 Module API reference
 ====================
 
@@ -8,9 +10,6 @@ Subpackages
    :maxdepth: 4
 
    raster_loader.cli
-
-Submodules
-----------
 
 Module contents
 ---------------

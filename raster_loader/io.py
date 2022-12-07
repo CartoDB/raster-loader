@@ -166,7 +166,25 @@ def records_to_bigquery(
 def bigquery_to_records(
     table_id: str, dataset_id: str, project_id: str, limit=10
 ) -> pd.DataFrame:  # pragma: no cover
-    """Read a BigQuery table into a records pandas.DataFrame."""
+    """Read a BigQuery table into a records pandas.DataFrame.
+
+    Parameters
+    ----------
+    table_id : str
+        BigQuery table name.
+    dataset_id : str
+        BigQuery dataset name.
+    project_id : str
+        BigQuery project name.
+    limit : int, optional
+        Max number of records to return, by default 10.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Records as a pandas.DataFrame.
+
+    """
     bigquery = import_bigquery()
 
     client = bigquery.Client(project=project_id)
@@ -209,12 +227,14 @@ def rasterio_to_bigquery(
     input_crs: int = None,
     client=None,
 ) -> bool:
-    """Write a rasterio-compatible file to a BigQuery table.
+    """Write a rasterio-compatible raster file to a BigQuery table.
+    Compatible file formats include TIFF and GeoTIFF. See
+    `the GDAL website <https://gdal.org/drivers/raster/index.html>`_ for a full list.
 
     Parameters
     ----------
     file_path : str
-        Path to the raster file.
+        Path to the rasterio-compatible raster file.
     table_id : str
         BigQuery table name.
     dataset_id : str
@@ -233,7 +253,7 @@ def rasterio_to_bigquery(
     Returns
     -------
     bool
-        True if successful.
+        True if upload was successful.
     """
 
     if isinstance(input_crs, int):
