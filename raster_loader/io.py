@@ -1,12 +1,12 @@
 import json
-
 from typing import Iterable
 
 from affine import Affine
 import numpy as np
 import pandas as pd
-
 import pyproj
+
+from raster_loader.utils import ask_yes_no_question
 
 
 def array_to_record(
@@ -217,6 +217,43 @@ def reproject_record(record: dict, src_crs: str, dst_crs: str = "EPSG:4326") -> 
     return record
 
 
+def delete_bigquery_table(
+    table_id: str,
+    dataset_id: str,
+    project_id: str,
+    client=None,
+) -> bool:  # pragma: no cover
+    """Delete a BigQuery table.
+
+    Parameters
+    ----------
+    table_id : str
+        BigQuery table name.
+    dataset_id : str
+        BigQuery dataset name.
+    project_id : str
+        BigQuery project name.
+    client : google.cloud.bigquery.client.Client, optional
+        BigQuery client, by default None
+
+    Returns
+    -------
+    bool
+        True if the table was deleted.
+
+    """
+
+    bigquery = import_bigquery()
+
+    if client is None:
+        client = bigquery.Client(project=project_id)
+
+    table_ref = client.dataset(dataset_id).table(table_id)
+    client.delete_table(table_ref, not_found_ok=True)
+
+    return True
+
+
 def rasterio_to_bigquery(
     file_path: str,
     table_id: str,
@@ -264,32 +301,55 @@ def rasterio_to_bigquery(
 
     records_gen = rasterio_windows_to_records(file_path, band, input_crs)
 
-    if chunk_size is None:
-        records_to_bigquery(
-            records_gen, table_id, dataset_id, project_id, client=client
-        )
-    else:
-        from tqdm.auto import tqdm
+    try:
+        if chunk_size is None:
+            records_to_bigquery(
+                records_gen, table_id, dataset_id, project_id, client=client
+            )
+        else:
+            from tqdm.auto import tqdm
 
-        total_blocks = get_number_of_blocks(file_path)
+            total_blocks = get_number_of_blocks(file_path)
 
-        records = []
-        with tqdm(total=total_blocks) as pbar:
-            for record in records_gen:
-                records.append(record)
+            records = []
+            with tqdm(total=total_blocks) as pbar:
+                for record in records_gen:
+                    records.append(record)
 
-                if len(records) >= chunk_size:
+                    if len(records) >= chunk_size:
+                        records_to_bigquery(
+                            records, table_id, dataset_id, project_id, client=client
+                        )
+                        pbar.update(chunk_size)
+                        records = []
+
+                if len(records) > 0:
                     records_to_bigquery(
                         records, table_id, dataset_id, project_id, client=client
                     )
-                    pbar.update(chunk_size)
-                    records = []
+                    pbar.update(len(records))
+    except KeyboardInterrupt:
+        delete_table = ask_yes_no_question(
+            "Would you like to delete the partially uploaded table? [yes/no] "
+        )
 
-            if len(records) > 0:
-                records_to_bigquery(
-                    records, table_id, dataset_id, project_id, client=client
-                )
-                pbar.update(len(records))
+        if delete_table:
+            delete_bigquery_table(table_id, dataset_id, project_id, client)
+
+        raise KeyboardInterrupt
+
+    except Exception as e:
+        delete_table = ask_yes_no_question(
+            (
+                "Error uploading to BigQuery. "
+                "Would you like to delete the partially uploaded table? [yes/no] "
+            )
+        )
+
+        if delete_table:
+            delete_bigquery_table(table_id, dataset_id, project_id, client)
+
+        raise IOError("Error uploading to BigQuery: {}".format(e))
 
     print("Done.")
     return True
