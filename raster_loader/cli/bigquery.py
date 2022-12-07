@@ -75,7 +75,7 @@ def upload(file_path, project, dataset, table, band, chunk_size, input_crs, test
     return 0
 
 
-@bigquery.command(help="Pull and Describe Table from BigQuery")
+@bigquery.command(help="Load and describe a table from BigQuery")
 @click.option("--project", help="The name of the Google Cloud project.", required=True)
 @click.option("--dataset", help="The name of the dataset.", required=True)
 @click.option("--table", help="The name of the table.", required=True)
