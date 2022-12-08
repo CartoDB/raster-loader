@@ -10,12 +10,18 @@ terminal.
 Currently, Raster Loader allows you to upload a local raster file to a BigQuery table.
 You can also download and inspect a raster file from a BigQuery table.
 
+.. note::
+
+    Accessing BigQuery with Raster Loader requires the ``GOOGLE_APPLICATION_CREDENTIALS``
+    environment variable to be set to the path of a JSON file containing your BigQuery
+    credentials. See the `GCP documentation`_ for more information.
+
 Uploading to BigQuery
 ---------------------
 
 To upload a raster file to a BigQuery table, use the ``carto bigquery upload`` command.
 
-At minimum, this command requires a file path to a local raster file that can be
+At a minimum, this command requires a file path to a local raster file that can be
 `read by GDAL`_ and processed with `rasterio`_. It also requires a `GCP project name`_,
 a `BigQuery dataset`_, and a `BigQuery table name`_. For example:
 
@@ -36,7 +42,9 @@ You can also use Raster Loader to retrieve information about a raster file store
 BigQuery table. This can be useful to make sure a raster file was transferred correctly
 or to get information about a raster file's metadata, for example.
 
-At minimum, this command requires a `GCP project name`_, a `BigQuery dataset`_, and a
+To access a raster file in a BigQuery table, use the ``carto bigquery inspect`` command.
+
+At a minimum, this command requires a `GCP project name`_, a `BigQuery dataset`_, and a
 `BigQuery table name`_. For example:
 
 .. code-block:: bash
@@ -59,6 +67,7 @@ The following is a detailed overview of all of the CLI's subcommands and options
    :prog: carto
    :nested: full
 
+.. _`GCP documentation`: https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key
 .. _`read by GDAL`: https://gdal.org/drivers/raster/index.html
 .. _`rasterio`: https://rasterio.readthedocs.io/en/latest/
 .. _`GCP project name`: https://cloud.google.com/resource-manager/docs/creating-managing-projects

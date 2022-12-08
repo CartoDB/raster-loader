@@ -22,15 +22,23 @@ language = "en"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    "sphinx.ext.autodoc",
-    "sphinx.ext.coverage",
+    "myst_parser",
     "sphinx_click",
     "sphinx_rtd_theme",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.coverage",
     "sphinx.ext.napoleon",
 ]
 
 templates_path = ["_templates"]
 exclude_patterns = []
+    
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'markdown',
+    '.md': 'markdown',
+}
+
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

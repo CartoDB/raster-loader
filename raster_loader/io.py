@@ -168,6 +168,11 @@ def bigquery_to_records(
 ) -> pd.DataFrame:  # pragma: no cover
     """Read a BigQuery table into a records pandas.DataFrame.
 
+    Requires the ``GOOGLE_APPLICATION_CREDENTIALS`` environment variable set to the path
+    of a JSON file containing your BigQuery credentials (see `the GCP documentation
+    <https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key>`_
+    for more information).
+
     Parameters
     ----------
     table_id : str
@@ -225,6 +230,11 @@ def delete_bigquery_table(
 ) -> bool:  # pragma: no cover
     """Delete a BigQuery table.
 
+    Requires the ``GOOGLE_APPLICATION_CREDENTIALS`` environment variable set to the path
+    of a JSON file containing your BigQuery credentials (see `the GCP documentation
+    <https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key>`_
+    for more information).
+
     Parameters
     ----------
     table_id : str
@@ -267,6 +277,11 @@ def rasterio_to_bigquery(
     """Write a rasterio-compatible raster file to a BigQuery table.
     Compatible file formats include TIFF and GeoTIFF. See
     `the GDAL website <https://gdal.org/drivers/raster/index.html>`_ for a full list.
+
+    Requires the ``GOOGLE_APPLICATION_CREDENTIALS`` environment variable set to the path
+    of a JSON file containing your BigQuery credentials (see `the GCP documentation
+    <https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key>`_
+    for more information).
 
     Parameters
     ----------

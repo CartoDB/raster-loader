@@ -21,10 +21,11 @@ This documentation contains the following sections:
    user_guide/installation
    user_guide/cli
    user_guide/use_with_python
+   user_guide/modules/raster_loader
 
 .. toctree::
    :caption: Contributing to Raster Loader
    :maxdepth: 1
 
    developer_guide/contribute
-   developer_guide/modules/raster_loader
+   developer_guide/roadmap

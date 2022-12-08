@@ -9,6 +9,14 @@ Raster Loader is available on PyPI_ and can be installed with pip_:
 
    pip install raster-loader
 
+To install from source:
+
+.. code-block:: bash
+
+   git clone https://github.com/cartodb/raster-loader
+   cd raster-loader
+   pip install .
+
 .. tip::
 
    In most cases, it is recommended to install Raster Loader in a virtual environment.
@@ -22,8 +30,8 @@ following command in your terminal:
 
    carto info
 
-This command should print some basic system information, including the version of raster
-loader installed on your system. For example:
+This command should print some basic system information, including the version of Raster
+Loader installed on your system. For example:
 
 .. code-block:: bash
 

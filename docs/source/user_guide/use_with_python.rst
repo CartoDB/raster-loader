@@ -1,7 +1,7 @@
 .. _python:
 
-Using in Python projects
-========================
+Usage with Python projects
+==========================
 
 After installing Raster Loader, you can import the package to your Python project. For
 example:
@@ -12,6 +12,12 @@ example:
 
 Currently, Raster Loader allows you to upload a local raster file to a BigQuery table
 using the :func:`~raster_loader.rasterio_to_bigquery` function.
+
+.. note::
+
+    Accessing BigQuery with Raster Loader requires the ``GOOGLE_APPLICATION_CREDENTIALS``
+    environment variable to be set to the path of a JSON file containing your BigQuery
+    credentials. See the `GCP documentation`_ for more information.
 
 For example:
 
@@ -38,3 +44,5 @@ For example:
     )
 
 See the :ref:`api_reference` for more details.
+
+.. _`GCP documentation`: https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key
