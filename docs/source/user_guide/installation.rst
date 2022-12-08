@@ -9,6 +9,14 @@ Raster Loader is available on PyPI_ and can be installed with pip_:
 
    pip install raster-loader
 
+To install from source:
+
+.. code-block:: bash
+
+   git clone https://github.com/cartodb/raster-loader
+   cd raster-loader
+   pip install .
+
 .. tip::
 
    In most cases, it is recommended to install Raster Loader in a virtual environment.
