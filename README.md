@@ -4,7 +4,8 @@
 [![PyPI downloads](https://img.shields.io/pypi/dm/raster-loader.svg)](https://pypistats.org/packages/raster-loader)
 [![Tests](https://github.com/cartodb/raster-loader/actions/workflows/ci.yml/badge.svg)](https://github.com/cartodb/raster-loader/actions)
 
-Python library for uploading geo raster data to cloud storage.
+Python library for loading GIS raster data to standard cloud-based data warehouses that
+don't natively support raster data.
 
 ## Install
 
@@ -22,25 +23,20 @@ pip install .
 
 ## Usage
 
-```py
-TODO
-```
+There are two ways you can use Raster Loader:
 
-For more information, check the [examples](./examples) section.
+* Using the CLI by running `carto` in your terminal
+* Using Raster Loader as a Python library (`import raster_loader`)
+
+For more information, see the [Raster Loader documentation](https://rasterloader.readthedocs.io/).
 
 ## Development
 
-Make commands:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for information on how to contribute to this
+project.
 
-- init: create the environment and install dependencies
-- lint: run linter (black + flake8)
-- test: run tests (pytest)
-- docs: build the documentation
-- publish-pypi: publish package in pypi.org
-- publish-test-pypi: publish package in test.pypi.org
-- clean: remove the environment
-
-Check the development [documentation](./docs) section.
+[ROADMAP.md](ROADMAP.md) contains a list of features and improvements planned for future
+versions of Raster Loader.
 
 ## Contributors
 
