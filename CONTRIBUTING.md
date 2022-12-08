@@ -1,4 +1,4 @@
-# Contributing to Raster Loader
+# Contributor guide
 
 Thank you for your interest in contributing to Raster Loader!
 
@@ -51,7 +51,7 @@ After creating your environment, you can enter the virtual environment with
 
 ### Tests and linting
 
-Before submitting a pull request, you need to make sure your upates pass tests and
+Before submitting a pull request, you need to make sure your updates pass tests and
 linting.
 
 #### Running Linting
@@ -86,7 +86,7 @@ for more information). After setting up your credentials, you can enable the int
 test with the following command:
 
 ```bash
-pytest --runtintegration
+pytest --runintegration
 ```
 
 #### Updating tests
@@ -148,8 +148,12 @@ All contributions to raster loader are made through pull requests to the
 See the [GitHub documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests)
 for more information on how to use pull requests.
 
-Pull requests to the Raster Loader repository must pass all tests and linting before
-they are considered for merging. You can use the ["WIP" label](https://github.com/CartoDB/raster-loader/labels/WIP)
+All pull requests must reference an issue in the Raster Loader repository (a bug report
+or feature request, for example). If you can't find an issue to reference, make
+sure to create a new issue before submitting your pull request.
+
+Pull requests to the Raster Loader repository must pass all automated tests and linting
+before they are considered for merging. You can use the ["WIP" label](https://github.com/CartoDB/raster-loader/labels/WIP)
 or [mark your pull request as a draft](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests#draft-pull-requests)
 to indicate that it is not ready for review.
 
