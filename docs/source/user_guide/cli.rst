@@ -21,7 +21,7 @@ Uploading to BigQuery
 
 To upload a raster file to a BigQuery table, use the ``carto bigquery upload`` command.
 
-At minimum, this command requires a file path to a local raster file that can be
+At a minimum, this command requires a file path to a local raster file that can be
 `read by GDAL`_ and processed with `rasterio`_. It also requires a `GCP project name`_,
 a `BigQuery dataset`_, and a `BigQuery table name`_. For example:
 
@@ -44,7 +44,7 @@ or to get information about a raster file's metadata, for example.
 
 To access a raster file in a BigQuery table, use the ``carto bigquery inspect`` command.
 
-At minimum, this command requires a `GCP project name`_, a `BigQuery dataset`_, and a
+At a minimum, this command requires a `GCP project name`_, a `BigQuery dataset`_, and a
 `BigQuery table name`_. For example:
 
 .. code-block:: bash

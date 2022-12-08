@@ -1,7 +1,7 @@
 .. _python:
 
-Using in Python projects
-========================
+Usage with Python projects
+==========================
 
 After installing Raster Loader, you can import the package to your Python project. For
 example:

@@ -4,8 +4,8 @@ Thank you for your interest in contributing to Raster Loader!
 
 ## Feature requests and bug reports
 
-Reporting bugs and submitting ideas for new features are a great way to contribute and
-help make Raster Loader better!
+Reporting bugs and submitting ideas for new features are great ways to help make Raster
+Loader better!
 
 To report a bug or request a feature, please
 [create a new issue in the GitHub repository](https://github.com/CartoDB/raster-loader/issues/new/choose).
@@ -23,7 +23,7 @@ You will need to sign a Contributor License Agreement (CLA) before making a subm
 Raster Loader uses GitHub and git for version control. If you are new to git, you can
 learn more about it [here](https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control).
 
-Raster loader uses a Makefile to automate many aspects of the development process. Using
+Raster Loader uses a Makefile to automate many aspects of the development process. Using
 the Makefile requires that you have [GNU Make](https://www.gnu.org/software/make/)
 installed.
 
@@ -40,14 +40,15 @@ make init
 ```
 
 This will create a virtual environment in the `env` directory and install all
-necessary dependencies, including a development version of raster loader and the
-raster loader CLI.
+necessary dependencies, including a development version of Raster Loader and the
+Raster Loader CLI.
 
 If you don't have `make` available, you can open the file `Makefile` run the commands
 manually to set up a virtual environment and install the dependencies.
 
 After creating your environment, you can enter the virtual environment with
-``source env/bin/activate`` on Linux and macOS, or ``env\bin\Activate.ps1`` on Windows (PowerShell).
+``source env/bin/activate`` on Linux and macOS or ``env\bin\Activate.ps1`` on Windows
+(PowerShell).
 
 ### Tests and linting
 
@@ -91,7 +92,7 @@ pytest --runintegration
 
 #### Updating tests
 
-All new code needs to be covered by tests. The tests for raster loader are located in
+All new code needs to be covered by tests. The tests for Raster Loader are located in
 the `raster_loader/tests` directory. Each Python module in the package should have its
 own test module in this directory.
 
@@ -113,7 +114,7 @@ pytest -k "[test_name]"
 
 ### Updating documentation
 
-All new fatures and updates to features need to be documented.
+All new features and updates to features need to be documented.
 
 Raster Loader uses [Sphinx](https://www.sphinx-doc.org/en/master/) to generate
 documentation.
@@ -135,14 +136,14 @@ automatically from the docstrings in the code. Please use
 [NumPy style](https://numpydoc.readthedocs.io/en/latest/format.html) for all your
 docstrings.
 
-Also included in the documentation are is a reference of all available CLI commands.
+Also included in the documentation is a reference of all available CLI commands.
 This reference is generated automatically from the docstrings in the CLI code. See
 the [documentation for sphinx-click](https://sphinx-click.readthedocs.io/en/latest/)
 for more information on how to document the CLI.
 
 ### Making pull requests
 
-All contributions to raster loader are made through pull requests to the
+All contributions to Raster Loader are made through pull requests to the
 [the Raster Loader repository](https://github.com/CartoDB/raster-loader).
 
 See the [GitHub documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests)

@@ -30,8 +30,8 @@ following command in your terminal:
 
    carto info
 
-This command should print some basic system information, including the version of raster
-loader installed on your system. For example:
+This command should print some basic system information, including the version of Raster
+Loader installed on your system. For example:
 
 .. code-block:: bash
 
