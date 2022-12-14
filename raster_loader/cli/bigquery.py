@@ -26,7 +26,7 @@ def bigquery(args=None):
 )
 @click.option(
     "--overwrite",
-    help="Overwrite the existing table if it exists.",
+    help="Overwrite existing data in the table if it already exists.",
     default=False,
     is_flag=True,
 )
