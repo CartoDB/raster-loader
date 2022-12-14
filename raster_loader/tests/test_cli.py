@@ -12,7 +12,6 @@ fixtures = os.path.join(here, "fixtures")
 tiff = os.path.join(fixtures, "mosaic.tif")
 
 
-@patch("raster_loader.io.print_gdalinfo", return_value=None)
 @patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
 def test_bigquery_upload(*args, **kwargs):
     runner = CliRunner()
@@ -41,7 +40,6 @@ def test_bigquery_upload(*args, **kwargs):
     assert result.exit_code == 0
 
 
-@patch("raster_loader.io.print_gdalinfo", return_value=None)
 @patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
 def test_bigquery_upload_no_table_name(*args, **kwargs):
     runner = CliRunner()

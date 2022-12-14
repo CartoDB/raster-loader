@@ -448,14 +448,6 @@ def get_number_of_blocks(file_path: str) -> int:
         return len(list(raster_dataset.block_windows()))
 
 
-def print_gdalinfo(file_path: str):  # pragma: no cover
-    """Print out the output of gdalinfo."""
-    import subprocess
-
-    print("Running gdalinfo...")
-    subprocess.run(["gdalinfo", file_path])
-
-
 def size_mb_of_rasterio_band(file_path: str, band: int = 1) -> int:
     """Get the size in MB of a rasterio band."""
     rasterio = import_rasterio()
