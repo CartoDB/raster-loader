@@ -164,7 +164,8 @@ def test_bigquery_to_records():
         assert records1[c].equals(records2[c])
 
 
-def test_rasterio_to_bigquery():
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
+def test_rasterio_to_bigquery(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
 
@@ -172,6 +173,59 @@ def test_rasterio_to_bigquery():
         test_file, project_id="test", dataset_id="test", table_id="test", client=client
     )
     assert success
+
+
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
+@patch("raster_loader.io.delete_bigquery_table", return_value=None)
+def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+
+    success = io.rasterio_to_bigquery(
+        test_file,
+        project_id="test",
+        dataset_id="test",
+        table_id="test",
+        client=client,
+        overwrite=True,
+    )
+    assert success
+
+
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
+@patch("raster_loader.io.delete_bigquery_table", return_value=None)
+@patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
+@patch("raster_loader.io.ask_yes_no_question", return_value=True)
+def test_rasterio_to_bigquery_table_is_not_empty_append(*args, **kwargs):
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+
+    success = io.rasterio_to_bigquery(
+        test_file,
+        project_id="test",
+        dataset_id="test",
+        table_id="test",
+        client=client,
+    )
+    assert success
+
+
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
+@patch("raster_loader.io.delete_bigquery_table", return_value=None)
+@patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
+@patch("raster_loader.io.ask_yes_no_question", return_value=False)
+def test_rasterio_to_bigquery_table_is_not_empty_dont_append(*args, **kwargs):
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+
+    with pytest.raises(SystemExit):
+        io.rasterio_to_bigquery(
+            test_file,
+            project_id="test",
+            dataset_id="test",
+            table_id="test",
+            client=client,
+        )
 
 
 @patch("raster_loader.io.records_to_bigquery", side_effect=Exception())
@@ -195,6 +249,7 @@ def test_rasterio_to_bigquery_uploading_error(*args, **kwargs):
 @patch("raster_loader.io.records_to_bigquery", side_effect=KeyboardInterrupt())
 @patch("raster_loader.io.delete_bigquery_table", return_value=True)
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
 def test_rasterio_to_bigquery_keyboard_interrupt(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
@@ -210,7 +265,8 @@ def test_rasterio_to_bigquery_keyboard_interrupt(*args, **kwargs):
         )
 
 
-def test_rasterio_to_bigquery_with_chunk_size():
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
+def test_rasterio_to_bigquery_with_chunk_size(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
 
@@ -225,7 +281,8 @@ def test_rasterio_to_bigquery_with_chunk_size():
     assert success
 
 
-def test_rasterio_to_bigquery_with_one_chunk_size():
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
+def test_rasterio_to_bigquery_with_one_chunk_size(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
 
@@ -240,7 +297,8 @@ def test_rasterio_to_bigquery_with_one_chunk_size():
     assert success
 
 
-def test_rasterio_to_bigquery_invalid_input_crs():
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
+def test_rasterio_to_bigquery_invalid_input_crs(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
 

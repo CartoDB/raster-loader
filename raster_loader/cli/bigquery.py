@@ -24,8 +24,24 @@ def bigquery(args=None):
 @click.option(
     "--input_crs", help="The EPSG code of the input raster's CRS.", default=None
 )
+@click.option(
+    "--overwrite",
+    help="Overwrite the existing table if it exists.",
+    default=False,
+    is_flag=True,
+)
 @click.option("--test", help="Use Mock BigQuery Client", default=False, is_flag=True)
-def upload(file_path, project, dataset, table, band, chunk_size, input_crs, test=False):
+def upload(
+    file_path,
+    project,
+    dataset,
+    table,
+    band,
+    chunk_size,
+    input_crs,
+    overwrite=False,
+    test=False,
+):
 
     from raster_loader.tests.mocks import bigquery_client
     from raster_loader.io import import_bigquery
@@ -68,7 +84,15 @@ def upload(file_path, project, dataset, table, band, chunk_size, input_crs, test
     click.echo("Uploading Raster to BigQuery")
 
     rasterio_to_bigquery(
-        file_path, table, dataset, project, band, chunk_size, input_crs, client=client
+        file_path,
+        table,
+        dataset,
+        project,
+        band,
+        chunk_size,
+        input_crs,
+        client=client,
+        overwrite=overwrite,
     )
 
     click.echo("Raster file uploaded to Google BigQuery")
