@@ -254,6 +254,63 @@ def delete_bigquery_table(
     return True
 
 
+def check_if_bigquery_table_exists(
+    dataset_id: str,
+    table_id: str,
+    client,
+):  # pragma: no cover
+    """Check if a BigQuery table exists.
+
+    Parameters
+    ----------
+    dataset_id : str
+        The BigQuery dataset id.
+    table_id : str
+        The BigQuery table id.
+    client : google.cloud.bigquery.client.Client
+        The BigQuery client.
+
+    Returns
+    -------
+    bool
+        True if the table exists, False otherwise.
+    """
+
+    table_ref = client.dataset(dataset_id).table(table_id)
+    try:
+        client.get_table(table_ref)
+        return True
+    except Exception:
+        return False
+
+
+def check_if_bigquery_table_is_empty(
+    dataset_id: str,
+    table_id: str,
+    client,
+):  # pragma: no cover
+    """Check if a BigQuery table is empty.
+
+    Parameters
+    ----------
+    dataset_id : str
+        The BigQuery dataset id.
+    table_id : str
+        The BigQuery table id.
+    client : google.cloud.bigquery.client.Client
+        The BigQuery client.
+
+    Returns
+    -------
+    bool
+        True if the table is empty, False otherwise.
+    """
+
+    table_ref = client.dataset(dataset_id).table(table_id)
+    table = client.get_table(table_ref)
+    return table.num_rows == 0
+
+
 def rasterio_to_bigquery(
     file_path: str,
     table_id: str,
@@ -263,6 +320,7 @@ def rasterio_to_bigquery(
     chunk_size: int = None,
     input_crs: int = None,
     client=None,
+    overwrite: bool = False,
 ) -> bool:
     """Write a rasterio-compatible raster file to a BigQuery table.
     Compatible file formats include TIFF and GeoTIFF. See
@@ -302,6 +360,18 @@ def rasterio_to_bigquery(
     records_gen = rasterio_windows_to_records(file_path, band, input_crs)
 
     try:
+        if check_if_bigquery_table_exists(dataset_id, table_id, client):
+            if overwrite:
+                delete_bigquery_table(table_id, dataset_id, project_id, client)
+
+            elif not check_if_bigquery_table_is_empty(dataset_id, table_id, client):
+                append_recors = ask_yes_no_question(
+                    f"Table {table_id} already exists in dataset {dataset_id} "
+                    "and is not empty. Append records? [yes/no] "
+                )
+
+                if not append_recors:
+                    exit()
         if chunk_size is None:
             records_to_bigquery(
                 records_gen, table_id, dataset_id, project_id, client=client
