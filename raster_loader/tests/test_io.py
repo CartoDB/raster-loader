@@ -31,7 +31,7 @@ def test_array_to_record():
     assert record["lon_SW"] == -180.0
     assert record["block_height"] == 180
     assert record["block_width"] == 360
-    assert record["band_1_float64"] == arr.tobytes()
+    assert record["band_1_float64"] == np.ascontiguousarray(arr).tobytes()
 
     expected_attrs = {
         "band": band,
@@ -62,7 +62,7 @@ def test_array_to_record_offset():
     assert record["lon_SW"] == -160.0
     assert record["block_height"] == 160
     assert record["block_width"] == 340
-    assert record["band_1_float64"] == arr.tobytes()
+    assert record["band_1_float64"] == np.ascontiguousarray(arr).tobytes()
 
     expected_attrs = {
         "band": 1,
