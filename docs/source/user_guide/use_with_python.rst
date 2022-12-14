@@ -3,15 +3,15 @@
 Usage with Python projects
 ==========================
 
-After installing Raster Loader, you can import the package to your Python project. For
+After installing Raster Loader, you can import the package into your Python project. For
 example:
 
 .. code-block:: python
 
    from raster_loader import rasterio_to_bigquery
 
-Currently, Raster Loader allows you to upload a local raster file to a BigQuery table
-using the :func:`~raster_loader.rasterio_to_bigquery` function.
+Currently, Raster Loader allows you to upload a local raster file to an existing
+BigQuery table using the :func:`~raster_loader.rasterio_to_bigquery` function.
 
 .. note::
 

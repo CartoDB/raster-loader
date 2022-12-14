@@ -359,6 +359,8 @@ def rasterio_to_bigquery(
         Input CRS, by default None
     client : [bigquery.Client()], optional
         BigQuery client, by default None
+    overwrite : bool, optional
+        Overwrite the table if it already contains data, by default False
 
     Returns
     -------

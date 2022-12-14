@@ -23,9 +23,8 @@ You will need to sign a Contributor License Agreement (CLA) before making a subm
 Raster Loader uses GitHub and git for version control. If you are new to git, you can
 learn more about it [here](https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control).
 
-Raster Loader uses a Makefile to automate many aspects of the development process. Using
-the Makefile requires that you have [GNU Make](https://www.gnu.org/software/make/)
-installed.
+Raster Loader uses a Makefile to automate many aspects of the development process.
+Using the Makefile requires that you have [GNU Make](https://www.gnu.org/software/make/) installed.
 
 ### Setting up your environment
 
@@ -55,7 +54,7 @@ After creating your environment, you can enter the virtual environment with
 Before submitting a pull request, you need to make sure your updates pass tests and
 linting.
 
-#### Running Linting
+#### Running linting
 
 To run linting, use the following command:
 
