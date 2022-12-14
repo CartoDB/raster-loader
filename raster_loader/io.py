@@ -52,7 +52,7 @@ def array_to_record(
         "block_height": height,
         "block_width": width,
         "attrs": json.dumps(attrs),
-        value_field: arr.tobytes(),  # add in endian flag?
+        value_field: np.ascontiguousarray(arr).tobytes(),
     }
 
     return record
