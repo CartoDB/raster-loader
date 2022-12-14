@@ -49,7 +49,6 @@ def upload(
     from raster_loader.io import get_number_of_blocks
     from raster_loader.io import print_band_information
     from raster_loader.io import get_block_dims
-    from raster_loader.io import print_gdalinfo
 
     # create default table name if not provided
     if table is None:
@@ -69,7 +68,6 @@ def upload(
 
     click.echo("Preparing to upload raster file to BigQuery...")
     click.echo("File Path: {}".format(file_path))
-    print_gdalinfo(file_path)
     click.echo("File Size: {} MB".format(file_size_mb))
     print_band_information(file_path)
     click.echo("Source Band: {}".format(band))
