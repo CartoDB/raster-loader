@@ -7,6 +7,8 @@
 Python library for loading GIS raster data to standard cloud-based data warehouses that
 don't natively support raster data.
 
+Raster Loader is currently tested on Python 3.8, 3.9, 3.10, and 3.11.
+
 ## Install
 
 ```bash
