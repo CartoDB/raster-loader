@@ -21,12 +21,14 @@ Uploading to BigQuery
 
 To upload a raster file to a BigQuery table, use the ``carto bigquery upload`` command.
 
-Before you can upload a raster file, you need to set up the project, dataset, and table
-in BigQuery. Raster loader does not create tables on its own.
+Before you can upload a raster file, you need to set up the project and dataset in
+BigQuery. Raster Loader does not create projects and datasets on its own. However,
+you have the option to not specify a table name. In this case, Raster Loader will
+automatically generate a table name for you and create that table.
 
 At a minimum, this command requires a file path to a local raster file that can be
-`read by GDAL`_ and processed with `rasterio`_. It also requires a `GCP project name`_,
-a `BigQuery dataset`_, and a `BigQuery table name`_. For example:
+`read by GDAL`_ and processed with `rasterio`_. It also requires a `GCP project name`_
+and a `BigQuery dataset`_. For example:
 
 .. code-block:: bash
 
@@ -34,7 +36,7 @@ a `BigQuery dataset`_, and a `BigQuery table name`_. For example:
      --file_path /path/to/my/raster/file.tif \
      --project my-gcp-project \
      --dataset my-bigquery-dataset \
-     --table my-bigquery-table
+     --table my-bigquery-table \
      --overwrite
 
 This command uploads the TIFF file from ``/path/to/my/raster/file.tif`` to a BigQuery
