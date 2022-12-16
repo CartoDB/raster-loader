@@ -31,11 +31,11 @@ You have the option to also set up a `BigQuery table`_ and use this table to upl
 your data to. In case you do not specify a table name, Raster Loader will automatically
 generate a table name for you and create that table.
 
-At a minimum, this command requires a ``file_path`` to a local raster file that can be
-`read by GDAL`_ and processed with `rasterio`_. It also requires the ``project`` (the
-GCP project name) and ``dataset`` (the BigQuery dataset name) parameters. There are also
-additional parameters, such as ``table`` (BigQuery table name) and ``overwrite``
-(to overwrite existing data). For example:
+At a minimum, the ``carto bigquery upload`` command requires a ``file_path`` to a local
+raster file that can be `read by GDAL`_ and processed with `rasterio`_. It also requires
+the ``project`` (the GCP project name) and ``dataset`` (the BigQuery dataset name)
+parameters. There are also additional parameters, such as ``table`` (BigQuery table
+name) and ``overwrite`` (to overwrite existing data). For example:
 
 .. code-block:: bash
 
@@ -51,7 +51,8 @@ project named ``my-gcp-project``, a dataset named ``my-bigquery-dataset``, and a
 named ``my-bigquery-table``. If the table already contains data, this data will be
 overwritten because the ``--overwrite`` flag is set.
 
-See the :ref:`cli_details` for a full list of options.
+.. seealso::
+   See the :ref:`cli_details` for a full list of options.
 
 Inspecting a raster file on BigQuery
 ------------------------------------
@@ -60,7 +61,7 @@ You can also use Raster Loader to retrieve information about a raster file store
 BigQuery table. This can be useful to make sure a raster file was transferred correctly
 or to get information about a raster file's metadata, for example.
 
-To access a raster file in a BigQuery table, use the ``carto bigquery inspect`` command.
+To access a raster file in a BigQuery table, use the ``carto bigquery describe`` command.
 
 At a minimum, this command requires a `GCP project name <GCP project>`_, a
 `BigQuery dataset name <BigQuery dataset>`_, and a
@@ -68,12 +69,13 @@ At a minimum, this command requires a `GCP project name <GCP project>`_, a
 
 .. code-block:: bash
 
-   carto bigquery inspect \
+   carto bigquery describe \
      --project my-gcp-project \
      --dataset my-bigquery-dataset \
      --table my-bigquery-table
 
-See the :ref:`cli_details` for a full list of options.
+.. seealso::
+   See the :ref:`cli_details` for a full list of options.
 
 .. _cli_details:
 

@@ -42,8 +42,8 @@ This will create a virtual environment in the `env` directory and install all
 necessary dependencies, including a development version of Raster Loader and the
 Raster Loader CLI.
 
-If you don't have `make` available, you can open the file `Makefile` run the commands
-manually to set up a virtual environment and install the dependencies.
+If you don't have `make` available, you can open the file `Makefile` and run the
+commands manually to set up a virtual environment and install the dependencies.
 
 After creating your environment, you can enter the virtual environment with
 ``source env/bin/activate`` on Linux and macOS or ``env\bin\Activate.ps1`` on Windows
@@ -64,7 +64,7 @@ make lint
 
 This runs [flake8](https://flake8.pycqa.org/en/latest/) and
 [black](https://black.readthedocs.io/en/stable/). You can also run these tools
-individually, using the ``flake8`` or ``black`` command.
+individually using the ``flake8`` or ``black`` command.
 
 #### Running tests
 

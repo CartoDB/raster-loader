@@ -8,7 +8,10 @@ example:
 
 .. code-block:: python
 
-   from raster_loader import rasterio_to_bigquery
+   from raster_loader import rasterio_to_bigquery, bigquery_to_records
+
+Uploading a raster file to BigQuery
+-----------------------------------
 
 Currently, Raster Loader allows you to upload a local raster file to an existing
 BigQuery table using the :func:`~raster_loader.rasterio_to_bigquery` function.
@@ -30,7 +33,12 @@ For example:
         table_id = 'my_table',
     )
 
-You can also access and inspect a raster file from a BigQuery table using the
+This function returns `True` if the upload was successful.
+
+Inspecting a raster file on BigQuery
+------------------------------------
+
+You can also access and inspect a raster file located in a BigQuery table using the
 :func:`~raster_loader.bigquery_to_records` function.
 
 For example:
@@ -43,6 +51,10 @@ For example:
         table_id = 'my_table',
     )
 
-See the :ref:`api_reference` for more details.
+This function returns a DataFrame with some samples from the raster table on BigQuery
+(10 rows by default).
+
+.. seealso::
+    See the :ref:`api_reference` for more details.
 
 .. _`GCP documentation`: https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key
