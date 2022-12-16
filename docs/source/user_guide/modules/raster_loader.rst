@@ -3,14 +3,6 @@
 Module API reference
 ====================
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   raster_loader.cli
-
 Module contents
 ---------------
 

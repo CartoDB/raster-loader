@@ -376,6 +376,9 @@ def rasterio_to_bigquery(
 
     records_gen = rasterio_windows_to_records(file_path, band, input_crs)
 
+    if client is None:
+        client = import_bigquery().Client(project=project_id)
+
     try:
         if check_if_bigquery_table_exists(dataset_id, table_id, client):
             if overwrite:
