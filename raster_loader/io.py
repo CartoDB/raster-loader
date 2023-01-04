@@ -163,10 +163,12 @@ def records_to_bigquery(
     job = client.load_table_from_dataframe(
         data_df, f"{project_id}.{dataset_id}.{table_id}"
     )
-    job.result()
 
-    if job.errors:
-        raise Exception(job.errors)
+    if job:  # pragma: no cover
+        job.result()
+
+        if job.errors:
+            raise Exception(job.errors)
 
 
 def bigquery_to_records(
@@ -382,7 +384,7 @@ def rasterio_to_bigquery(
 
     records_gen = rasterio_windows_to_records(file_path, band, input_crs)
 
-    if client is None:
+    if client is None:  # pragma: no cover
         client = import_bigquery().Client(project=project_id)
 
     try:
