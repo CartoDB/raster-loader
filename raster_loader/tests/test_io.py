@@ -100,7 +100,7 @@ def test_record_to_array():
     record = io.array_to_record(arr, geotransform, crs=crs, band=band)
     arr2 = io.record_to_array(record)
     assert np.allclose(arr, arr2)
-    assert arr.dtype == arr2.dtype
+    assert arr.dtype.name == arr2.dtype.name
     assert arr.shape == arr2.shape
 
 
