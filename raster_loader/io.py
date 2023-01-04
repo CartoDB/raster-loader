@@ -160,7 +160,13 @@ def records_to_bigquery(
 
     data_df = pd.DataFrame(records)
 
-    client.load_table_from_dataframe(data_df, f"{project_id}.{dataset_id}.{table_id}")
+    job = client.load_table_from_dataframe(
+        data_df, f"{project_id}.{dataset_id}.{table_id}"
+    )
+    job.result()
+
+    if job.errors:
+        raise Exception(job.errors)
 
 
 def bigquery_to_records(
