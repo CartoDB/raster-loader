@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from unittest.mock import patch
 
 from affine import Affine
@@ -14,12 +15,20 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 fixtures_dir = os.path.join(HERE, "fixtures")
 
 
+should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False}
+
+
 def test_array_to_record():
     arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     crs = "EPSG:4326"
     band = 1
     record = io.array_to_record(arr, geotransform, crs=crs, band=band)
+
+    if should_swap[arr.dtype.byteorder]:
+        arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
+    else:
+        arr_bytes = np.ascontiguousarray(arr).tobytes()
 
     assert record["lat_NW"] == 90.0
     assert record["lon_NW"] == -180.0
@@ -31,7 +40,7 @@ def test_array_to_record():
     assert record["lon_SW"] == -180.0
     assert record["block_height"] == 180
     assert record["block_width"] == 360
-    assert record["band_1_float64"] == np.ascontiguousarray(arr).tobytes()
+    assert record["band_1_float64"] == arr_bytes
 
     expected_attrs = {
         "band": band,
@@ -52,6 +61,11 @@ def test_array_to_record_offset():
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     record = io.array_to_record(arr, geotransform, row_off=20, col_off=20)
 
+    if should_swap[arr.dtype.byteorder]:
+        arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
+    else:
+        arr_bytes = np.ascontiguousarray(arr).tobytes()
+
     assert record["lat_NW"] == 70.0
     assert record["lon_NW"] == -160.0
     assert record["lat_NE"] == 70.0
@@ -62,7 +76,7 @@ def test_array_to_record_offset():
     assert record["lon_SW"] == -160.0
     assert record["block_height"] == 160
     assert record["block_width"] == 340
-    assert record["band_1_float64"] == np.ascontiguousarray(arr).tobytes()
+    assert record["band_1_float64"] == arr_bytes
 
     expected_attrs = {
         "band": 1,

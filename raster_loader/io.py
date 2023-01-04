@@ -1,4 +1,5 @@
 import json
+import sys
 from typing import Iterable
 
 from affine import Affine
@@ -7,6 +8,9 @@ import pandas as pd
 import pyproj
 
 from raster_loader.utils import ask_yes_no_question
+
+
+should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False}
 
 
 def array_to_record(
@@ -40,6 +44,11 @@ def array_to_record(
         "col_off": col_off,
     }
 
+    if should_swap[arr.dtype.byteorder]:
+        arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
+    else:
+        arr_bytes = np.ascontiguousarray(arr).tobytes()
+
     record = {
         "lat_NW": lat_NW,
         "lon_NW": lon_NW,
@@ -52,7 +61,7 @@ def array_to_record(
         "block_height": height,
         "block_width": width,
         "attrs": json.dumps(attrs),
-        value_field: np.ascontiguousarray(arr).tobytes(),
+        value_field: arr_bytes,
     }
 
     return record
