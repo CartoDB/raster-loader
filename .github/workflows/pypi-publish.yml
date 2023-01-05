@@ -14,7 +14,7 @@ jobs:
           python-version: 3.9
       - name: Get release version
         run: |
-          echo "CHANGELOG_VERSION=$(cat CHANGELOG.md | grep -oP '(?<=###\s)(.*)(?=\s\-)' | head -n 1 | sed 's/Version\s/v/')" >> $GITHUB_ENV
+          echo "CHANGELOG_VERSION=$(cat CHANGELOG.md | grep -oP '(?<=##\s)(.*)(?=\])' | head -n 1 | sed 's/\[/v/g')" >> $GITHUB_ENV
           echo "TAG_VERSION=`echo $(git describe --tags --abbrev=0)`" >> $GITHUB_ENV
       - name: Check changelog release version
         if: ${{ env.TAG_VERSION != env.CHANGELOG_VERSION }}
