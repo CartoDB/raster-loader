@@ -3,11 +3,16 @@
 [![PyPI version](https://badge.fury.io/py/raster-loader.svg)](https://badge.fury.io/py/raster-loader)
 [![PyPI downloads](https://img.shields.io/pypi/dm/raster-loader.svg)](https://pypistats.org/packages/raster-loader)
 [![Tests](https://github.com/cartodb/raster-loader/actions/workflows/ci.yml/badge.svg)](https://github.com/cartodb/raster-loader/actions)
+[![Documentation Status](https://readthedocs.org/projects/raster-loader/badge/?version=latest)](https://raster-loader.readthedocs.io/en/latest/?badge=latest)
 
 Python library for loading GIS raster data to standard cloud-based data warehouses that
 don't natively support raster data.
 
 Raster Loader is currently tested on Python 3.8, 3.9, 3.10, and 3.11.
+
+## Documentation
+
+The Raster Loader documentation is available at [raster-loader.readthedocs.io](https://raster-loader.readthedocs.io).
 
 ## Install
 
