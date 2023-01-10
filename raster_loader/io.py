@@ -67,6 +67,54 @@ def array_to_record(
     return record
 
 
+def array_to_quadbin_record(
+    arr: np.ndarray,
+    geotransform: Affine,
+    max_zoom: int,
+    row_off: int = 0,
+    col_off: int = 0,
+    value_field: str = "band_1",
+    crs: str = "EPSG:4326",
+    band: int = 1,
+) -> dict:
+
+    quadbin = import_quadbin()
+
+    height, width = arr.shape
+
+    lon, lat = geotransform * (col_off + width *.5, row_off + height *.5)
+    myquadbin = quadbin.point_to_cell(lon, lat, max_zoom)
+
+    # required to append dtype to value field name for storage
+    dtype_str = str(arr.dtype)
+    value_field = "_".join([value_field, dtype_str])
+
+    attrs = {
+        "band": band,
+        "value_field": value_field,
+        "dtype": dtype_str,
+        "crs": crs,
+        "gdal_transform": geotransform.to_gdal(),
+        "row_off": row_off,
+        "col_off": col_off,
+    }
+
+    if should_swap[arr.dtype.byteorder]:
+        arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
+    else:
+        arr_bytes = np.ascontiguousarray(arr).tobytes()
+
+    record = {
+        "quadbin": myquadbin,
+        "block_height": height,
+        "block_width": width,
+        "attrs": json.dumps(attrs),
+        value_field: arr_bytes,
+    }
+
+    return record
+
+
 def record_to_array(record: dict, value_field: str = None) -> np.ndarray:
     """Convert a record to a numpy array."""
 
@@ -107,8 +155,42 @@ def import_rasterio():  # pragma: no cover
         raise ImportError(msg)
 
 
+def import_rio_cogeo():  # pragma: no cover
+    try:
+        import rio_cogeo
+
+        return rio_cogeo
+    except ImportError:
+
+        msg = (
+            "Cloud Optimized GeoTIFF (COG) plugin for Rasterio is not installed.\n"
+            "Please install rio-cogeo to use this function.\n"
+            "See https://cogeotiff.github.io/rio-cogeo/\n"
+            "for installation instructions.\n"
+            "Alternatively, run `pip install rio-cogeo` to install from pypi."
+        )
+        raise ImportError(msg)
+
+
+def import_quadbin():  # pragma: no cover
+    try:
+        import quadbin
+
+        return quadbin
+    except ImportError:
+
+        msg = (
+            "Quadbin is not installed.\n"
+            "Please install quadbin to use this function.\n"
+            "See https://github.com/CartoDB/quadbin-py\n"
+            "for installation instructions.\n"
+            "Alternatively, run `pip install quadbin` to install from pypi."
+        )
+        raise ImportError(msg)
+
+
 def rasterio_windows_to_records(
-    file_path: str, band: int = 1, input_crs: str = None
+    file_path: str, band: int = 1, input_crs: str = None, quadbin: bool = False
 ) -> Iterable:
     """Open a raster file with rasterio."""
     rasterio = import_rasterio()
