@@ -70,7 +70,7 @@ def array_to_record(
 def array_to_quadbin_record(
     arr: np.ndarray,
     geotransform: Affine,
-    max_zoom: int,
+    resolution: int,
     row_off: int = 0,
     col_off: int = 0,
     value_field: str = "band_1",
@@ -83,7 +83,14 @@ def array_to_quadbin_record(
     height, width = arr.shape
 
     lon, lat = geotransform * (col_off + width *.5, row_off + height *.5)
-    myquadbin = quadbin.point_to_cell(lon, lat, max_zoom)
+
+    # rasterio = import_rasterio()
+    #
+    # src_crs = rasterio.crs.CRS.from_string(src_crs)
+    # dst_crs = rasterio.crs.CRS.from_string(dst_crs)
+
+    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326")
+    x, y = transformer.transform(lon, lat)
 
     # required to append dtype to value field name for storage
     dtype_str = str(arr.dtype)
@@ -105,7 +112,7 @@ def array_to_quadbin_record(
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
     record = {
-        "quadbin": myquadbin,
+        "quadbin": quadbin.point_to_cell(x, y, resolution),
         "block_height": height,
         "block_width": width,
         "attrs": json.dumps(attrs),
@@ -190,8 +197,14 @@ def import_quadbin():  # pragma: no cover
 
 
 def rasterio_windows_to_records(
-    file_path: str, band: int = 1, input_crs: str = None, quadbin: bool = False
+    file_path: str, band: int = 1, input_crs: str = None, output_quadbin: bool = False
 ) -> Iterable:
+    if output_quadbin:
+        """Open a raster file with rio-cogeo."""
+        rio_cogeo = import_rio_cogeo()
+        raster_info = rio_cogeo.cog_info(file_path).dict()
+        resolution = raster_info["GEO"]["MaxZoom"]
+
     """Open a raster file with rasterio."""
     rasterio = import_rasterio()
 
@@ -208,17 +221,30 @@ def rasterio_windows_to_records(
             raise ValueError("Unable to find valid input_crs.")
 
         for _, window in raster_dataset.block_windows():
-            rec = array_to_record(
-                raster_dataset.read(band, window=window),
-                raster_dataset.transform,
-                window.row_off,
-                window.col_off,
-                crs=input_crs,
-                band=band,
-            )
 
-            if input_crs.upper() != "EPSG:4326":
-                rec = reproject_record(rec, input_crs, "EPSG:4326")
+            if output_quadbin:
+                rec = array_to_quadbin_record(
+                    raster_dataset.read(band, window=window),
+                    raster_dataset.transform,
+                    resolution,
+                    window.row_off,
+                    window.col_off,
+                    crs=input_crs,
+                    band=band,
+                )
+
+            elif input_crs != raster_crs:
+                rec = array_to_record(
+                    raster_dataset.read(band, window=window),
+                    raster_dataset.transform,
+                    window.row_off,
+                    window.col_off,
+                    crs=input_crs,
+                    band=band,
+                )
+
+                if input_crs.upper() != "EPSG:4326":
+                    rec = reproject_record(rec, input_crs, "EPSG:4326")
 
             yield rec
 
