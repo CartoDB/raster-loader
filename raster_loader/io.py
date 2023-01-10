@@ -457,6 +457,7 @@ def rasterio_to_bigquery(
     input_crs: int = None,
     client=None,
     overwrite: bool = False,
+    output_quadbin: bool = False,
 ) -> bool:
     """Write a rasterio-compatible raster file to a BigQuery table.
     Compatible file formats include TIFF and GeoTIFF. See
@@ -487,6 +488,8 @@ def rasterio_to_bigquery(
         BigQuery client, by default None
     overwrite : bool, optional
         Overwrite the table if it already contains data, by default False
+    output_quadbin : bool, optional
+        Upload the raster to the BigQuery table in a quadbin format.
 
     Returns
     -------
@@ -500,7 +503,7 @@ def rasterio_to_bigquery(
     """Write a raster file to a BigQuery table."""
     print("Loading raster file to BigQuery...")
 
-    records_gen = rasterio_windows_to_records(file_path, band, input_crs)
+    records_gen = rasterio_windows_to_records(file_path, band, input_crs, output_quadbin)
 
     if client is None:  # pragma: no cover
         client = import_bigquery().Client(project=project_id)

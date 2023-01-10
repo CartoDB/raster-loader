@@ -30,6 +30,12 @@ def bigquery(args=None):
     default=False,
     is_flag=True,
 )
+@click.option(
+    "--output_quadbin",
+    help="Upload the raster to the BigQuery table in a quadbin format.",
+    default=False,
+    is_flag=True,
+)
 @click.option("--test", help="Use Mock BigQuery Client", default=False, is_flag=True)
 def upload(
     file_path,
@@ -40,6 +46,7 @@ def upload(
     chunk_size,
     input_crs,
     overwrite=False,
+    output_quadbin=False,
     test=False,
 ):
 
@@ -91,6 +98,7 @@ def upload(
         input_crs,
         client=client,
         overwrite=overwrite,
+        output_quadbin=output_quadbin
     )
 
     click.echo("Raster file uploaded to Google BigQuery")
