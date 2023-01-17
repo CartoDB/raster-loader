@@ -112,7 +112,7 @@ def array_to_quadbin_record(
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
     record = {
-        "quadbin": quadbin.point_to_cell(x, y, resolution),
+        "quadbin": quadbin.point_to_cell(y, x, resolution),
         "block_height": height,
         "block_width": width,
         "attrs": json.dumps(attrs),
