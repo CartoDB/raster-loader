@@ -18,31 +18,19 @@ def array_to_record(
     geotransform: Affine,
     row_off: int = 0,
     col_off: int = 0,
-    value_field: str = "band_1",
-    crs: str = "EPSG:4326",
-    band: int = 1,
+    value_field: str = "band_1"
 ) -> dict:
 
     height, width = arr.shape
 
-    lon_NW, lat_NW = geotransform * (col_off, row_off)
-    lon_NE, lat_NE = geotransform * (col_off + width, row_off)
-    lon_SE, lat_SE = geotransform * (col_off + width, row_off + height)
-    lon_SW, lat_SW = geotransform * (col_off, row_off + height)
+    lat_NW, lon_NW = geotransform * (col_off, row_off)
+    lat_NE, lon_NE = geotransform * (col_off + width, row_off)
+    lat_SE, lon_SE = geotransform * (col_off + width, row_off + height)
+    lat_SW, lon_SW = geotransform * (col_off, row_off + height)
 
     # required to append dtype to value field name for storage
     dtype_str = str(arr.dtype)
     value_field = "_".join([value_field, dtype_str])
-
-    attrs = {
-        "band": band,
-        "value_field": value_field,
-        "dtype": dtype_str,
-        "crs": crs,
-        "gdal_transform": geotransform.to_gdal(),
-        "row_off": row_off,
-        "col_off": col_off,
-    }
 
     if should_swap[arr.dtype.byteorder]:
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
@@ -60,7 +48,6 @@ def array_to_record(
         "lon_SW": lon_SW,
         "block_height": height,
         "block_width": width,
-        "attrs": json.dumps(attrs),
         value_field: arr_bytes,
     }
 
@@ -130,9 +117,7 @@ def rasterio_windows_to_records(
                 raster_dataset.read(band, window=window),
                 raster_dataset.transform,
                 window.row_off,
-                window.col_off,
-                crs=input_crs,
-                band=band,
+                window.col_off
             )
 
             if input_crs.upper() != "EPSG:4326":

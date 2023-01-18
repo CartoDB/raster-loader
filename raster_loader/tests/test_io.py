@@ -21,9 +21,7 @@ should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False
 def test_array_to_record():
     arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-    crs = "EPSG:4326"
-    band = 1
-    record = io.array_to_record(arr, geotransform, crs=crs, band=band)
+    record = io.(arr, geotransform)
 
     if should_swap[arr.dtype.byteorder]:
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
@@ -95,9 +93,7 @@ def test_array_to_record_offset():
 def test_record_to_array():
     arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-    crs = "EPSG:4326"
-    band = 1
-    record = io.array_to_record(arr, geotransform, crs=crs, band=band)
+    record = io.array_to_record(arr, geotransform)
     arr2 = io.record_to_array(record)
     assert np.allclose(arr, arr2)
     assert arr.dtype.name == arr2.dtype.name
@@ -107,9 +103,7 @@ def test_record_to_array():
 def test_record_to_array_invalid_dtype():
     arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-    crs = "EPSG:4326"
-    band = 1
-    record = io.array_to_record(arr, geotransform, crs=crs, band=band)
+    record = io.array_to_record(arr, geotransform)
 
     with pytest.raises(TypeError):
         io.record_to_array(record, "band_1_dtype")
@@ -124,24 +118,10 @@ def test_rasterio_to_record():
 
     with rasterio.open(test_file) as src:
         record = io.array_to_record(
-            src.read(band), src.transform, crs=src.crs.to_string(), band=band
+            src.read(band), src.transform
         )
 
     assert isinstance(record, dict)
-
-    expected_attrs = {
-        "band": 1,
-        "value_field": "band_1_uint8",
-        "dtype": "uint8",
-        "crs": "EPSG:4326",
-        "gdal_transform": list(src.transform.to_gdal()),
-        "row_off": 0,
-        "col_off": 0,
-    }
-
-    for key, value in expected_attrs.items():
-        assert json.loads(record["attrs"])[key] == value
-
 
 @pytest.mark.integration_test
 def test_bigquery_to_records():
