@@ -232,7 +232,7 @@ def reproject_record(record: dict, src_crs: str, dst_crs: str = "EPSG:4326") -> 
         ("lon_SE", "lat_SE"),
     ]:
 
-        transformer = pyproj.Transformer.from_crs(src_crs, dst_crs)
+        transformer = pyproj.Transformer.from_crs(src_crs, dst_crs, always_xy = True)
         x, y = transformer.transform(record[lon_col], record[lat_col])
         record[lon_col] = x
         record[lat_col] = y
