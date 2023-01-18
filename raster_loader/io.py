@@ -233,7 +233,7 @@ def rasterio_windows_to_records(
                     band=band,
                 )
 
-            elif input_crs != raster_crs:
+            else:
                 rec = array_to_record(
                     raster_dataset.read(band, window=window),
                     raster_dataset.transform,
