@@ -25,10 +25,12 @@ def array_to_record(
 
     height, width = arr.shape
 
-    lon_NW, lat_NW = geotransform * (col_off, row_off)
-    lon_NE, lat_NE = geotransform * (col_off + width, row_off)
-    lon_SE, lat_SE = geotransform * (col_off + width, row_off + height)
-    lon_SW, lat_SW = geotransform * (col_off, row_off + height)
+    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
+
+    lon_NW, lat_NW = transformer.transform(*(geotransform * (col_off, row_off)))
+    lon_NE, lat_NE = transformer.transform(*(geotransform * (col_off + width, row_off)))
+    lon_SE, lat_SE = transformer.transform(*(geotransform * (col_off + width, row_off + height)))
+    lon_SW, lat_SW = transformer.transform(*(geotransform * (col_off, row_off + height)))
 
     # required to append dtype to value field name for storage
     dtype_str = str(arr.dtype)
@@ -82,15 +84,8 @@ def array_to_quadbin_record(
 
     height, width = arr.shape
 
-    lon, lat = geotransform * (col_off + width *.5, row_off + height *.5)
-
-    # rasterio = import_rasterio()
-    #
-    # src_crs = rasterio.crs.CRS.from_string(src_crs)
-    # dst_crs = rasterio.crs.CRS.from_string(dst_crs)
-
-    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326")
-    x, y = transformer.transform(lon, lat)
+    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
+    x, y = transformer.transform(*(geotransform * (col_off + width *.5, row_off + height *.5)))
 
     # required to append dtype to value field name for storage
     dtype_str = str(arr.dtype)
@@ -112,7 +107,7 @@ def array_to_quadbin_record(
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
     record = {
-        "quadbin": quadbin.point_to_cell(y, x, resolution),
+        "quadbin": quadbin.point_to_cell(x, y, resolution),
         "block_height": height,
         "block_width": width,
         "attrs": json.dumps(attrs),
@@ -243,9 +238,6 @@ def rasterio_windows_to_records(
                     band=band,
                 )
 
-                if input_crs.upper() != "EPSG:4326":
-                    rec = reproject_record(rec, input_crs, "EPSG:4326")
-
             yield rec
 
 
@@ -323,29 +315,6 @@ def bigquery_to_records(
     query = f"SELECT * FROM `{project_id}.{dataset_id}.{table_id}` LIMIT {limit}"
 
     return client.query(query).result().to_dataframe()
-
-
-def reproject_record(record: dict, src_crs: str, dst_crs: str = "EPSG:4326") -> dict:
-    """Inplace reproject the bounds (lon_NW, lat_NW, etc.) of a record."""
-
-    rasterio = import_rasterio()
-
-    src_crs = rasterio.crs.CRS.from_string(src_crs)
-    dst_crs = rasterio.crs.CRS.from_string(dst_crs)
-
-    for lon_col, lat_col in [
-        ("lon_NW", "lat_NW"),
-        ("lon_NE", "lat_NE"),
-        ("lon_SW", "lat_SW"),
-        ("lon_SE", "lat_SE"),
-    ]:
-
-        transformer = pyproj.Transformer.from_crs(src_crs, dst_crs)
-        x, y = transformer.transform(record[lon_col], record[lat_col])
-        record[lon_col] = x
-        record[lat_col] = y
-
-    return record
 
 
 def delete_bigquery_table(
