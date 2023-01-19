@@ -146,7 +146,3 @@ project.
 
 [ROADMAP.md](ROADMAP.md) contains a list of features and improvements planned for future
 versions of Raster Loader.
-
-## Contributors
-
-- [François BAPTISTE](https://github.com/francois-baptiste)
