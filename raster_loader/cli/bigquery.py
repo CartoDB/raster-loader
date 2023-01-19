@@ -3,6 +3,13 @@ import uuid
 
 import click
 
+try:
+    import google.cloud.bigquery
+except ImportError:
+    _has_bigquery = False
+else:
+    _has_bigquery = True
+
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
 def bigquery(args=None):
@@ -51,7 +58,7 @@ def upload(
 ):
 
     from raster_loader.tests.mocks import bigquery_client
-    from raster_loader.io import import_bigquery
+    from raster_loader.io import import_error_bigquery
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import get_number_of_blocks
     from raster_loader.io import print_band_information
@@ -66,8 +73,10 @@ def upload(
     if test:
         client = bigquery_client()
     else:  # pragma: no cover
-        bigquery = import_bigquery()
-        client = bigquery.Client(project=project)
+        """Requires bigquery."""
+        if not _has_bigquery:
+            import_error_bigquery()
+        client = google.cloud.bigquery.Client(project=project)
 
     # introspect raster file
     num_blocks = get_number_of_blocks(file_path)
@@ -111,8 +120,6 @@ def upload(
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(project, dataset, table, limit):
-
-    from raster_loader.io import bigquery_to_records
 
     df = bigquery_to_records(table, dataset, project, limit)
     print(f"Table: {project}.{dataset}.{table}")

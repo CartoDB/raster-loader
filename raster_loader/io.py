@@ -7,6 +7,34 @@ import numpy as np
 import pandas as pd
 import pyproj
 
+try:
+    import rio_cogeo
+except ImportError:
+    _has_rio_cogeo = False
+else:
+    _has_rio_cogeo = True
+
+try:
+    import rasterio
+except ImportError:
+    _has_rasterio = False
+else:
+    _has_rasterio = True
+
+try:
+    import quadbin
+except ImportError:
+    _has_quadbin = False
+else:
+    _has_quadbin = True
+
+try:
+    from google.cloud import bigquery
+except ImportError:
+    _has_bigquery = False
+else:
+    _has_bigquery = True
+
 from raster_loader.utils import ask_yes_no_question
 
 
@@ -80,7 +108,9 @@ def array_to_quadbin_record(
     band: int = 1,
 ) -> dict:
 
-    quadbin = import_quadbin()
+    """Requires quadbin."""
+    if not _has_quadbin:
+        import_error_quadbin()
 
     height, width = arr.shape
 
@@ -140,69 +170,68 @@ def record_to_array(record: dict, value_field: str = None) -> np.ndarray:
     return arr
 
 
-def import_rasterio():  # pragma: no cover
-    try:
-        import rasterio
-
-        return rasterio
-    except ImportError:
-
-        msg = (
-            "Rasterio is not installed.\n"
-            "Please install rasterio to use this function.\n"
-            "See https://rasterio.readthedocs.io/en/latest/installation.html\n"
-            "for installation instructions.\n"
-            "Alternatively, run `pip install rasterio` to install from pypi."
-        )
-        raise ImportError(msg)
+def import_error_bigquery():  # pragma: no cover
+    msg = (
+        "Google Cloud BigQuery is not installed.\n"
+        "Please install Google Cloud BigQuery to use this function.\n"
+        "See https://googleapis.dev/python/bigquery/latest/index.html\n"
+        "for installation instructions.\n"
+        "OR, run `pip install google-cloud-bigquery` to install from pypi."
+    )
+    raise ImportError(msg)
 
 
-def import_rio_cogeo():  # pragma: no cover
-    try:
-        import rio_cogeo
 
-        return rio_cogeo
-    except ImportError:
-
-        msg = (
-            "Cloud Optimized GeoTIFF (COG) plugin for Rasterio is not installed.\n"
-            "Please install rio-cogeo to use this function.\n"
-            "See https://cogeotiff.github.io/rio-cogeo/\n"
-            "for installation instructions.\n"
-            "Alternatively, run `pip install rio-cogeo` to install from pypi."
-        )
-        raise ImportError(msg)
+def import_error_rasterio():  # pragma: no cover
+    msg = (
+        "Rasterio is not installed.\n"
+        "Please install rasterio to use this function.\n"
+        "See https://rasterio.readthedocs.io/en/latest/installation.html\n"
+        "for installation instructions.\n"
+        "Alternatively, run `pip install rasterio` to install from pypi."
+    )
+    raise ImportError(msg)
 
 
-def import_quadbin():  # pragma: no cover
-    try:
-        import quadbin
+def import_error_rio_cogeo():  # pragma: no cover
+    msg = (
+        "Cloud Optimized GeoTIFF (COG) plugin for Rasterio is not installed.\n"
+        "Please install rio-cogeo to use this function.\n"
+        "See https://cogeotiff.github.io/rio-cogeo/\n"
+        "for installation instructions.\n"
+        "Alternatively, run `pip install rio-cogeo` to install from pypi."
+    )
+    raise ImportError(msg)
 
-        return quadbin
-    except ImportError:
 
-        msg = (
-            "Quadbin is not installed.\n"
-            "Please install quadbin to use this function.\n"
-            "See https://github.com/CartoDB/quadbin-py\n"
-            "for installation instructions.\n"
-            "Alternatively, run `pip install quadbin` to install from pypi."
-        )
-        raise ImportError(msg)
+def import_error_quadbin():  # pragma: no cover
+    msg = (
+        "Quadbin is not installed.\n"
+        "Please install quadbin to use this function.\n"
+        "See https://github.com/CartoDB/quadbin-py\n"
+        "for installation instructions.\n"
+        "Alternatively, run `pip install quadbin` to install from pypi."
+    )
+    raise ImportError(msg)
 
 
 def rasterio_windows_to_records(
     file_path: str, band: int = 1, input_crs: str = None, output_quadbin: bool = False
 ) -> Iterable:
     if output_quadbin:
+        """Requires rio_cogeo."""
+        if not _has_rio_cogeo:
+            import_error_rio_cogeo()
+
         """Open a raster file with rio-cogeo."""
-        rio_cogeo = import_rio_cogeo()
         raster_info = rio_cogeo.cog_info(file_path).dict()
         resolution = raster_info["GEO"]["MaxZoom"]
 
-    """Open a raster file with rasterio."""
-    rasterio = import_rasterio()
+    """Requires rasterio."""
+    if not _has_rasterio:
+        import_error_rasterio()
 
+    """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
 
         raster_crs = raster_dataset.crs.to_string()
@@ -241,29 +270,14 @@ def rasterio_windows_to_records(
             yield rec
 
 
-def import_bigquery():  # pragma: no cover
-    try:
-        from google.cloud import bigquery
-
-        return bigquery
-    except ImportError:
-
-        msg = (
-            "Google Cloud BigQuery is not installed.\n"
-            "Please install Google Cloud BigQuery to use this function.\n"
-            "See https://googleapis.dev/python/bigquery/latest/index.html\n"
-            "for installation instructions.\n"
-            "OR, run `pip install google-cloud-bigquery` to install from pypi."
-        )
-        raise ImportError(msg)
-
-
 def records_to_bigquery(
     records: Iterable, table_id: str, dataset_id: str, project_id: str, client=None
 ):
     """Write a record to a BigQuery table."""
 
-    bigquery = import_bigquery()
+    """Requires bigquery."""
+    if not _has_bigquery:
+        import_error_bigquery()
 
     if client is None:  # pragma: no cover
         client = bigquery.Client(project=project_id)
@@ -308,7 +322,10 @@ def bigquery_to_records(
         Records as a pandas.DataFrame.
 
     """
-    bigquery = import_bigquery()
+
+    """Requires bigquery."""
+    if not _has_bigquery:
+        import_error_bigquery()
 
     client = bigquery.Client(project=project_id)
 
@@ -348,7 +365,9 @@ def delete_bigquery_table(
 
     """
 
-    bigquery = import_bigquery()
+    """Requires bigquery."""
+    if not _has_bigquery:
+        import_error_bigquery()
 
     if client is None:
         client = bigquery.Client(project=project_id)
@@ -466,6 +485,10 @@ def rasterio_to_bigquery(
         True if upload was successful.
     """
 
+    """Requires bigquery."""
+    if not _has_bigquery:
+        import_error_bigquery()
+
     if isinstance(input_crs, int):
         input_crs = "EPSG:{}".format(input_crs)
 
@@ -475,7 +498,7 @@ def rasterio_to_bigquery(
     records_gen = rasterio_windows_to_records(file_path, band, input_crs, output_quadbin)
 
     if client is None:  # pragma: no cover
-        client = import_bigquery().Client(project=project_id)
+        client = bigquery.Client(project=project_id)
 
     try:
         if check_if_bigquery_table_exists(dataset_id, table_id, client):
@@ -545,7 +568,10 @@ def rasterio_to_bigquery(
 
 def get_number_of_blocks(file_path: str) -> int:
     """Get the number of blocks in a raster file."""
-    rasterio = import_rasterio()
+
+    """Requires rasterio."""
+    if not _has_rasterio:
+        import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
         return len(list(raster_dataset.block_windows()))
@@ -553,7 +579,10 @@ def get_number_of_blocks(file_path: str) -> int:
 
 def size_mb_of_rasterio_band(file_path: str, band: int = 1) -> int:
     """Get the size in MB of a rasterio band."""
-    rasterio = import_rasterio()
+
+    """Requires rasterio."""
+    if not _has_rasterio:
+        import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
         W = raster_dataset.width
@@ -564,7 +593,10 @@ def size_mb_of_rasterio_band(file_path: str, band: int = 1) -> int:
 
 def print_band_information(file_path: str):
     """Print out information about the bands in a raster file."""
-    rasterio = import_rasterio()
+
+    """Requires rasterio."""
+    if not _has_rasterio:
+        import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
         print("Number of bands: {}".format(raster_dataset.count))
@@ -581,7 +613,10 @@ def print_band_information(file_path: str):
 
 def get_block_dims(file_path: str) -> tuple:
     """Get the dimensions of a raster file's blocks."""
-    rasterio = import_rasterio()
+
+    """Requires rasterio."""
+    if not _has_rasterio:
+        import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
         return raster_dataset.block_shapes[0]
