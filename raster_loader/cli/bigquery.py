@@ -107,7 +107,7 @@ def upload(
         input_crs,
         client=client,
         overwrite=overwrite,
-        output_quadbin=output_quadbin
+        output_quadbin=output_quadbin,
     )
 
     click.echo("Raster file uploaded to Google BigQuery")
@@ -120,6 +120,8 @@ def upload(
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(project, dataset, table, limit):
+
+    from raster_loader.io import bigquery_to_records
 
     df = bigquery_to_records(table, dataset, project, limit)
     print(f"Table: {project}.{dataset}.{table}")

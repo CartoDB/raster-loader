@@ -57,8 +57,12 @@ def array_to_record(
 
     lon_NW, lat_NW = transformer.transform(*(geotransform * (col_off, row_off)))
     lon_NE, lat_NE = transformer.transform(*(geotransform * (col_off + width, row_off)))
-    lon_SE, lat_SE = transformer.transform(*(geotransform * (col_off + width, row_off + height)))
-    lon_SW, lat_SW = transformer.transform(*(geotransform * (col_off, row_off + height)))
+    lon_SE, lat_SE = transformer.transform(
+        *(geotransform * (col_off + width, row_off + height))
+    )
+    lon_SW, lat_SW = transformer.transform(
+        *(geotransform * (col_off, row_off + height))
+    )
 
     # required to append dtype to value field name for storage
     dtype_str = str(arr.dtype)
@@ -115,7 +119,9 @@ def array_to_quadbin_record(
     height, width = arr.shape
 
     transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
-    x, y = transformer.transform(*(geotransform * (col_off + width *.5, row_off + height *.5)))
+    x, y = transformer.transform(
+        *(geotransform * (col_off + width * 0.5, row_off + height * 0.5))
+    )
 
     # required to append dtype to value field name for storage
     dtype_str = str(arr.dtype)
@@ -179,7 +185,6 @@ def import_error_bigquery():  # pragma: no cover
         "OR, run `pip install google-cloud-bigquery` to install from pypi."
     )
     raise ImportError(msg)
-
 
 
 def import_error_rasterio():  # pragma: no cover
@@ -495,7 +500,9 @@ def rasterio_to_bigquery(
     """Write a raster file to a BigQuery table."""
     print("Loading raster file to BigQuery...")
 
-    records_gen = rasterio_windows_to_records(file_path, band, input_crs, output_quadbin)
+    records_gen = rasterio_windows_to_records(
+        file_path, band, input_crs, output_quadbin
+    )
 
     if client is None:  # pragma: no cover
         client = bigquery.Client(project=project_id)
