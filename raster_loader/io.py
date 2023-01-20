@@ -218,10 +218,7 @@ def import_error_quadbin():  # pragma: no cover
 
 
 def rasterio_windows_to_records(
-    file_path: str,
-    band: int = 1,
-    input_crs: str = None,
-    output_quadbin: bool = False
+    file_path: str, band: int = 1, input_crs: str = None, output_quadbin: bool = False
 ) -> Iterable:
     if output_quadbin:
         """Open a raster file with rio-cogeo."""
@@ -229,10 +226,9 @@ def rasterio_windows_to_records(
 
         """Check if raster is quadbin compatible."""
         if (
-            raster_info.get("Tags", {}
-                            ).get("Tiling Scheme", {}
-                                  ).get("NAME"
-                                        ) != "GoogleMapsCompatible"):
+            raster_info.get("Tags", {}).get("Tiling Scheme", {}).get("NAME")
+            != "GoogleMapsCompatible"
+        ):
             msg = (
                 "To use the output_quadbin option, "
                 "the input raster must be a GoogleMapsCompatible raster.\n"
