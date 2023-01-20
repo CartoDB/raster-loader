@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from unittest.mock import patch
+import pyproj
 
 from affine import Affine
 import numpy as np
@@ -20,10 +21,11 @@ should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False
 
 def test_array_to_record():
     arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
-    geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     crs = "EPSG:4326"
+    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
+    geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     band = 1
-    record = io.array_to_record(arr, geotransform, crs=crs, band=band)
+    record = io.array_to_record(arr, transformer, geotransform, crs=crs, band=band)
 
     if should_swap[arr.dtype.byteorder]:
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
@@ -58,8 +60,9 @@ def test_array_to_record():
 
 def test_array_to_record_offset():
     arr = np.linspace(0, 100, 160 * 340).reshape(160, 340)
+    transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:4326", always_xy=True)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-    record = io.array_to_record(arr, geotransform, row_off=20, col_off=20)
+    record = io.array_to_record(arr, transformer, geotransform, row_off=20, col_off=20)
 
     if should_swap[arr.dtype.byteorder]:
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
@@ -94,9 +97,10 @@ def test_array_to_record_offset():
 
 def test_array_to_quadbin_record():
     arr = np.linspace(0, 100, 160 * 340).reshape(160, 340)
+    transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:4326", always_xy=True)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     record = io.array_to_quadbin_record(
-        arr, geotransform, resolution=4, row_off=20, col_off=20
+        arr, transformer, geotransform, resolution=4, row_off=20, col_off=20
     )
 
     if should_swap[arr.dtype.byteorder]:
@@ -125,10 +129,12 @@ def test_array_to_quadbin_record():
 
 def test_record_to_array():
     arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
+    crs = "EPSG:4326"
+    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     crs = "EPSG:4326"
     band = 1
-    record = io.array_to_record(arr, geotransform, crs=crs, band=band)
+    record = io.array_to_record(arr, transformer, geotransform, crs=crs, band=band)
     arr2 = io.record_to_array(record)
     assert np.allclose(arr, arr2)
     assert arr.dtype.name == arr2.dtype.name
@@ -137,10 +143,11 @@ def test_record_to_array():
 
 def test_record_to_array_invalid_dtype():
     arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
-    geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     crs = "EPSG:4326"
+    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
+    geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     band = 1
-    record = io.array_to_record(arr, geotransform, crs=crs, band=band)
+    record = io.array_to_record(arr, transformer, geotransform, crs=crs, band=band)
 
     with pytest.raises(TypeError):
         io.record_to_array(record, "band_1_dtype")
@@ -152,10 +159,15 @@ def test_rasterio_to_record():
 
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
     band = 1
+    transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:4326", always_xy=True)
 
     with rasterio.open(test_file) as src:
         record = io.array_to_record(
-            src.read(band), src.transform, crs=src.crs.to_string(), band=band
+            src.read(band),
+            transformer,
+            src.transform,
+            crs=src.crs.to_string(),
+            band=band,
         )
 
     assert isinstance(record, dict)

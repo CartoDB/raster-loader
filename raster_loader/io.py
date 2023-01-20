@@ -6,6 +6,7 @@ from affine import Affine
 import numpy as np
 import pandas as pd
 import pyproj
+import datetime
 
 try:
     import rio_cogeo
@@ -42,6 +43,7 @@ should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False
 
 def array_to_record(
     arr: np.ndarray,
+    transformer: pyproj.Transformer,
     geotransform: Affine,
     row_off: int = 0,
     col_off: int = 0,
@@ -50,8 +52,6 @@ def array_to_record(
     band: int = 1,
 ) -> dict:
     height, width = arr.shape
-
-    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
 
     lon_NW, lat_NW = transformer.transform(*(geotransform * (col_off, row_off)))
     lon_NE, lat_NE = transformer.transform(*(geotransform * (col_off + width, row_off)))
@@ -101,6 +101,7 @@ def array_to_record(
 
 def array_to_quadbin_record(
     arr: np.ndarray,
+    transformer: pyproj.Transformer,
     geotransform: Affine,
     resolution: int,
     row_off: int = 0,
@@ -115,7 +116,6 @@ def array_to_quadbin_record(
 
     height, width = arr.shape
 
-    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
     x, y = transformer.transform(
         *(geotransform * (col_off + width * 0.5, row_off + height * 0.5))
     )
@@ -258,11 +258,16 @@ def rasterio_windows_to_records(
         if not input_crs:  # pragma: no cover
             raise ValueError("Unable to find valid input_crs.")
 
+        transformer = pyproj.Transformer.from_crs(
+            input_crs, "EPSG:4326", always_xy=True
+        )
+
         for _, window in raster_dataset.block_windows():
 
             if output_quadbin:
                 rec = array_to_quadbin_record(
                     raster_dataset.read(band, window=window),
+                    transformer,
                     raster_dataset.transform,
                     resolution,
                     window.row_off,
@@ -274,6 +279,7 @@ def rasterio_windows_to_records(
             else:
                 rec = array_to_record(
                     raster_dataset.read(band, window=window),
+                    transformer,
                     raster_dataset.transform,
                     window.row_off,
                     window.col_off,
@@ -295,6 +301,12 @@ def records_to_bigquery(
 
     if client is None:  # pragma: no cover
         client = bigquery.Client(project=project_id)
+
+    a = datetime.datetime.now()
+    records = list(records)
+    b = datetime.datetime.now()
+    print("pd.DataFrame(records)")
+    print(b - a)
 
     data_df = pd.DataFrame(records)
 
