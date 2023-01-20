@@ -37,7 +37,6 @@ else:
 
 from raster_loader.utils import ask_yes_no_question
 
-
 should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False}
 
 
@@ -50,7 +49,6 @@ def array_to_record(
     crs: str = "EPSG:4326",
     band: int = 1,
 ) -> dict:
-
     height, width = arr.shape
 
     transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
@@ -111,7 +109,6 @@ def array_to_quadbin_record(
     crs: str = "EPSG:4326",
     band: int = 1,
 ) -> dict:
-
     """Requires quadbin."""
     if not _has_quadbin:  # pragma: no cover
         import_error_quadbin()
@@ -221,7 +218,10 @@ def import_error_quadbin():  # pragma: no cover
 
 
 def rasterio_windows_to_records(
-    file_path: str, band: int = 1, input_crs: str = None, output_quadbin: bool = False
+    file_path: str,
+    band: int = 1,
+    input_crs: str = None,
+    output_quadbin: bool = False
 ) -> Iterable:
     if output_quadbin:
         """Open a raster file with rio-cogeo."""
@@ -229,13 +229,18 @@ def rasterio_windows_to_records(
 
         """Check if raster is quadbin compatible."""
         if (
-            raster_info.get("Tags", {}).get("Tiling Scheme", {}).get("NAME")
-            != "GoogleMapsCompatible"
-        ):
+            raster_info.get("Tags", {}
+                            ).get("Tiling Scheme", {}
+                                  ).get("NAME"
+                                        ) != "GoogleMapsCompatible"):
             msg = (
-                "To use the output_quadbin option, the input raster must be a GoogleMapsCompatible raster.\n"
-                "You can make your raster compatible by converting it using the following command:\n"
-                "gdalwarp your_raster.tif -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE your_compatible_raster.tif"
+                "To use the output_quadbin option, "
+                "the input raster must be a GoogleMapsCompatible raster.\n"
+                "You can make your raster compatible "
+                "by converting it using the following command:\n"
+                "gdalwarp your_raster.tif -of COG "
+                "-co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE "
+                "your_compatible_raster.tif"
             )
             raise ValueError(msg)
 
@@ -346,7 +351,6 @@ def bigquery_to_records(
     query = f"SELECT * FROM `{project_id}.{dataset_id}.{table_id}` LIMIT {limit}"
 
     return client.query(query).result().to_dataframe()
-
 
 
 def delete_bigquery_table(
