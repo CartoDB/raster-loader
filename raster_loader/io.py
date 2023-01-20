@@ -6,7 +6,6 @@ from affine import Affine
 import numpy as np
 import pandas as pd
 import pyproj
-import datetime
 
 try:
     import rio_cogeo
@@ -302,11 +301,7 @@ def records_to_bigquery(
     if client is None:  # pragma: no cover
         client = bigquery.Client(project=project_id)
 
-    a = datetime.datetime.now()
     records = list(records)
-    b = datetime.datetime.now()
-    print("pd.DataFrame(records)")
-    print(b - a)
 
     data_df = pd.DataFrame(records)
 
