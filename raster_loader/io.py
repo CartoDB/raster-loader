@@ -44,7 +44,7 @@ should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False
 def batched(iterable, n):
     "Batch data into tuples of length n. The last batch may be shorter."
     # batched('ABCDEFG', 3) --> ABC DEF G
-    if n < 1:
+    if n < 1:  # pragma: no cover
         raise ValueError("n must be at least one")
     it = iter(iterable)
     while batch := tuple(islice(it, n)):
@@ -653,3 +653,4 @@ def get_block_dims(file_path: str) -> tuple:
 
     with rasterio.open(file_path) as raster_dataset:
         return raster_dataset.block_shapes[0]
+
