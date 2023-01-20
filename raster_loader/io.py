@@ -225,10 +225,9 @@ def rasterio_windows_to_records(
         raster_info = rio_cogeo.cog_info(file_path).dict()
 
         """Check if raster is quadbin compatible."""
-        if (
-            raster_info.get("Tags", {}).get("Tiling Scheme", {}).get("NAME")
-            != "GoogleMapsCompatible"
-        ):
+        if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
+            "Tiling Scheme", {}
+        ).get("NAME"):
             msg = (
                 "To use the output_quadbin option, "
                 "the input raster must be a GoogleMapsCompatible raster.\n"
