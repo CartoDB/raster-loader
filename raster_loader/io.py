@@ -348,6 +348,7 @@ def bigquery_to_records(
     return client.query(query).result().to_dataframe()
 
 
+
 def delete_bigquery_table(
     table_id: str,
     dataset_id: str,
