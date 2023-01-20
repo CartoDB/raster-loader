@@ -5,7 +5,7 @@ import click
 
 try:
     import google.cloud.bigquery
-except ImportError:
+except ImportError:  # pragma: no cover
     _has_bigquery = False
 else:
     _has_bigquery = True
@@ -74,7 +74,7 @@ def upload(
         client = bigquery_client()
     else:  # pragma: no cover
         """Requires bigquery."""
-        if not _has_bigquery:
+        if not _has_bigquery:  # pragma: no cover
             import_error_bigquery()
         client = google.cloud.bigquery.Client(project=project)
 

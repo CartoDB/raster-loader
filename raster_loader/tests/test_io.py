@@ -92,6 +92,37 @@ def test_array_to_record_offset():
         assert json.loads(record["attrs"])[key] == value
 
 
+def test_array_to_quadbin_record():
+    arr = np.linspace(0, 100, 160 * 340).reshape(160, 340)
+    geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
+    record = io.array_to_quadbin_record(
+        arr, geotransform, resolution=4, row_off=20, col_off=20
+    )
+
+    if should_swap[arr.dtype.byteorder]:
+        arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
+    else:
+        arr_bytes = np.ascontiguousarray(arr).tobytes()
+
+    assert record["quadbin"] == 5209556461146865663
+    assert record["block_height"] == 160
+    assert record["block_width"] == 340
+    assert record["band_1_float64"] == arr_bytes
+
+    expected_attrs = {
+        "band": 1,
+        "value_field": "band_1_float64",
+        "dtype": "float64",
+        "crs": "EPSG:4326",
+        "gdal_transform": list(geotransform.to_gdal()),
+        "row_off": 20,
+        "col_off": 20,
+    }
+
+    for key, value in expected_attrs.items():
+        assert json.loads(record["attrs"])[key] == value
+
+
 def test_record_to_array():
     arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
@@ -323,5 +354,43 @@ def test_rasterio_to_bigquery_invalid_input_crs(*args, **kwargs):
         table_id="test",
         client=client,
         input_crs=3232,
+    )
+    assert success
+
+
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
+@patch("raster_loader.io.delete_bigquery_table", return_value=None)
+@patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
+@patch("raster_loader.io.ask_yes_no_question", return_value=True)
+def test_rasterio_to_bigquery_invalid_quadbin_raster(*args, **kwargs):
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+
+    with pytest.raises(OSError):
+        io.rasterio_to_bigquery(
+            test_file,
+            project_id="test",
+            dataset_id="test",
+            table_id="test",
+            client=client,
+            output_quadbin=True,
+        )
+
+
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
+@patch("raster_loader.io.delete_bigquery_table", return_value=None)
+@patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
+@patch("raster_loader.io.ask_yes_no_question", return_value=True)
+def test_rasterio_to_bigquery_valid_quadbbin_raster(*args, **kwargs):
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "quadbin_raster.tif")
+
+    success = io.rasterio_to_bigquery(
+        test_file,
+        project_id="test",
+        dataset_id="test",
+        table_id="test",
+        client=client,
+        output_quadbin=True,
     )
     assert success

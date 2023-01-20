@@ -9,28 +9,28 @@ import pyproj
 
 try:
     import rio_cogeo
-except ImportError:
+except ImportError:  # pragma: no cover
     _has_rio_cogeo = False
 else:
     _has_rio_cogeo = True
 
 try:
     import rasterio
-except ImportError:
+except ImportError:  # pragma: no cover
     _has_rasterio = False
 else:
     _has_rasterio = True
 
 try:
     import quadbin
-except ImportError:
+except ImportError:  # pragma: no cover
     _has_quadbin = False
 else:
     _has_quadbin = True
 
 try:
     from google.cloud import bigquery
-except ImportError:
+except ImportError:  # pragma: no cover
     _has_bigquery = False
 else:
     _has_bigquery = True
@@ -113,7 +113,7 @@ def array_to_quadbin_record(
 ) -> dict:
 
     """Requires quadbin."""
-    if not _has_quadbin:
+    if not _has_quadbin:  # pragma: no cover
         import_error_quadbin()
 
     height, width = arr.shape
@@ -224,16 +224,25 @@ def rasterio_windows_to_records(
     file_path: str, band: int = 1, input_crs: str = None, output_quadbin: bool = False
 ) -> Iterable:
     if output_quadbin:
-        """Requires rio_cogeo."""
-        if not _has_rio_cogeo:
-            import_error_rio_cogeo()
-
         """Open a raster file with rio-cogeo."""
         raster_info = rio_cogeo.cog_info(file_path).dict()
+
+        """Check if raster is quadbin compatible."""
+        if (
+            raster_info.get("Tags", {}).get("Tiling Scheme", {}).get("NAME")
+            != "GoogleMapsCompatible"
+        ):
+            msg = (
+                "To use the output_quadbin option, the input raster must be a GoogleMapsCompatible raster.\n"
+                "You can make your raster compatible by converting it using the following command:\n"
+                "gdalwarp your_raster.tif -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE your_compatible_raster.tif"
+            )
+            raise ValueError(msg)
+
         resolution = raster_info["GEO"]["MaxZoom"]
 
     """Requires rasterio."""
-    if not _has_rasterio:
+    if not _has_rasterio:  # pragma: no cover
         import_error_rasterio()
 
     """Open a raster file with rasterio."""
@@ -281,7 +290,7 @@ def records_to_bigquery(
     """Write a record to a BigQuery table."""
 
     """Requires bigquery."""
-    if not _has_bigquery:
+    if not _has_bigquery:  # pragma: no cover
         import_error_bigquery()
 
     if client is None:  # pragma: no cover
@@ -329,7 +338,7 @@ def bigquery_to_records(
     """
 
     """Requires bigquery."""
-    if not _has_bigquery:
+    if not _has_bigquery:  # pragma: no cover
         import_error_bigquery()
 
     client = bigquery.Client(project=project_id)
@@ -371,7 +380,7 @@ def delete_bigquery_table(
     """
 
     """Requires bigquery."""
-    if not _has_bigquery:
+    if not _has_bigquery:  # pragma: no cover
         import_error_bigquery()
 
     if client is None:
@@ -491,7 +500,7 @@ def rasterio_to_bigquery(
     """
 
     """Requires bigquery."""
-    if not _has_bigquery:
+    if not _has_bigquery:  # pragma: no cover
         import_error_bigquery()
 
     if isinstance(input_crs, int):
@@ -577,7 +586,7 @@ def get_number_of_blocks(file_path: str) -> int:
     """Get the number of blocks in a raster file."""
 
     """Requires rasterio."""
-    if not _has_rasterio:
+    if not _has_rasterio:  # pragma: no cover
         import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
@@ -588,7 +597,7 @@ def size_mb_of_rasterio_band(file_path: str, band: int = 1) -> int:
     """Get the size in MB of a rasterio band."""
 
     """Requires rasterio."""
-    if not _has_rasterio:
+    if not _has_rasterio:  # pragma: no cover
         import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
@@ -602,7 +611,7 @@ def print_band_information(file_path: str):
     """Print out information about the bands in a raster file."""
 
     """Requires rasterio."""
-    if not _has_rasterio:
+    if not _has_rasterio:  # pragma: no cover
         import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
@@ -622,7 +631,7 @@ def get_block_dims(file_path: str) -> tuple:
     """Get the dimensions of a raster file's blocks."""
 
     """Requires rasterio."""
-    if not _has_rasterio:
+    if not _has_rasterio:  # pragma: no cover
         import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
