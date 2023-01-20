@@ -60,8 +60,10 @@ to your local machine.
 5. Run `make docker-start` to start the development environment
 6. Run `make docker-test` to run the test suite
 7. Run `git checkout -b my-new-feature` to start a new feature branch
-8. Run `make docker-enter` to open a terminal inside of the docker container
-9. Run `make docker-stop` to stop the development environment
+8. Consider writing a test in `raster_loader/tests/` to guide your implementation
+9. Run `make docker-enter` to open a terminal inside of the docker container
+10. Run `make docker-stop` to stop the development environment
+11. Run `make docker-remove` to remove docker raster_loader Container/Network/Volume from your system
 
 *Note: If you want to make changes to library dependencies (i.e. requirements.txt or requirements-dev.txt) while the container is running, you'll need to rebuild the image using the make docker-build command and restart the container."*
 
