@@ -1,5 +1,6 @@
 import json
 import sys
+from itertools import islice
 from typing import Iterable
 
 from affine import Affine
@@ -38,6 +39,16 @@ else:
 from raster_loader.utils import ask_yes_no_question
 
 should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False}
+
+
+def batched(iterable, n):
+    "Batch data into tuples of length n. The last batch may be shorter."
+    # batched('ABCDEFG', 3) --> ABC DEF G
+    if n < 1:
+        raise ValueError("n must be at least one")
+    it = iter(iterable)
+    while batch := tuple(islice(it, n)):
+        yield batch
 
 
 def array_to_record(
@@ -305,15 +316,9 @@ def records_to_bigquery(
 
     data_df = pd.DataFrame(records)
 
-    job = client.load_table_from_dataframe(
+    return client.load_table_from_dataframe(
         data_df, f"{project_id}.{dataset_id}.{table_id}"
     )
-
-    if job:  # pragma: no cover
-        job.result()
-
-        if job.errors:
-            raise Exception(job.errors)
 
 
 def bigquery_to_records(
@@ -537,31 +542,36 @@ def rasterio_to_bigquery(
                 if not append_recors:
                     exit()
         if chunk_size is None:
-            records_to_bigquery(
+            job = records_to_bigquery(
                 records_gen, table_id, dataset_id, project_id, client=client
             )
+            # raise error if job went wrong (blocking call)
+            job.result()
         else:
             from tqdm.auto import tqdm
 
             total_blocks = get_number_of_blocks(file_path)
 
-            records = []
+            jobs = []
             with tqdm(total=total_blocks) as pbar:
-                for record in records_gen:
-                    records.append(record)
+                for records in batched(records_gen, chunk_size):
 
-                    if len(records) >= chunk_size:
+                    try:
+                        # raise error if job went wrong (blocking call)
+                        jobs.pop().result()
+                    except IndexError:
+                        pass
+
+                    jobs.append(
                         records_to_bigquery(
                             records, table_id, dataset_id, project_id, client=client
                         )
-                        pbar.update(chunk_size)
-                        records = []
-
-                if len(records) > 0:
-                    records_to_bigquery(
-                        records, table_id, dataset_id, project_id, client=client
                     )
-                    pbar.update(len(records))
+                    pbar.update(chunk_size)
+
+            # raise error if the last job went wrong (blocking call)
+            jobs.pop().result()
+
     except KeyboardInterrupt:
         delete_table = ask_yes_no_question(
             "Would you like to delete the partially uploaded table? [yes/no] "
