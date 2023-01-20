@@ -60,3 +60,6 @@ docker-enter: ## Enter the backend container.
 docker-stop: ## Stop all running containers.
 	docker-compose stop
 
+.PHONY: docker-remove
+docker-remove: ## Remove all containers / volumes
+	docker-compose down --volumes
