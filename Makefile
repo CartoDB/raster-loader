@@ -37,3 +37,29 @@ publish-test-pypi:
 
 clean:
 	rm -rf $(VENV) $(DIST) $(BUILD) *.egg-info
+
+ENTER_CONTAINER:=docker-compose exec raster_loader
+
+.PHONY: docker-build
+docker-build: ## Build necessary stuff.
+	docker-compose build
+
+.PHONY: docker-start
+docker-start: ## Start containers with docker-compose and attach to logs.
+	docker-compose up --no-build
+
+.PHONY: docker-test
+docker-test: ## Enter the running backend container and run tests.
+	$(ENTER_CONTAINER) sh -c 'cd raster_loader && pytest $(PYTEST_FLAGS)'
+
+.PHONY: docker-enter
+docker-enter: ## Enter the backend container.
+	$(ENTER_CONTAINER) bash
+
+.PHONY: docker-stop
+docker-stop: ## Stop all running containers.
+	docker-compose stop
+
+.PHONY: docker-remove
+docker-remove: ## Remove all containers / volumes
+	docker-compose down --volumes

@@ -49,6 +49,27 @@ After creating your environment, you can enter the virtual environment with
 ``source env/bin/activate`` on Linux and macOS or ``env\bin\Activate.ps1`` on Windows
 (PowerShell).
 
+
+### Setting up your environment (Docker / Docker-Compose)
+
+1. Install Docker and Docker Compose on your system by following the instructions for your operating system from the official Docker website.
+2. Use `git clone` to clone [the Raster Loader repository](https://github.com/CartoDB/raster-loader)
+to your local machine.
+3. Navigate to the root directory of the repository in your terminal.
+4. Run `make docker-build` command to build the docker image
+5. Run `make docker-start` to start the development environment. Keep this process running.
+6. Begin your development in a new terminal.
+7. Run `make docker-test` to run the test suite.
+8. Run a targeted test using pytest flags: `make docker-test PYTEST_FLAGS='-s -k array'`
+9. Run `git checkout -b my-new-feature` to start a new feature branch
+10. Consider writing a test in `raster_loader/tests/` to guide your implementation
+11. Drop into `pdb` when a test fails: `make docker-test PYTEST_FLAGS='-s --pdb'`
+12. Run `make docker-enter` to open a terminal inside of the docker container
+13. Run `make docker-stop` to stop the development environment
+14. Run `make docker-remove` to remove docker raster_loader Container/Network/Volume from your system
+
+*Note: If you want to make changes to library dependencies (i.e. requirements.txt or requirements-dev.txt) while the container is running, you'll need to rebuild the image using the make docker-build command and restart the container."*
+
 ### Tests and linting
 
 Before submitting a pull request, you need to make sure your updates pass tests and
