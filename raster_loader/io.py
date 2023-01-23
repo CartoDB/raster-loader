@@ -7,8 +7,35 @@ import numpy as np
 import pandas as pd
 import pyproj
 
-from raster_loader.utils import ask_yes_no_question
+try:
+    import rio_cogeo
+except ImportError:  # pragma: no cover
+    _has_rio_cogeo = False
+else:
+    _has_rio_cogeo = True
 
+try:
+    import rasterio
+except ImportError:  # pragma: no cover
+    _has_rasterio = False
+else:
+    _has_rasterio = True
+
+try:
+    import quadbin
+except ImportError:  # pragma: no cover
+    _has_quadbin = False
+else:
+    _has_quadbin = True
+
+try:
+    from google.cloud import bigquery
+except ImportError:  # pragma: no cover
+    _has_bigquery = False
+else:
+    _has_bigquery = True
+
+from raster_loader.utils import ask_yes_no_question
 
 should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False}
 
@@ -22,13 +49,18 @@ def array_to_record(
     crs: str = "EPSG:4326",
     band: int = 1,
 ) -> dict:
-
     height, width = arr.shape
 
-    lon_NW, lat_NW = geotransform * (col_off, row_off)
-    lon_NE, lat_NE = geotransform * (col_off + width, row_off)
-    lon_SE, lat_SE = geotransform * (col_off + width, row_off + height)
-    lon_SW, lat_SW = geotransform * (col_off, row_off + height)
+    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
+
+    lon_NW, lat_NW = transformer.transform(*(geotransform * (col_off, row_off)))
+    lon_NE, lat_NE = transformer.transform(*(geotransform * (col_off + width, row_off)))
+    lon_SE, lat_SE = transformer.transform(
+        *(geotransform * (col_off + width, row_off + height))
+    )
+    lon_SW, lat_SW = transformer.transform(
+        *(geotransform * (col_off, row_off + height))
+    )
 
     # required to append dtype to value field name for storage
     dtype_str = str(arr.dtype)
@@ -67,6 +99,57 @@ def array_to_record(
     return record
 
 
+def array_to_quadbin_record(
+    arr: np.ndarray,
+    geotransform: Affine,
+    resolution: int,
+    row_off: int = 0,
+    col_off: int = 0,
+    value_field: str = "band_1",
+    crs: str = "EPSG:4326",
+    band: int = 1,
+) -> dict:
+    """Requires quadbin."""
+    if not _has_quadbin:  # pragma: no cover
+        import_error_quadbin()
+
+    height, width = arr.shape
+
+    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
+    x, y = transformer.transform(
+        *(geotransform * (col_off + width * 0.5, row_off + height * 0.5))
+    )
+
+    # required to append dtype to value field name for storage
+    dtype_str = str(arr.dtype)
+    value_field = "_".join([value_field, dtype_str])
+
+    attrs = {
+        "band": band,
+        "value_field": value_field,
+        "dtype": dtype_str,
+        "crs": crs,
+        "gdal_transform": geotransform.to_gdal(),
+        "row_off": row_off,
+        "col_off": col_off,
+    }
+
+    if should_swap[arr.dtype.byteorder]:
+        arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
+    else:
+        arr_bytes = np.ascontiguousarray(arr).tobytes()
+
+    record = {
+        "quadbin": quadbin.point_to_cell(x, y, resolution),
+        "block_height": height,
+        "block_width": width,
+        "attrs": json.dumps(attrs),
+        value_field: arr_bytes,
+    }
+
+    return record
+
+
 def record_to_array(record: dict, value_field: str = None) -> np.ndarray:
     """Convert a record to a numpy array."""
 
@@ -90,29 +173,79 @@ def record_to_array(record: dict, value_field: str = None) -> np.ndarray:
     return arr
 
 
-def import_rasterio():  # pragma: no cover
-    try:
-        import rasterio
+def import_error_bigquery():  # pragma: no cover
+    msg = (
+        "Google Cloud BigQuery is not installed.\n"
+        "Please install Google Cloud BigQuery to use this function.\n"
+        "See https://googleapis.dev/python/bigquery/latest/index.html\n"
+        "for installation instructions.\n"
+        "OR, run `pip install google-cloud-bigquery` to install from pypi."
+    )
+    raise ImportError(msg)
 
-        return rasterio
-    except ImportError:
 
-        msg = (
-            "Rasterio is not installed.\n"
-            "Please install rasterio to use this function.\n"
-            "See https://rasterio.readthedocs.io/en/latest/installation.html\n"
-            "for installation instructions.\n"
-            "Alternatively, run `pip install rasterio` to install from pypi."
-        )
-        raise ImportError(msg)
+def import_error_rasterio():  # pragma: no cover
+    msg = (
+        "Rasterio is not installed.\n"
+        "Please install rasterio to use this function.\n"
+        "See https://rasterio.readthedocs.io/en/latest/installation.html\n"
+        "for installation instructions.\n"
+        "Alternatively, run `pip install rasterio` to install from pypi."
+    )
+    raise ImportError(msg)
+
+
+def import_error_rio_cogeo():  # pragma: no cover
+    msg = (
+        "Cloud Optimized GeoTIFF (COG) plugin for Rasterio is not installed.\n"
+        "Please install rio-cogeo to use this function.\n"
+        "See https://cogeotiff.github.io/rio-cogeo/\n"
+        "for installation instructions.\n"
+        "Alternatively, run `pip install rio-cogeo` to install from pypi."
+    )
+    raise ImportError(msg)
+
+
+def import_error_quadbin():  # pragma: no cover
+    msg = (
+        "Quadbin is not installed.\n"
+        "Please install quadbin to use this function.\n"
+        "See https://github.com/CartoDB/quadbin-py\n"
+        "for installation instructions.\n"
+        "Alternatively, run `pip install quadbin` to install from pypi."
+    )
+    raise ImportError(msg)
 
 
 def rasterio_windows_to_records(
-    file_path: str, band: int = 1, input_crs: str = None
+    file_path: str, band: int = 1, input_crs: str = None, output_quadbin: bool = False
 ) -> Iterable:
-    """Open a raster file with rasterio."""
-    rasterio = import_rasterio()
+    if output_quadbin:
+        """Open a raster file with rio-cogeo."""
+        raster_info = rio_cogeo.cog_info(file_path).dict()
 
+        """Check if raster is quadbin compatible."""
+        if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
+            "Tiling Scheme", {}
+        ).get("NAME"):
+            msg = (
+                "To use the output_quadbin option, "
+                "the input raster must be a GoogleMapsCompatible raster.\n"
+                "You can make your raster compatible "
+                "by converting it using the following command:\n"
+                "gdalwarp your_raster.tif -of COG "
+                "-co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE "
+                "your_compatible_raster.tif"
+            )
+            raise ValueError(msg)
+
+        resolution = raster_info["GEO"]["MaxZoom"]
+
+    """Requires rasterio."""
+    if not _has_rasterio:  # pragma: no cover
+        import_error_rasterio()
+
+    """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
 
         raster_crs = raster_dataset.crs.to_string()
@@ -126,36 +259,29 @@ def rasterio_windows_to_records(
             raise ValueError("Unable to find valid input_crs.")
 
         for _, window in raster_dataset.block_windows():
-            rec = array_to_record(
-                raster_dataset.read(band, window=window),
-                raster_dataset.transform,
-                window.row_off,
-                window.col_off,
-                crs=input_crs,
-                band=band,
-            )
 
-            if input_crs.upper() != "EPSG:4326":
-                rec = reproject_record(rec, input_crs, "EPSG:4326")
+            if output_quadbin:
+                rec = array_to_quadbin_record(
+                    raster_dataset.read(band, window=window),
+                    raster_dataset.transform,
+                    resolution,
+                    window.row_off,
+                    window.col_off,
+                    crs=input_crs,
+                    band=band,
+                )
+
+            else:
+                rec = array_to_record(
+                    raster_dataset.read(band, window=window),
+                    raster_dataset.transform,
+                    window.row_off,
+                    window.col_off,
+                    crs=input_crs,
+                    band=band,
+                )
 
             yield rec
-
-
-def import_bigquery():  # pragma: no cover
-    try:
-        from google.cloud import bigquery
-
-        return bigquery
-    except ImportError:
-
-        msg = (
-            "Google Cloud BigQuery is not installed.\n"
-            "Please install Google Cloud BigQuery to use this function.\n"
-            "See https://googleapis.dev/python/bigquery/latest/index.html\n"
-            "for installation instructions.\n"
-            "OR, run `pip install google-cloud-bigquery` to install from pypi."
-        )
-        raise ImportError(msg)
 
 
 def records_to_bigquery(
@@ -163,7 +289,9 @@ def records_to_bigquery(
 ):
     """Write a record to a BigQuery table."""
 
-    bigquery = import_bigquery()
+    """Requires bigquery."""
+    if not _has_bigquery:  # pragma: no cover
+        import_error_bigquery()
 
     if client is None:  # pragma: no cover
         client = bigquery.Client(project=project_id)
@@ -208,36 +336,16 @@ def bigquery_to_records(
         Records as a pandas.DataFrame.
 
     """
-    bigquery = import_bigquery()
+
+    """Requires bigquery."""
+    if not _has_bigquery:  # pragma: no cover
+        import_error_bigquery()
 
     client = bigquery.Client(project=project_id)
 
     query = f"SELECT * FROM `{project_id}.{dataset_id}.{table_id}` LIMIT {limit}"
 
     return client.query(query).result().to_dataframe()
-
-
-def reproject_record(record: dict, src_crs: str, dst_crs: str = "EPSG:4326") -> dict:
-    """Inplace reproject the bounds (lon_NW, lat_NW, etc.) of a record."""
-
-    rasterio = import_rasterio()
-
-    src_crs = rasterio.crs.CRS.from_string(src_crs)
-    dst_crs = rasterio.crs.CRS.from_string(dst_crs)
-
-    for lon_col, lat_col in [
-        ("lon_NW", "lat_NW"),
-        ("lon_NE", "lat_NE"),
-        ("lon_SW", "lat_SW"),
-        ("lon_SE", "lat_SE"),
-    ]:
-
-        transformer = pyproj.Transformer.from_crs(src_crs, dst_crs, always_xy = True)
-        x, y = transformer.transform(record[lon_col], record[lat_col])
-        record[lon_col] = x
-        record[lat_col] = y
-
-    return record
 
 
 def delete_bigquery_table(
@@ -271,7 +379,9 @@ def delete_bigquery_table(
 
     """
 
-    bigquery = import_bigquery()
+    """Requires bigquery."""
+    if not _has_bigquery:  # pragma: no cover
+        import_error_bigquery()
 
     if client is None:
         client = bigquery.Client(project=project_id)
@@ -349,6 +459,7 @@ def rasterio_to_bigquery(
     input_crs: int = None,
     client=None,
     overwrite: bool = False,
+    output_quadbin: bool = False,
 ) -> bool:
     """Write a rasterio-compatible raster file to a BigQuery table.
     Compatible file formats include TIFF and GeoTIFF. See
@@ -379,6 +490,8 @@ def rasterio_to_bigquery(
         BigQuery client, by default None
     overwrite : bool, optional
         Overwrite the table if it already contains data, by default False
+    output_quadbin : bool, optional
+        Upload the raster to the BigQuery table in a quadbin format.
 
     Returns
     -------
@@ -386,16 +499,22 @@ def rasterio_to_bigquery(
         True if upload was successful.
     """
 
+    """Requires bigquery."""
+    if not _has_bigquery:  # pragma: no cover
+        import_error_bigquery()
+
     if isinstance(input_crs, int):
         input_crs = "EPSG:{}".format(input_crs)
 
     """Write a raster file to a BigQuery table."""
     print("Loading raster file to BigQuery...")
 
-    records_gen = rasterio_windows_to_records(file_path, band, input_crs)
+    records_gen = rasterio_windows_to_records(
+        file_path, band, input_crs, output_quadbin
+    )
 
     if client is None:  # pragma: no cover
-        client = import_bigquery().Client(project=project_id)
+        client = bigquery.Client(project=project_id)
 
     try:
         if check_if_bigquery_table_exists(dataset_id, table_id, client):
@@ -465,7 +584,10 @@ def rasterio_to_bigquery(
 
 def get_number_of_blocks(file_path: str) -> int:
     """Get the number of blocks in a raster file."""
-    rasterio = import_rasterio()
+
+    """Requires rasterio."""
+    if not _has_rasterio:  # pragma: no cover
+        import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
         return len(list(raster_dataset.block_windows()))
@@ -473,7 +595,10 @@ def get_number_of_blocks(file_path: str) -> int:
 
 def size_mb_of_rasterio_band(file_path: str, band: int = 1) -> int:
     """Get the size in MB of a rasterio band."""
-    rasterio = import_rasterio()
+
+    """Requires rasterio."""
+    if not _has_rasterio:  # pragma: no cover
+        import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
         W = raster_dataset.width
@@ -484,7 +609,10 @@ def size_mb_of_rasterio_band(file_path: str, band: int = 1) -> int:
 
 def print_band_information(file_path: str):
     """Print out information about the bands in a raster file."""
-    rasterio = import_rasterio()
+
+    """Requires rasterio."""
+    if not _has_rasterio:  # pragma: no cover
+        import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
         print("Number of bands: {}".format(raster_dataset.count))
@@ -501,7 +629,10 @@ def print_band_information(file_path: str):
 
 def get_block_dims(file_path: str) -> tuple:
     """Get the dimensions of a raster file's blocks."""
-    rasterio = import_rasterio()
+
+    """Requires rasterio."""
+    if not _has_rasterio:  # pragma: no cover
+        import_error_rasterio()
 
     with rasterio.open(file_path) as raster_dataset:
         return raster_dataset.block_shapes[0]

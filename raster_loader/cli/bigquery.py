@@ -3,6 +3,13 @@ import uuid
 
 import click
 
+try:
+    import google.cloud.bigquery
+except ImportError:  # pragma: no cover
+    _has_bigquery = False
+else:
+    _has_bigquery = True
+
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
 def bigquery(args=None):
@@ -30,6 +37,12 @@ def bigquery(args=None):
     default=False,
     is_flag=True,
 )
+@click.option(
+    "--output_quadbin",
+    help="Upload the raster to the BigQuery table in a quadbin format.",
+    default=False,
+    is_flag=True,
+)
 @click.option("--test", help="Use Mock BigQuery Client", default=False, is_flag=True)
 def upload(
     file_path,
@@ -40,11 +53,12 @@ def upload(
     chunk_size,
     input_crs,
     overwrite=False,
+    output_quadbin=False,
     test=False,
 ):
 
     from raster_loader.tests.mocks import bigquery_client
-    from raster_loader.io import import_bigquery
+    from raster_loader.io import import_error_bigquery
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import get_number_of_blocks
     from raster_loader.io import print_band_information
@@ -59,8 +73,10 @@ def upload(
     if test:
         client = bigquery_client()
     else:  # pragma: no cover
-        bigquery = import_bigquery()
-        client = bigquery.Client(project=project)
+        """Requires bigquery."""
+        if not _has_bigquery:  # pragma: no cover
+            import_error_bigquery()
+        client = google.cloud.bigquery.Client(project=project)
 
     # introspect raster file
     num_blocks = get_number_of_blocks(file_path)
@@ -91,6 +107,7 @@ def upload(
         input_crs,
         client=client,
         overwrite=overwrite,
+        output_quadbin=output_quadbin,
     )
 
     click.echo("Raster file uploaded to Google BigQuery")
