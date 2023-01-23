@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  raster_loader:
+    platform: linux/amd64
+    image: carto/raster_loader
+    ports:
+      - '8888:8888'
+    build:
+      context: .
+      dockerfile: docker/raster_loader/Dockerfile
+    volumes:
+      - './:/code'
+    env_file: ./.env
+    command: |
+      sh -c 'tail -f /dev/null'
