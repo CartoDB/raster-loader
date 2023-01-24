@@ -356,18 +356,23 @@ def test_rasterio_to_bigquery_with_one_chunk_size(*args, **kwargs):
 
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
 def test_rasterio_to_bigquery_invalid_input_crs(*args, **kwargs):
+
+    import rasterio
+
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
 
-    success = io.rasterio_to_bigquery(
-        test_file,
-        project_id="test",
-        dataset_id="test",
-        table_id="test",
-        client=client,
-        input_crs=3232,
-    )
-    assert success
+    # test that invalid input crs raises an error
+    invalid_crs = 8675309
+    with pytest.raises(rasterio.errors.CRSError):
+        io.rasterio_to_bigquery(
+            test_file,
+            project_id="test",
+            dataset_id="test",
+            table_id="test",
+            client=client,
+            input_crs=invalid_crs,
+        )
 
 
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)

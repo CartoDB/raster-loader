@@ -47,7 +47,7 @@ def batched(iterable, n):
     if n < 1:  # pragma: no cover
         raise ValueError("n must be at least one")
     it = iter(iterable)
-    while batch := tuple(islice(it, n)):
+    while batch := tuple(islice(it, n)):  # noqa
         yield batch
 
 
@@ -263,10 +263,14 @@ def rasterio_windows_to_records(
         if input_crs is None:
             input_crs = raster_crs
         elif input_crs != raster_crs:
-            print(f"WARNING: Input CRS({input_crs}) != raster CRS({raster_crs}).")
+            msg = "Input CRS conflicts with input raster metadata."
+            err = rasterio.errors.CRSError(msg)
+            raise err
 
         if not input_crs:  # pragma: no cover
-            raise ValueError("Unable to find valid input_crs.")
+            msg = "Unable to find valid input_crs."
+            err = rasterio.errors.CRSError(msg)
+            raise err
 
         transformer = pyproj.Transformer.from_crs(
             input_crs, "EPSG:4326", always_xy=True
@@ -582,6 +586,9 @@ def rasterio_to_bigquery(
 
         raise KeyboardInterrupt
 
+    except rasterio.errors.CRSError as e:
+        raise e
+
     except Exception as e:
         delete_table = ask_yes_no_question(
             (
@@ -653,4 +660,3 @@ def get_block_dims(file_path: str) -> tuple:
 
     with rasterio.open(file_path) as raster_dataset:
         return raster_dataset.block_shapes[0]
-
