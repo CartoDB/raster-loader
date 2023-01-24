@@ -53,7 +53,7 @@ overwritten because the ``--overwrite`` flag is set.
 
 You can also use the ``--output_quadbin`` flag to upload the raster to the BigQuery
 table in a quadbin format. To use this option, the input raster must be a
-GoogleMapsCompatible raster. You can make your raster compatible by converting it with
+``GoogleMapsCompatible`` raster. You can make your raster compatible by converting it with
 the following command with GDAL:
 
 .. code-block:: bash

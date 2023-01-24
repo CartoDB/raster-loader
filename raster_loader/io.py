@@ -508,7 +508,7 @@ def rasterio_to_bigquery(
         Overwrite the table if it already contains data, by default False
     output_quadbin : bool, optional
         Upload the raster to the BigQuery table in a quadbin format (input raster must
-        be a GoogleMapsCompatible raster).
+        be a GoogleMapsCompatible raster)
 
     Returns
     -------

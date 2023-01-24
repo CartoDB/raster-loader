@@ -39,8 +39,8 @@ This function returns `True` if the upload was successful.
 
     To upload the raster to BigQuery in a quadbin format, set the ``output_quadbin``
     parameter of ``rasterio_to_bigquery()`` to ``True``. This option requires a
-    GoogleMapsCompatible input raster. You can make your raster compatible by converting
-    it with GDAL:
+    ``GoogleMapsCompatible`` input raster. You can make your raster compatible by
+    converting it with GDAL:
 
     .. code-block:: bash
 
