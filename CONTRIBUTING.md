@@ -5,7 +5,7 @@ Thank you for your interest in contributing to Raster Loader!
 ## Feature requests and bug reports
 
 Reporting bugs and submitting ideas for new features are great ways to help make Raster
-Loader better!
+Loader better.
 
 To report a bug or request a feature, please
 [create a new issue in the GitHub repository](https://github.com/CartoDB/raster-loader/issues/new/choose).
@@ -28,8 +28,9 @@ Using the Makefile requires that you have [GNU Make](https://www.gnu.org/softwar
 
 ### Setting up your environment
 
-Use `git clone` to clone [the Raster Loader repository](https://github.com/CartoDB/raster-loader)
-to your local machine.
+Create a [fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/about-forks)
+of [the Raster Loader repository](https://github.com/CartoDB/raster-loader).
+Use `git clone` to clone the repo to your local machine.
 
 Once the repository is cloned, you can use the Makefile to set up your development
 environment:
@@ -51,6 +52,9 @@ After creating your environment, you can enter the virtual environment with
 
 
 ### Setting up your environment (Docker / Docker-Compose)
+
+As an alternative to setting up a virtual environment, you can also set up a
+development environment using Docker:
 
 1. Install Docker and Docker Compose on your system by following the instructions for your operating system from the official Docker website.
 2. Use `git clone` to clone [the Raster Loader repository](https://github.com/CartoDB/raster-loader)
