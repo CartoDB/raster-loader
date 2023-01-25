@@ -35,6 +35,17 @@ For example:
 
 This function returns `True` if the upload was successful.
 
+.. note::
+
+    To upload the raster to BigQuery in a quadbin format, set the ``output_quadbin``
+    parameter of ``rasterio_to_bigquery()`` to ``True``. This option requires a
+    ``GoogleMapsCompatible`` input raster. You can make your raster compatible by
+    converting it with GDAL:
+
+    .. code-block:: bash
+
+        gdalwarp your_raster.tif -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE your_compatible_raster.tif
+
 Inspecting a raster file on BigQuery
 ------------------------------------
 

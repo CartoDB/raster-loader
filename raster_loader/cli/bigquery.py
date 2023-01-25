@@ -39,7 +39,10 @@ def bigquery(args=None):
 )
 @click.option(
     "--output_quadbin",
-    help="Upload the raster to the BigQuery table in a quadbin format.",
+    help=(
+        "Upload the raster to the BigQuery table in a quadbin format "
+        "(input raster must be a GoogleMapsCompatible raster)."
+    ),
     default=False,
     is_flag=True,
 )
