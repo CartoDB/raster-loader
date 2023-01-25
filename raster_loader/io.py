@@ -320,8 +320,14 @@ def records_to_bigquery(
 
     data_df = pd.DataFrame(records)
 
+    job_config = bigquery.LoadJobConfig()
+
+    if "quadbin" in data_df.keys():
+        # Cluster table by quadbin
+        job_config.clustering_fields = ["quadbin"]
+
     return client.load_table_from_dataframe(
-        data_df, f"{project_id}.{dataset_id}.{table_id}"
+        data_df, f"{project_id}.{dataset_id}.{table_id}", job_config=job_config
     )
 
 
