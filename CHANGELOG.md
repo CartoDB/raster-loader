@@ -18,11 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 - Fixed swapped lon lat (#75)
-- Fixed bug performance regression (#77)
+- Fixed performance regression bug (#77)
 - Added small speed hack (#79)
 
 ### Documentation
-- Added docs badge and link to readme (#69)
+- Added docs badge and readthedocs link to readme (#69)
 - Updated contributor guide (#91)
 - Updated docs for quadbin (#93)
 
