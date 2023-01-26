@@ -16,7 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 fixtures_dir = os.path.join(HERE, "fixtures")
 
 
-should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False}
+should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
 
 
 def test_array_to_record():

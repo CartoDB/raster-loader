@@ -38,7 +38,7 @@ else:
 
 from raster_loader.utils import ask_yes_no_question
 
-should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False}
+should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
 
 
 def batched(iterable, n):
