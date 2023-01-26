@@ -38,7 +38,7 @@ else:
 
 from raster_loader.utils import ask_yes_no_question
 
-should_swap = {"=": sys.byteorder == "little", "<": True, ">": False, "|": False}
+should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
 
 
 def batched(iterable, n):
@@ -170,7 +170,7 @@ def record_to_array(record: dict, value_field: str = None) -> np.ndarray:
     try:
         dtype_str = value_field.split("_")[-1]
         dtype = np.dtype(dtype_str)
-        dtype = dtype.newbyteorder(">")
+        dtype = dtype.newbyteorder("<")
     except TypeError:
         raise TypeError(f"Invalid dtype: {dtype_str}")
 
