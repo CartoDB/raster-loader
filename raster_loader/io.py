@@ -170,7 +170,7 @@ def record_to_array(record: dict, value_field: str = None) -> np.ndarray:
     try:
         dtype_str = value_field.split("_")[-1]
         dtype = np.dtype(dtype_str)
-        dtype = dtype.newbyteorder(">")
+        dtype = dtype.newbyteorder("<")
     except TypeError:
         raise TypeError(f"Invalid dtype: {dtype_str}")
 
