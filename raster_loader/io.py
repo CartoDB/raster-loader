@@ -288,6 +288,7 @@ def rasterio_windows_to_records(
                     window.col_off,
                     crs=input_crs,
                     band=band,
+                    value_field=f"band_{band}"
                 )
 
             else:
@@ -299,6 +300,7 @@ def rasterio_windows_to_records(
                     window.col_off,
                     crs=input_crs,
                     band=band,
+                    value_field=f"band_{band}"
                 )
 
             yield rec
