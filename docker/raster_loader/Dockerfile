@@ -17,7 +17,6 @@ RUN apt-get update \
     python3-dev \
     postgresql-client \
     wget \
-    gdal-bin \
     python3-pip \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
