@@ -1,5 +1,6 @@
 import json
 import sys
+import math
 from itertools import islice
 from typing import Iterable
 
@@ -51,6 +52,52 @@ def batched(iterable, n):
         yield batch
 
 
+def coord_range(start_x, start_y, end_x, end_y, num_subdivisions):
+    return [
+        [
+            start_x + (end_x - start_x) * i / num_subdivisions,
+            start_y + (end_y - start_y) * i / num_subdivisions,
+        ]
+        for i in range(0, num_subdivisions + 1)
+    ]
+
+
+def polygon_wkt(coords):
+    return (
+        "POLYGON(("
+        + ",".join([" ".join([str(coord) for coord in point]) for point in coords])
+        + "))"
+    )
+
+
+def block_geog(
+    lon_NW,
+    lat_NW,
+    lon_NE,
+    lat_NE,
+    lon_SE,
+    lat_SE,
+    lon_SW,
+    lat_SW,
+    lon_subdivisions,
+    lat_subdivisions,
+):
+    # TODO: if bounds cross antimeridian, split into two polygons, return MULTIPOLYGON
+    # but that seems too hard since the bounds are not aligned in general with meridians
+    coords = (
+        coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions)
+        + coord_range(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions)
+        + coord_range(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions)
+        + coord_range(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions)
+    )
+    pp_coords = [pseudoplanar(p[0], p[1]) for p in coords]
+    return (polygon_wkt(coords), polygon_wkt(pp_coords))
+
+
+def pseudoplanar(x, y):
+    return [x / 32768.0, y / 32768.0]
+
+
 def array_to_record(
     arr: np.ndarray,
     transformer: pyproj.Transformer,
@@ -70,6 +117,22 @@ def array_to_record(
     )
     lon_SW, lat_SW = transformer.transform(
         *(geotransform * (col_off, row_off + height))
+    )
+
+    # use 1 subdivision in 64 pixels
+    lon_subdivisions = math.ceil(width / 64.0)
+    lat_subdivisions = math.ceil(height / 64.0)
+    geog, pp_geog = block_geog(
+        lon_NW,
+        lat_NW,
+        lon_NE,
+        lat_NE,
+        lon_SE,
+        lat_SE,
+        lon_SW,
+        lat_SW,
+        lon_subdivisions,
+        lat_subdivisions,
     )
 
     # required to append dtype to value field name for storage
@@ -100,6 +163,8 @@ def array_to_record(
         "lon_SE": lon_SE,
         "lat_SW": lat_SW,
         "lon_SW": lon_SW,
+        "geog": geog,
+        "pp_geog": pp_geog,
         "block_height": height,
         "block_width": width,
         "attrs": json.dumps(attrs),
@@ -276,6 +341,47 @@ def rasterio_windows_to_records(
             input_crs, "EPSG:4326", always_xy=True
         )
 
+        transformer = pyproj.Transformer.from_crs(
+            input_crs, "EPSG:4326", always_xy=True
+        )
+
+        # # compute whole bounds for metadata
+        # # FIXME: we could use raster_dataset.bounds(...) applying transformer to them
+        # width = raster_dataset.width
+        # height = raster_dataset.width
+        # lon_NW, lat_NW = transformer.transform(*(raster_dataset.transform * (0, 0)))
+        # lon_NE, lat_NE =
+        #     transformer.transform(*(raster_dataset.transform * (width, 0)))
+        # lon_SW, lat_SW = transformer.transform(
+        #     *(raster_dataset.transform * (0, height))
+        # )
+        # lon_SE, lat_SE = transformer.transform(
+        #     *(raster_dataset.transform * (width, height))
+        # )
+        # # use 1 subdivision in 64 pixels
+        # lon_subdivisions = math.ceil(width / 64.0)
+        # lat_subdivisions = math.ceil(height / 64.0)
+        # bounds_geog, bounds_pp_geog = block_geog(
+        #     lon_NW,
+        #     lat_NW,
+        #     lon_NE,
+        #     lat_NE,
+        #     lon_SE,
+        #     lat_SE,
+        #     lon_SW,
+        #     lat_SW,
+        #     lon_subdivisions,
+        #     lat_subdivisions,
+        # )
+        # # TODO: compute pixel area, bounds area
+        # metadata = {
+        #     # 'bands':
+        #     # 'raster_area':
+        #     "raster_boundary": bounds_geog,  # use GeoJSON?
+        #     # ...
+        # }
+        # # TODO: upload row with JSON metadata (NULL in other columns)
+
         for _, window in raster_dataset.block_windows():
 
             if output_quadbin:
@@ -288,7 +394,7 @@ def rasterio_windows_to_records(
                     window.col_off,
                     crs=input_crs,
                     band=band,
-                    value_field=f"band_{band}"
+                    value_field=f"band_{band}",
                 )
 
             else:
@@ -300,7 +406,7 @@ def rasterio_windows_to_records(
                     window.col_off,
                     crs=input_crs,
                     band=band,
-                    value_field=f"band_{band}"
+                    value_field=f"band_{band}",
                 )
 
             yield rec
