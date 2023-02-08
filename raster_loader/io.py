@@ -111,15 +111,20 @@ def pseudoplanar(x, y):
     return [x / 32768.0, y / 32768.0]
 
 
+def band_field_name(band: int, band_type: str, base_name: str = "band") -> str:
+    return "_".join([base_name, str(band), band_type])
+
+
 def array_to_record(
     arr: np.ndarray,
+    band: int,
+    value_field: str,
+    dtype_str: str,
     transformer: pyproj.Transformer,
     geotransform: Affine,
     row_off: int = 0,
     col_off: int = 0,
-    value_field: str = "band_1",
     crs: str = "EPSG:4326",
-    band: int = 1,
     pseudo_planar: bool = False,
 ) -> dict:
     height, width = arr.shape
@@ -149,10 +154,6 @@ def array_to_record(
         lat_subdivisions,
         pseudo_planar,
     )
-
-    # required to append dtype to value field name for storage
-    dtype_str = str(arr.dtype)
-    value_field = "_".join([value_field, dtype_str])
 
     attrs = {
         "band": band,
@@ -190,14 +191,15 @@ def array_to_record(
 
 def array_to_quadbin_record(
     arr: np.ndarray,
+    band: int,
+    value_field: str,
+    dtype_str: str,
     transformer: pyproj.Transformer,
     geotransform: Affine,
     resolution: int,
     row_off: int = 0,
     col_off: int = 0,
-    value_field: str = "band_1",
     crs: str = "EPSG:4326",
-    band: int = 1,
 ) -> dict:
     """Requires quadbin."""
     if not _has_quadbin:  # pragma: no cover
@@ -208,10 +210,6 @@ def array_to_quadbin_record(
     x, y = transformer.transform(
         *(geotransform * (col_off + width * 0.5, row_off + height * 0.5))
     )
-
-    # required to append dtype to value field name for storage
-    dtype_str = str(arr.dtype)
-    value_field = "_".join([value_field, dtype_str])
 
     attrs = {
         "band": band,
@@ -304,6 +302,13 @@ def import_error_quadbin():  # pragma: no cover
         "Alternatively, run `pip install quadbin` to install from pypi."
     )
     raise ImportError(msg)
+
+
+def raster_band_type(raster_dataset: rasterio.io.DatasetReader, band: int) -> str:
+    types = {
+        i: dtype for i, dtype in zip(raster_dataset.indexes, raster_dataset.dtypes)
+    }
+    return str(types[band])
 
 
 def rasterio_windows_to_records(
@@ -400,32 +405,36 @@ def rasterio_windows_to_records(
         #     # ...
         # }
         # # TODO: upload row with JSON metadata (NULL in other columns)
+        band_type = raster_band_type(raster_dataset, band)
+        band_name = band_field_name(band, band_type)
 
         for _, window in raster_dataset.block_windows():
 
             if output_quadbin:
                 rec = array_to_quadbin_record(
                     raster_dataset.read(band, window=window),
+                    band,
+                    band_name,
+                    str(band_type),
                     transformer,
                     raster_dataset.transform,
                     resolution,
                     window.row_off,
                     window.col_off,
                     crs=input_crs,
-                    band=band,
-                    value_field=f"band_{band}",
                 )
 
             else:
                 rec = array_to_record(
                     raster_dataset.read(band, window=window),
+                    band,
+                    band_name,
+                    str(band_type),
                     transformer,
                     raster_dataset.transform,
                     window.row_off,
                     window.col_off,
                     crs=input_crs,
-                    band=band,
-                    value_field=f"band_{band}",
                     pseudo_planar=pseudo_planar,
                 )
 
@@ -676,12 +685,12 @@ def rasterio_to_bigquery(
                 delete_bigquery_table(table_id, dataset_id, project_id, client)
 
             elif not check_if_bigquery_table_is_empty(dataset_id, table_id, client):
-                append_recors = ask_yes_no_question(
+                append_records = ask_yes_no_question(
                     f"Table {table_id} already exists in dataset {dataset_id} "
                     "and is not empty. Append records? [yes/no] "
                 )
 
-                if not append_recors:
+                if not append_records:
                     exit()
         if chunk_size is None:
             job = records_to_bigquery(
