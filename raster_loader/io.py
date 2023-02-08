@@ -113,10 +113,10 @@ def block_geog(
     format="wkt",
 ):
     coords = (
-        coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions)
-        + coord_range(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions)
-        + coord_range(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions)
-        + coord_range(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions)
+        coord_range(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions)
+        + coord_range(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions)
+        + coord_range(lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions)
+        + coord_range(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions)
     )
     if pseudo_planar:
         coords = [pseudoplanar(p[0], p[1]) for p in coords]
