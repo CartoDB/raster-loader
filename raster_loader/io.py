@@ -76,12 +76,25 @@ def norm_coords(coords):
     return [[norm_lon(point[0]), point[1]] for point in coords]
 
 
+def polygon_geography(coords, format):
+    if format == "wkt":
+        return polygon_wkt(coords)
+    elif format == "geojson":
+        return polygon_geojson(coords)
+    else:
+        raise ValueError(f"Invalid geography format {format}")
+
+
 def polygon_wkt(coords):
     return (
         "POLYGON(("
         + ",".join([" ".join([str(coord) for coord in point]) for point in coords])
         + "))"
     )
+
+
+def polygon_geojson(coords):
+    return {"type": "Polygon", "coordinates": [coords]}
 
 
 def block_geog(
@@ -96,6 +109,7 @@ def block_geog(
     lon_subdivisions,
     lat_subdivisions,
     pseudo_planar,
+    format="wkt",
 ):
     coords = (
         coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions)
@@ -107,7 +121,7 @@ def block_geog(
         coords = [pseudoplanar(p[0], p[1]) for p in coords]
     else:
         coords = norm_coords(coords)
-    return polygon_wkt(coords)
+    return polygon_geography(coords, format)
 
 
 def pseudoplanar(x, y):
@@ -329,7 +343,7 @@ def table_columns(quadbin: bool, bands: List[str]) -> List[Tuple[str, str, str]]
             ("lat_SE", "FLOAT", "NULLABLE"),
             ("lon_SW", "FLOAT", "NULLABLE"),
             ("lat_SW", "FLOAT", "NULLABLE"),
-            ("geog", "GEOGRAPHY", "REQUIRED"),
+            ("geog", "GEOGRAPHY", "NULLABLE"),
         ]
     columns += [
         ("block_height", "INTEGER", "NULLABLE"),
@@ -341,10 +355,41 @@ def table_columns(quadbin: bool, bands: List[str]) -> List[Tuple[str, str, str]]
     return columns
 
 
+def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
+    # compute whole bounds for metadata
+    # FIXME: we could use raster_dataset.bounds(...) applying transformer to them
+    width = raster_dataset.width
+    height = raster_dataset.width
+    lon_NW, lat_NW = transformer.transform(*(raster_dataset.transform * (0, 0)))
+    lon_NE, lat_NE = transformer.transform(*(raster_dataset.transform * (width, 0)))
+    lon_SW, lat_SW = transformer.transform(*(raster_dataset.transform * (0, height)))
+    lon_SE, lat_SE = transformer.transform(
+        *(raster_dataset.transform * (width, height))
+    )
+    # use 1 subdivision in 64 pixels
+    lon_subdivisions = math.ceil(width / 64.0)
+    lat_subdivisions = math.ceil(height / 64.0)
+    return block_geog(
+        lon_NW,
+        lat_NW,
+        lon_NE,
+        lat_NE,
+        lon_SE,
+        lat_SE,
+        lon_SW,
+        lat_SW,
+        lon_subdivisions,
+        lat_subdivisions,
+        pseudo_planar,
+        format,
+    )
+
+
 def rasterio_windows_to_records(
     file_path: str,
     create_table: Callable,
-    band: int = 1,
+    band: int,
+    metadata: dict,
     input_crs: str = None,
     output_quadbin: bool = False,
     pseudo_planar: bool = False,
@@ -399,48 +444,21 @@ def rasterio_windows_to_records(
             input_crs, "EPSG:4326", always_xy=True
         )
 
-        # # compute whole bounds for metadata
-        # # FIXME: we could use raster_dataset.bounds(...) applying transformer to them
-        # width = raster_dataset.width
-        # height = raster_dataset.width
-        # lon_NW, lat_NW = transformer.transform(*(raster_dataset.transform * (0, 0)))
-        # lon_NE, lat_NE =
-        #     transformer.transform(*(raster_dataset.transform * (width, 0)))
-        # lon_SW, lat_SW = transformer.transform(
-        #     *(raster_dataset.transform * (0, height))
-        # )
-        # lon_SE, lat_SE = transformer.transform(
-        #     *(raster_dataset.transform * (width, height))
-        # )
-        # # use 1 subdivision in 64 pixels
-        # lon_subdivisions = math.ceil(width / 64.0)
-        # lat_subdivisions = math.ceil(height / 64.0)
-        # bounds_geog = block_geog(
-        #     lon_NW,
-        #     lat_NW,
-        #     lon_NE,
-        #     lat_NE,
-        #     lon_SE,
-        #     lat_SE,
-        #     lon_SW,
-        #     lat_SW,
-        #     lon_subdivisions,
-        #     lat_subdivisions,
-        #     pseudo_planar,
-        # )
-        # # TODO: compute pixel area, bounds area
-        # metadata = {
-        #     # 'bands':
-        #     # 'raster_area':
-        #     "raster_boundary": bounds_geog,  # use GeoJSON?
-        #     # ...
-        # }
-        # # TODO: upload row with JSON metadata (NULL in other columns)
         band_type = raster_band_type(raster_dataset, band)
         band_name = band_field_name(band, band_type)
         columns = table_columns(output_quadbin, [band_name])
         clustering = ["quadbin"] if output_quadbin else ["geog"]
         create_table(columns, clustering)
+
+        # compute whole bounds for metadata
+        bounds_geog = raster_bounds(
+            raster_dataset, transformer, pseudo_planar, "geojson"
+        )
+
+        # TODO: compute pixel area, bounds area, ...
+        metadata["bands"] = [band_name]
+        metadata["raster_boundary"] = bounds_geog
+        # TODO: accumulate per-block info
 
         for _, window in raster_dataset.block_windows():
 
@@ -550,6 +568,7 @@ def create_bigquery_table(
     client=None,
 ) -> bool:  # pragma: no cover
     """Requires bigquery."""
+
     if not _has_bigquery:  # pragma: no cover
         import_error_bigquery()
 
@@ -564,6 +583,51 @@ def create_bigquery_table(
     table = bigquery.Table(f"{project_id}.{dataset_id}.{table_id}", schema=schema)
     table.clustering_fields = clustering
     client.create_table(table)
+
+    return True
+
+
+def sql_quote(value: any) -> str:
+    if isinstance(value, str):
+        return f"'''{value}'''"
+    return str(value)
+
+
+def insert_in_bigquery_table(
+    rows,
+    table_id: str,
+    dataset_id: str,
+    project_id: str,
+    client=None,
+) -> bool:
+    """Requires bigquery."""
+
+    if not _has_bigquery:  # pragma: no cover
+        import_error_bigquery()
+
+    if client is None:
+        client = bigquery.Client(project=project_id)
+
+    # Note that client.insert_rows_json(f"{project_id}.{dataset_id}.{table_id}", rows)
+    # is prone to race conditions when a table with the same name
+    # has been recently deleted (as we do for overwrite)
+    # see https://github.com/googleapis/python-bigquery/issues/1396
+    # So we'll run an INSERT query instead.
+
+    columns = rows[0].keys()
+    values = ",".join(
+        [
+            "(" + ",".join([sql_quote(row[column]) for column in columns]) + ")"
+            for row in rows
+        ]
+    )
+    job = client.query(
+        f"""
+        INSERT INTO `{project_id}.{dataset_id}.{table_id}`({','.join(columns)})
+        VALUES {values}
+        """
+    )
+    job.result()
 
     return True
 
@@ -760,8 +824,17 @@ def rasterio_to_bigquery(
                     table_id, dataset_id, project_id, columns, clustering, client
                 )
 
+        metadata = {}
+
         records_gen = rasterio_windows_to_records(
-            file_path, table_creator, band, input_crs, output_quadbin, pseudo_planar
+            file_path,
+            table_creator,
+            # metadata_writer,
+            band,
+            metadata,
+            input_crs,
+            output_quadbin,
+            pseudo_planar,
         )
 
         if chunk_size is None:
@@ -792,8 +865,18 @@ def rasterio_to_bigquery(
                     )
                     pbar.update(chunk_size)
 
-            # raise error if the last job went wrong (blocking call)
-            jobs.pop().result()
+            # raise error if something went wrong (blocking call)
+            while jobs:
+                jobs.pop().result()
+
+        # Write metadata
+        insert_in_bigquery_table(
+            [{"attrs": json.dumps(metadata)}],
+            table_id,
+            dataset_id,
+            project_id,
+            client=client,
+        )
 
     except KeyboardInterrupt:
         delete_table = ask_yes_no_question(
