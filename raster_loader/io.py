@@ -53,6 +53,9 @@ def batched(iterable, n):
 
 
 def coord_range(start_x, start_y, end_x, end_y, num_subdivisions):
+    if math.fabs(end_x - start_x) > 180.0:
+        end_x = math.fmod(end_x + 360.0, 360.0)
+        start_x = math.fmod(start_x + 360.0, 360.0)
     return [
         [
             start_x + (end_x - start_x) * i / num_subdivisions,
@@ -60,6 +63,14 @@ def coord_range(start_x, start_y, end_x, end_y, num_subdivisions):
         ]
         for i in range(0, num_subdivisions + 1)
     ]
+
+
+def norm_lon(x):
+    return x - 360.0 if x > 180.0 else x + 360.0 if x <= -180.0 else x
+
+
+def norm_coords(coords):
+    return [[norm_lon(point[0]), point[1]] for point in coords]
 
 
 def polygon_wkt(coords):
@@ -82,8 +93,6 @@ def block_geog(
     lon_subdivisions,
     lat_subdivisions,
 ):
-    # TODO: if bounds cross antimeridian, split into two polygons, return MULTIPOLYGON
-    # but that seems too hard since the bounds are not aligned in general with meridians
     coords = (
         coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions)
         + coord_range(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions)
@@ -91,7 +100,7 @@ def block_geog(
         + coord_range(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions)
     )
     pp_coords = [pseudoplanar(p[0], p[1]) for p in coords]
-    return (polygon_wkt(coords), polygon_wkt(pp_coords))
+    return (polygon_wkt(norm_coords(coords)), polygon_wkt(pp_coords))
 
 
 def pseudoplanar(x, y):
