@@ -3,6 +3,9 @@ import sys
 import math
 from itertools import islice
 from typing import Iterable
+from typing import Callable
+from typing import List
+from typing import Tuple
 
 from affine import Affine
 import numpy as np
@@ -311,8 +314,36 @@ def raster_band_type(raster_dataset: rasterio.io.DatasetReader, band: int) -> st
     return str(types[band])
 
 
+def table_columns(quadbin: bool, bands: List[str]) -> List[Tuple[str, str, str]]:
+    if quadbin:
+        columns = [
+            ("quadbin", "INTEGER", "NULLABLE"),
+        ]
+    else:
+        columns = [
+            ("lon_NW", "FLOAT", "NULLABLE"),
+            ("lat_NW", "FLOAT", "NULLABLE"),
+            ("lon_NE", "FLOAT", "NULLABLE"),
+            ("lat_NE", "FLOAT", "NULLABLE"),
+            ("lon_SE", "FLOAT", "NULLABLE"),
+            ("lat_SE", "FLOAT", "NULLABLE"),
+            ("lon_SW", "FLOAT", "NULLABLE"),
+            ("lat_SW", "FLOAT", "NULLABLE"),
+            ("geog", "GEOGRAPHY", "REQUIRED"),
+        ]
+    columns += [
+        ("block_height", "INTEGER", "NULLABLE"),
+        ("block_width", "INTEGER", "NULLABLE"),
+        ("attrs", "STRING", "REQUIRED"),
+        # TODO: upgrade BQ client version and use 'JSON' type for 'attrs'
+    ]
+    columns += [(band_name, "BYTES", "NULLABLE") for band_name in bands]
+    return columns
+
+
 def rasterio_windows_to_records(
     file_path: str,
+    create_table: Callable,
     band: int = 1,
     input_crs: str = None,
     output_quadbin: bool = False,
@@ -407,6 +438,9 @@ def rasterio_windows_to_records(
         # # TODO: upload row with JSON metadata (NULL in other columns)
         band_type = raster_band_type(raster_dataset, band)
         band_name = band_field_name(band, band_type)
+        columns = table_columns(output_quadbin, [band_name])
+        clustering = ["quadbin"] if output_quadbin else ["geog"]
+        create_table(columns, clustering)
 
         for _, window in raster_dataset.block_windows():
 
@@ -505,6 +539,33 @@ def bigquery_to_records(
     query = f"SELECT * FROM `{project_id}.{dataset_id}.{table_id}` LIMIT {limit}"
 
     return client.query(query).result().to_dataframe()
+
+
+def create_bigquery_table(
+    table_id: str,
+    dataset_id: str,
+    project_id: str,
+    columns: List[Tuple[str, str, str]],
+    clustering: List[str],
+    client=None,
+) -> bool:  # pragma: no cover
+    """Requires bigquery."""
+    if not _has_bigquery:  # pragma: no cover
+        import_error_bigquery()
+
+    if client is None:
+        client = bigquery.Client(project=project_id)
+
+    schema = [
+        bigquery.SchemaField(column_name, column_type, mode=column_mode)
+        for [column_name, column_type, column_mode] in columns
+    ]
+
+    table = bigquery.Table(f"{project_id}.{dataset_id}.{table_id}", schema=schema)
+    table.clustering_fields = clustering
+    client.create_table(table)
+
+    return True
 
 
 def delete_bigquery_table(
@@ -672,17 +733,15 @@ def rasterio_to_bigquery(
     """Write a raster file to a BigQuery table."""
     print("Loading raster file to BigQuery...")
 
-    records_gen = rasterio_windows_to_records(
-        file_path, band, input_crs, output_quadbin, pseudo_planar
-    )
-
     if client is None:  # pragma: no cover
         client = bigquery.Client(project=project_id)
 
     try:
+        create_table = False
         if check_if_bigquery_table_exists(dataset_id, table_id, client):
             if overwrite:
                 delete_bigquery_table(table_id, dataset_id, project_id, client)
+                create_table = True
 
             elif not check_if_bigquery_table_is_empty(dataset_id, table_id, client):
                 append_records = ask_yes_no_question(
@@ -692,6 +751,19 @@ def rasterio_to_bigquery(
 
                 if not append_records:
                     exit()
+        else:
+            create_table = True
+
+        def table_creator(columns, clustering):
+            if create_table:
+                create_bigquery_table(
+                    table_id, dataset_id, project_id, columns, clustering, client
+                )
+
+        records_gen = rasterio_windows_to_records(
+            file_path, table_creator, band, input_crs, output_quadbin, pseudo_planar
+        )
+
         if chunk_size is None:
             job = records_to_bigquery(
                 records_gen, table_id, dataset_id, project_id, client=client
