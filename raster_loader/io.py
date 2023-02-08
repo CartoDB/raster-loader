@@ -95,7 +95,7 @@ def polygon_wkt(coords):
 
 
 def polygon_geojson(coords):
-    return {"type": "Polygon", "coordinates": [coords]}
+    return json.dumps({"type": "Polygon", "coordinates": [coords]})
 
 
 def block_geog(
@@ -459,7 +459,7 @@ def rasterio_windows_to_records(
         # FIXME: any metadata changes needed for quadbin output?
         # Missing metadata:
         # raster_area (area of bounds_geog) can be computed in BQ as
-        #   SELECT ST_AREA(ST_FROMGEOJSON(JSON_VALUE(attrs, '$.raster_boundary')))
+        #   SELECT ST_AREA(ST_GEOGFROMGEOJSON(JSON_VALUE(attrs, '$.raster_boundary')))
         #   FROM raster_table WHERE geog IS NULL
         # avg_pixel_area (average pixel area) can be computed in BQ as
         #   SELECT AVG(ST_AREA(geog)/(block_height*block_width))
@@ -618,6 +618,7 @@ def create_bigquery_table(
 
 def sql_quote(value: any) -> str:
     if isinstance(value, str):
+        value = value.replace("\\", "\\\\")
         return f"'''{value}'''"
     return str(value)
 
