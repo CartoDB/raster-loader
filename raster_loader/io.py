@@ -458,7 +458,12 @@ def rasterio_windows_to_records(
         # TODO: compute pixel area, bounds area, ...
         metadata["bands"] = [band_name]
         metadata["raster_boundary"] = bounds_geog
+        metadata["width_in_pixel"] = raster_dataset.width
+        metadata["height_in_pixel"] = raster_dataset.height
+        metadata["nb_pixels"] = metadata["width_in_pixel"] * metadata["height_in_pixel"]
         # TODO: accumulate per-block info
+
+        metadata["nb_pixel_blocks"] = metadata.get("nb_pixel_blocks", 0)
 
         for _, window in raster_dataset.block_windows():
 
@@ -490,6 +495,7 @@ def rasterio_windows_to_records(
                     pseudo_planar=pseudo_planar,
                 )
 
+            metadata["nb_pixel_blocks"] += 1
             yield rec
 
 
@@ -837,6 +843,9 @@ def rasterio_to_bigquery(
             pseudo_planar,
         )
 
+        total_blocks = get_number_of_blocks(file_path)
+        metadata["total_pixel_blocks"] = total_blocks
+
         if chunk_size is None:
             job = records_to_bigquery(
                 records_gen, table_id, dataset_id, project_id, client=client
@@ -845,8 +854,6 @@ def rasterio_to_bigquery(
             job.result()
         else:
             from tqdm.auto import tqdm
-
-            total_blocks = get_number_of_blocks(file_path)
 
             jobs = []
             with tqdm(total=total_blocks) as pbar:
