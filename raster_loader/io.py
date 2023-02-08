@@ -92,6 +92,7 @@ def block_geog(
     lat_SW,
     lon_subdivisions,
     lat_subdivisions,
+    pseudo_planar,
 ):
     coords = (
         coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions)
@@ -99,8 +100,11 @@ def block_geog(
         + coord_range(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions)
         + coord_range(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions)
     )
-    pp_coords = [pseudoplanar(p[0], p[1]) for p in coords]
-    return (polygon_wkt(norm_coords(coords)), polygon_wkt(pp_coords))
+    if pseudo_planar:
+        coords = [pseudoplanar(p[0], p[1]) for p in coords]
+    else:
+        coords = norm_coords(coords)
+    return polygon_wkt(coords)
 
 
 def pseudoplanar(x, y):
@@ -116,6 +120,7 @@ def array_to_record(
     value_field: str = "band_1",
     crs: str = "EPSG:4326",
     band: int = 1,
+    pseudo_planar: bool = False,
 ) -> dict:
     height, width = arr.shape
 
@@ -131,7 +136,7 @@ def array_to_record(
     # use 1 subdivision in 64 pixels
     lon_subdivisions = math.ceil(width / 64.0)
     lat_subdivisions = math.ceil(height / 64.0)
-    geog, pp_geog = block_geog(
+    geog = block_geog(
         lon_NW,
         lat_NW,
         lon_NE,
@@ -142,6 +147,7 @@ def array_to_record(
         lat_SW,
         lon_subdivisions,
         lat_subdivisions,
+        pseudo_planar,
     )
 
     # required to append dtype to value field name for storage
@@ -173,7 +179,6 @@ def array_to_record(
         "lat_SW": lat_SW,
         "lon_SW": lon_SW,
         "geog": geog,
-        "pp_geog": pp_geog,
         "block_height": height,
         "block_width": width,
         "attrs": json.dumps(attrs),
@@ -302,7 +307,11 @@ def import_error_quadbin():  # pragma: no cover
 
 
 def rasterio_windows_to_records(
-    file_path: str, band: int = 1, input_crs: str = None, output_quadbin: bool = False
+    file_path: str,
+    band: int = 1,
+    input_crs: str = None,
+    output_quadbin: bool = False,
+    pseudo_planar: bool = False,
 ) -> Iterable:
     if output_quadbin:
         """Open a raster file with rio-cogeo."""
@@ -370,7 +379,7 @@ def rasterio_windows_to_records(
         # # use 1 subdivision in 64 pixels
         # lon_subdivisions = math.ceil(width / 64.0)
         # lat_subdivisions = math.ceil(height / 64.0)
-        # bounds_geog, bounds_pp_geog = block_geog(
+        # bounds_geog = block_geog(
         #     lon_NW,
         #     lat_NW,
         #     lon_NE,
@@ -381,6 +390,7 @@ def rasterio_windows_to_records(
         #     lat_SW,
         #     lon_subdivisions,
         #     lat_subdivisions,
+        #     pseudo_planar,
         # )
         # # TODO: compute pixel area, bounds area
         # metadata = {
@@ -416,6 +426,7 @@ def rasterio_windows_to_records(
                     crs=input_crs,
                     band=band,
                     value_field=f"band_{band}",
+                    pseudo_planar=pseudo_planar,
                 )
 
             yield rec
@@ -599,6 +610,7 @@ def rasterio_to_bigquery(
     client=None,
     overwrite: bool = False,
     output_quadbin: bool = False,
+    pseudo_planar: bool = False,
 ) -> bool:
     """Write a rasterio-compatible raster file to a BigQuery table.
     Compatible file formats include TIFF and GeoTIFF. See
@@ -632,6 +644,8 @@ def rasterio_to_bigquery(
     output_quadbin : bool, optional
         Upload the raster to the BigQuery table in a quadbin format (input raster must
         be a GoogleMapsCompatible raster)
+    pseudo_planar : bool, optional
+        Use pseudo-planar BigQuery geographies (coordinates are scaled down by 1/32768)
 
     Returns
     -------
@@ -650,7 +664,7 @@ def rasterio_to_bigquery(
     print("Loading raster file to BigQuery...")
 
     records_gen = rasterio_windows_to_records(
-        file_path, band, input_crs, output_quadbin
+        file_path, band, input_crs, output_quadbin, pseudo_planar
     )
 
     if client is None:  # pragma: no cover
