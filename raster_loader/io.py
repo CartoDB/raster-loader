@@ -56,6 +56,7 @@ def batched(iterable, n):
 
 
 def coord_range(start_x, start_y, end_x, end_y, num_subdivisions):
+    # FIXME: what about global rasters (360-wide stripes)?
     if math.fabs(end_x - start_x) > 180.0:
         end_x = math.fmod(end_x + 360.0, 360.0)
         start_x = math.fmod(start_x + 360.0, 360.0)
@@ -455,15 +456,26 @@ def rasterio_windows_to_records(
             raster_dataset, transformer, pseudo_planar, "geojson"
         )
 
-        # TODO: compute pixel area, bounds area, ...
+        # FIXME: any metadata changes needed for quadbin output?
+        # Missing metadata:
+        # raster_area (area of bounds_geog) can be computed in BQ as
+        #   SELECT ST_AREA(ST_FROMGEOJSON(JSON_VALUE(attrs, '$.raster_boundary')))
+        #   FROM raster_table WHERE geog IS NULL
+        # avg_pixel_area (average pixel area) can be computed in BQ as
+        #   SELECT AVG(ST_AREA(geog)/(block_height*block_width))
+        #   FROM raster_table WHERE geog IS NOT NULL
         metadata["bands"] = [band_name]
         metadata["raster_boundary"] = bounds_geog
         metadata["width_in_pixel"] = raster_dataset.width
         metadata["height_in_pixel"] = raster_dataset.height
-        metadata["nb_pixels"] = metadata["width_in_pixel"] * metadata["height_in_pixel"]
-        # TODO: accumulate per-block info
-
-        metadata["nb_pixel_blocks"] = metadata.get("nb_pixel_blocks", 0)
+        metadata["total_pixels"] = (
+            metadata["width_in_pixel"] * metadata["height_in_pixel"]
+        )
+        metadata["nb_pixel_blocks"] = 0
+        metadata["nb_pixel"] = 0
+        metadata["max_pixel_block_height_in_pixel"] = 0
+        metadata["max_pixel_block_width_in_pixel"] = 0
+        metadata["irregular_pixel_block_shape"] = False
 
         for _, window in raster_dataset.block_windows():
 
@@ -496,6 +508,17 @@ def rasterio_windows_to_records(
                 )
 
             metadata["nb_pixel_blocks"] += 1
+            metadata["nb_pixel"] += window.width * window.height
+            if metadata["max_pixel_block_height_in_pixel"] < window.height:
+                metadata["max_pixel_block_height_in_pixel"] = window.height
+            if metadata["max_pixel_block_width_in_pixel"] < window.width:
+                metadata["max_pixel_block_width_in_pixel"] = window.width
+            if (
+                window.height != metadata["max_pixel_block_height_in_pixel"]
+                or window.width != metadata["max_pixel_block_width_in_pixel"]
+            ):
+                metadata["irregular_pixel_block_shape"] = True
+
             yield rec
 
 
@@ -844,7 +867,7 @@ def rasterio_to_bigquery(
         )
 
         total_blocks = get_number_of_blocks(file_path)
-        metadata["total_pixel_blocks"] = total_blocks
+        metadata["total_pixel_blocks"] = total_blocks  # FIXME: for debugging purposes
 
         if chunk_size is None:
             job = records_to_bigquery(
