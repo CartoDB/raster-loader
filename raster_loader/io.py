@@ -467,13 +467,6 @@ def rasterio_windows_to_records(
             raster_dataset, transformer, pseudo_planar, "geojson"
         )
 
-        # Missing metadata:
-        # raster_area (area of bounds_geog) can be computed in BQ as
-        #   SELECT ST_AREA(ST_GEOGFROMGEOJSON(JSON_VALUE(attrs, '$.raster_boundary')))
-        #   FROM raster_table WHERE geog IS NULL
-        # avg_pixel_area (average pixel area) can be computed in BQ as
-        #   SELECT AVG(ST_AREA(geog)/(block_height*block_width))
-        #   FROM raster_table WHERE geog IS NOT NULL
         metadata["bands"] = [band_name]
         metadata["raster_boundary"] = bounds_geog
         metadata["width_in_pixel"] = raster_dataset.width
