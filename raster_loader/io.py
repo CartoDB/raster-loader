@@ -109,19 +109,24 @@ def block_geog(
     lat_SW,
     lon_subdivisions,
     lat_subdivisions,
-    pseudo_planar,
+    orientation=1,
+    pseudo_planar=False,
     format="wkt",
 ):
-    # FIXME: check if we need to modify the orientation based on the raster;
-    # if so, as a first approximation,
-    # (assuming CRSs will not vary in orientation),
-    # we could just look at the affine transformation (its determinant)
-    coords = (
-        coord_range(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions)
-        + coord_range(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions)
-        + coord_range(lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions)
-        + coord_range(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions)
-    )
+    if orientation < 0:
+        coords = (
+            coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions)
+            + coord_range(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions)
+            + coord_range(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions)
+            + coord_range(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions)
+        )
+    else:
+        coords = (
+            coord_range(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions)
+            + coord_range(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions)
+            + coord_range(lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions)
+            + coord_range(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions)
+        )
     if pseudo_planar:
         coords = [pseudoplanar(p[0], p[1]) for p in coords]
     else:
@@ -147,6 +152,7 @@ def array_to_record(
     row_off: int = 0,
     col_off: int = 0,
     crs: str = "EPSG:4326",
+    orientation=1,
     pseudo_planar: bool = False,
 ) -> dict:
     height, width = arr.shape
@@ -174,6 +180,7 @@ def array_to_record(
         lat_SW,
         lon_subdivisions,
         lat_subdivisions,
+        orientation,
         pseudo_planar,
     )
 
@@ -385,6 +392,7 @@ def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
         lat_SW,
         lon_subdivisions,
         lat_subdivisions,
+        raster_orientation(raster_dataset),
         pseudo_planar,
         format,
     )
@@ -444,10 +452,7 @@ def rasterio_windows_to_records(
         transformer = pyproj.Transformer.from_crs(
             input_crs, "EPSG:4326", always_xy=True
         )
-
-        transformer = pyproj.Transformer.from_crs(
-            input_crs, "EPSG:4326", always_xy=True
-        )
+        orientation = raster_orientation(raster_dataset)
 
         band_type = raster_band_type(raster_dataset, band)
         band_name = band_field_name(band, band_type)
@@ -508,6 +513,7 @@ def rasterio_windows_to_records(
                     window.row_off,
                     window.col_off,
                     crs=input_crs,
+                    orientation=orientation,
                     pseudo_planar=pseudo_planar,
                 )
 
@@ -765,6 +771,20 @@ def check_if_bigquery_table_is_empty(
     table_ref = client.dataset(dataset_id).table(table_id)
     table = client.get_table(table_ref)
     return table.num_rows == 0
+
+
+def raster_orientation(raster_dataset):
+    raster_crs = raster_dataset.crs.to_string()
+    transformer = pyproj.Transformer.from_crs(raster_crs, "EPSG:4326", always_xy=True)
+    x0, y0 = transformer.transform(*(raster_dataset.transform * (0, 0)))
+    x1, y1 = transformer.transform(*(raster_dataset.transform * (0, 1)))
+    x2, y2 = transformer.transform(*(raster_dataset.transform * (1, 0)))
+    b11 = x1 - x0
+    b12 = y1 - y0
+    b21 = x2 - x0
+    b22 = y2 - y0
+    d = b11 * b22 - b12 * b21
+    return -1 if d < 0 else 1
 
 
 def rasterio_to_bigquery(
