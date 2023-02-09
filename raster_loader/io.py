@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 import pyproj
 
+from raster_loader.quadbinarea import quadbin_area_zy
+
 try:
     import rio_cogeo
 except ImportError:  # pragma: no cover
@@ -248,6 +250,7 @@ def array_to_quadbin_record(
         "gdal_transform": geotransform.to_gdal(),
         "row_off": row_off,
         "col_off": col_off,
+        "block_area": quadbin_area_zy(resolution, y),
     }
 
     if should_swap[arr.dtype.byteorder]:
@@ -464,7 +467,6 @@ def rasterio_windows_to_records(
             raster_dataset, transformer, pseudo_planar, "geojson"
         )
 
-        # FIXME: any metadata changes needed for quadbin output?
         # Missing metadata:
         # raster_area (area of bounds_geog) can be computed in BQ as
         #   SELECT ST_AREA(ST_GEOGFROMGEOJSON(JSON_VALUE(attrs, '$.raster_boundary')))
@@ -484,6 +486,9 @@ def rasterio_windows_to_records(
         metadata["max_pixel_block_height_in_pixel"] = 0
         metadata["max_pixel_block_width_in_pixel"] = 0
         metadata["irregular_pixel_block_shape"] = False
+
+        block_columns = set()
+        block_rows = set()
 
         for _, window in raster_dataset.block_windows():
 
@@ -527,6 +532,14 @@ def rasterio_windows_to_records(
                 or window.width != metadata["max_pixel_block_width_in_pixel"]
             ):
                 metadata["irregular_pixel_block_shape"] = True
+            block_columns.add(window.col_off)
+            block_rows.add(window.row_off)
+            metadata["width_in_pixel_block"] = len(block_columns)
+            metadata["height_in_pixel_block"] = len(block_rows)
+            metadata["sparse_pixel_block"] = (
+                metadata["nb_pixel_blocks"]
+                < metadata["width_in_pixel_block"] * metadata["height_in_pixel_block"]
+            )
 
             yield rec
 
@@ -772,6 +785,23 @@ def check_if_bigquery_table_is_empty(
     return table.num_rows == 0
 
 
+def run_bigquery_query(
+    query: str,
+    project_id: str,
+    client=None,
+) -> bool:
+    """Requires bigquery."""
+
+    if not _has_bigquery:  # pragma: no cover
+        import_error_bigquery()
+
+    if client is None:
+        client = bigquery.Client(project=project_id)
+
+    job = client.query(query)
+    return job.result()
+
+
 def raster_orientation(raster_dataset):
     raster_crs = raster_dataset.crs.to_string()
     transformer = pyproj.Transformer.from_crs(raster_crs, "EPSG:4326", always_xy=True)
@@ -932,6 +962,13 @@ def rasterio_to_bigquery(
             client=client,
         )
 
+        # Postprocess: compute metadata areas
+        run_bigquery_query(
+            inject_areas_query(f"{project_id}.{dataset_id}.{table_id}", output_quadbin),
+            project_id,
+            client=client,
+        )
+
     except KeyboardInterrupt:
         delete_table = ask_yes_no_question(
             "Would you like to delete the partially uploaded table? [yes/no] "
@@ -1016,3 +1053,45 @@ def get_block_dims(file_path: str) -> tuple:
 
     with rasterio.open(file_path) as raster_dataset:
         return raster_dataset.block_shapes[0]
+
+
+def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
+    location_column = "quadbin" if is_quadbin else "geog"
+    area_query = f"""
+        SELECT
+          ST_AREA(ST_GEOGFROMGEOJSON(JSON_VALUE(attrs, '$.raster_boundary')))
+        FROM `{raster_table}`
+        WHERE {location_column} IS NULL
+    """
+    if is_quadbin:
+        avg_pixel_area_query = f"""
+            SELECT
+              AVG(
+                CAST(JSON_VALUE(attrs, '$.block_area') AS FLOAT64)
+                / (block_height*block_width)
+              )
+            FROM `{raster_table}`
+            WHERE {location_column} IS NOT NULL
+        """
+    else:
+        avg_pixel_area_query = f"""
+            SELECT
+              AVG(ST_AREA(geog)/(block_height*block_width))
+            FROM `{raster_table}`
+            WHERE {location_column} IS NOT NULL
+        """
+    return f"""
+        CREATE TEMP FUNCTION _mergeJSONs(a JSON, b JSON)
+          RETURNS JSON
+          LANGUAGE js
+           AS r'return {{...a, ...b}};';
+        UPDATE `{raster_table}`
+        SET attrs = TO_JSON_STRING(_mergeJSONs(
+          PARSE_JSON(attrs),
+          TO_JSON(STRUCT(
+            ({area_query}) AS raster_area,
+            ({avg_pixel_area_query}) AS avg_pixel_area
+          ))
+        ))
+        WHERE {location_column} IS NULL;
+    """
