@@ -112,6 +112,10 @@ def block_geog(
     pseudo_planar,
     format="wkt",
 ):
+    # FIXME: check if we need to modify the orientation based on the raster;
+    # if so, as a first approximation,
+    # (assuming CRSs will not vary in orientation),
+    # we could just look at the affine transformation (its determinant)
     coords = (
         coord_range(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions)
         + coord_range(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions)
