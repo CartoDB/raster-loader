@@ -56,7 +56,7 @@ def batched(iterable, n):
 
 
 def coord_range(start_x, start_y, end_x, end_y, num_subdivisions):
-    # FIXME: what about global rasters (360-wide stripes)?
+    # Assume all sources to be chuncked into blocks no wider than 180 deg.
     if math.fabs(end_x - start_x) > 180.0:
         end_x = math.fmod(end_x + 360.0, 360.0)
         start_x = math.fmod(start_x + 360.0, 360.0)
@@ -369,7 +369,6 @@ def table_columns(quadbin: bool, bands: List[str]) -> List[Tuple[str, str, str]]
 
 def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
     # compute whole bounds for metadata
-    # FIXME: we could use raster_dataset.bounds(...) applying transformer to them
     width = raster_dataset.width
     height = raster_dataset.width
     lon_NW, lat_NW = transformer.transform(*(raster_dataset.transform * (0, 0)))
