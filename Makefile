@@ -19,6 +19,9 @@ lint:
 test:
 	$(BIN)/pytest raster_loader --cov=raster_loader --verbose
 
+test-integration:
+	$(BIN)/pytest raster_loader --cov=raster_loader --verbose --runintegration
+
 docs:
 	cd docs; make clean html
 

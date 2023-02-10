@@ -18,6 +18,27 @@ fixtures_dir = os.path.join(HERE, "fixtures")
 
 should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
 
+env_filename = os.path.join(HERE, ".env")
+if os.path.isfile(env_filename):
+    with open(env_filename) as env_file:
+        for line in env_file:
+            line = line.strip()
+            if line:
+                var, value = line.split("=")
+                os.environ[var] = value
+
+
+BQ_PROJECT_ID = os.environ.get("BQ_PROJECT_ID")
+BQ_DATASET_ID = os.environ.get("BQ_DATASET_ID")
+
+
+def check_integration_config():
+    if not BQ_PROJECT_ID or not BQ_DATASET_ID:
+        raise Exception(
+            "You need to copy tests/.env.sample to test/.env and set your configuration"
+            "before running the tests"
+        )
+
 
 def test_array_to_record():
     arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
@@ -221,38 +242,49 @@ def test_rasterio_to_record():
 
 
 @pytest.mark.integration_test
-def test_bigquery_to_records():
-
+def test_rasterio_to_bigquery_with_generic_raster():
+    from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import bigquery_to_records
 
-    test_cols = [
-        "lat_NW",
+    check_integration_config()
+
+    table_name = "test_mosaic_1"
+
+    rasterio_to_bigquery(
+        os.path.join(fixtures_dir, "mosaic.tif"),
+        table_name,
+        BQ_DATASET_ID,
+        BQ_PROJECT_ID,
+        overwrite=True,
+        output_quadbin=False,
+    )
+
+    result = bigquery_to_records(
+        table_id=table_name,
+        project_id=BQ_PROJECT_ID,
+        dataset_id=BQ_DATASET_ID,
+    )
+
+    expected_columns = [
         "lon_NW",
-        "lat_NE",
+        "lat_NW",
         "lon_NE",
-        "lat_SE",
+        "lat_NE",
         "lon_SE",
-        "lat_SW",
+        "lat_SE",
         "lon_SW",
+        "lat_SW",
+        "geog",
         "block_height",
         "block_width",
+        "attrs",
+        "band_1_uint8",
     ]
 
-    records1 = bigquery_to_records(
-        table_id="first_upload",
-        project_id="carto-raster-loader",
-        dataset_id="brendan_dev",
-    )
+    assert sorted(list(result.columns)) == sorted(expected_columns)
 
-    records2 = bigquery_to_records(
-        table_id="first_upload2",
-        project_id="carto-raster-loader",
-        dataset_id="brendan_dev",
-    )
-
-    for c in test_cols:
-        print("Testing column: {}".format(c))
-        assert records1[c].equals(records2[c])
+    # TODO: select metadata row and check metadata contents
+    # TODO: select some block row and check contents
 
 
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
