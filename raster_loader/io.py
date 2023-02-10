@@ -58,9 +58,9 @@ def batched(iterable, n):
         yield batch
 
 
-def coord_range(start_x, start_y, end_x, end_y, num_subdivisions):
+def coord_range(start_x, start_y, end_x, end_y, num_subdivisions, whole_earth):
     # Assume all sources to be chuncked into blocks no wider than 180 deg.
-    if math.fabs(end_x - start_x) > 180.0:
+    if not whole_earth and math.fabs(end_x - start_x) > 180.0:
         end_x = math.fmod(end_x + 360.0, 360.0)
         start_x = math.fmod(start_x + 360.0, 360.0)
     return [
@@ -116,19 +116,22 @@ def block_geog(
     pseudo_planar=False,
     format="wkt",
 ):
+    whole_earth = math.fabs(lon_NW - lon_NE) >= 360.0 or math.fabs(lon_SW - lon_SE)
     if orientation < 0:
         coords = (
-            coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions)
-            + coord_range(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions)
-            + coord_range(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions)
-            + coord_range(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions)
+            coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions, whole_earth),
+            +coord_range(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions, whole_earth)
+            + coord_range(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions, whole_earth)
+            + coord_range(
+                lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions, whole_earth
+            ),
         )
     else:
         coords = (
-            coord_range(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions)
-            + coord_range(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions)
-            + coord_range(lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions)
-            + coord_range(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions)
+            coord_range(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions, whole_earth)
+            + coord_range(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions, whole_earth)
+            + coord_range(lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions, whole_earth)
+            + coord_range(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions, whole_earth)
         )
 
     # remove too-close coordinates cause they cause errors
@@ -153,7 +156,7 @@ def block_geog(
         coords[-1] = coords[0]
     if pseudo_planar:
         coords = [pseudoplanar(p[0], p[1]) for p in coords]
-    else:
+    elif not whole_earth:
         coords = norm_coords(coords)
     return polygon_geography(coords, format)
 
