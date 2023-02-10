@@ -264,6 +264,9 @@ def array_to_quadbin_record(
         *(geotransform * (col_off + width * 0.5, row_off + height * 0.5))
     )
 
+    block_quadbin = quadbin.point_to_cell(x, y, resolution)
+    _, quadbin_y, _ = quadbin.cell_to_tile(block_quadbin)
+
     attrs = {
         "band": band,
         "value_field": value_field,
@@ -272,7 +275,7 @@ def array_to_quadbin_record(
         "gdal_transform": geotransform.to_gdal(),
         "row_off": row_off,
         "col_off": col_off,
-        "block_area": quadbin_area_zy(resolution, y),
+        "block_area": quadbin_area_zy(resolution, quadbin_y),
     }
 
     if should_swap[arr.dtype.byteorder]:
@@ -281,7 +284,7 @@ def array_to_quadbin_record(
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
     record = {
-        "quadbin": quadbin.point_to_cell(x, y, resolution),
+        "quadbin": block_quadbin,
         "block_height": height,
         "block_width": width,
         "attrs": json.dumps(attrs),
