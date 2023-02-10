@@ -629,9 +629,9 @@ def bigquery_to_records(
 
 
 def create_bigquery_table(
-    table_id: str,
-    dataset_id: str,
     project_id: str,
+    dataset_id: str,
+    table_id: str,
     columns: List[Tuple[str, str, str]],
     clustering: List[str],
     client=None,
@@ -665,9 +665,9 @@ def sql_quote(value: any) -> str:
 
 def insert_in_bigquery_table(
     rows,
-    table_id: str,
-    dataset_id: str,
     project_id: str,
+    dataset_id: str,
+    table_id: str,
     client=None,
 ) -> bool:
     """Requires bigquery."""
@@ -703,9 +703,9 @@ def insert_in_bigquery_table(
 
 
 def delete_bigquery_table(
-    table_id: str,
-    dataset_id: str,
     project_id: str,
+    dataset_id: str,
+    table_id: str,
     client=None,
 ) -> bool:  # pragma: no cover
     """Delete a BigQuery table.
@@ -740,16 +740,17 @@ def delete_bigquery_table(
     if client is None:
         client = bigquery.Client(project=project_id)
 
-    table_ref = client.dataset(dataset_id).table(table_id)
+    table_ref = f"{project_id}.{dataset_id}.{table_id}"
     client.delete_table(table_ref, not_found_ok=True)
 
     return True
 
 
 def check_if_bigquery_table_exists(
+    project_id: str,
     dataset_id: str,
     table_id: str,
-    client,
+    client=None,
 ):  # pragma: no cover
     """Check if a BigQuery table exists.
 
@@ -768,7 +769,14 @@ def check_if_bigquery_table_exists(
         True if the table exists, False otherwise.
     """
 
-    table_ref = client.dataset(dataset_id).table(table_id)
+    """Requires bigquery."""
+    if not _has_bigquery:  # pragma: no cover
+        import_error_bigquery()
+
+    if client is None:
+        client = bigquery.Client(project=project_id)
+
+    table_ref = f"{project_id}.{dataset_id}.{table_id}"
     try:
         client.get_table(table_ref)
         return True
@@ -777,6 +785,7 @@ def check_if_bigquery_table_exists(
 
 
 def check_if_bigquery_table_is_empty(
+    project_id: str,
     dataset_id: str,
     table_id: str,
     client,
@@ -798,7 +807,7 @@ def check_if_bigquery_table_is_empty(
         True if the table is empty, False otherwise.
     """
 
-    table_ref = client.dataset(dataset_id).table(table_id)
+    table_ref = f"{project_id}.{dataset_id}.{table_id}"
     table = client.get_table(table_ref)
     return table.num_rows == 0
 
@@ -903,12 +912,14 @@ def rasterio_to_bigquery(
 
     try:
         create_table = False
-        if check_if_bigquery_table_exists(dataset_id, table_id, client):
+        if check_if_bigquery_table_exists(project_id, dataset_id, table_id, client):
             if overwrite:
-                delete_bigquery_table(table_id, dataset_id, project_id, client)
+                delete_bigquery_table(project_id, dataset_id, table_id, client)
                 create_table = True
 
-            elif not check_if_bigquery_table_is_empty(dataset_id, table_id, client):
+            elif not check_if_bigquery_table_is_empty(
+                project_id, dataset_id, table_id, client
+            ):
                 append_records = ask_yes_no_question(
                     f"Table {table_id} already exists in dataset {dataset_id} "
                     "and is not empty. Append records? [yes/no] "
@@ -922,7 +933,7 @@ def rasterio_to_bigquery(
         def table_creator(columns, clustering):
             if create_table:
                 create_bigquery_table(
-                    table_id, dataset_id, project_id, columns, clustering, client
+                    project_id, dataset_id, table_id, columns, clustering, client
                 )
 
         metadata = {}
@@ -974,9 +985,9 @@ def rasterio_to_bigquery(
         # Write metadata
         insert_in_bigquery_table(
             [{"attrs": json.dumps(metadata)}],
-            table_id,
-            dataset_id,
             project_id,
+            dataset_id,
+            table_id,
             client=client,
         )
 
@@ -993,7 +1004,7 @@ def rasterio_to_bigquery(
         )
 
         if delete_table:
-            delete_bigquery_table(table_id, dataset_id, project_id, client)
+            delete_bigquery_table(project_id, dataset_id, table_id, client)
 
         raise KeyboardInterrupt
 
@@ -1009,7 +1020,7 @@ def rasterio_to_bigquery(
         )
 
         if delete_table:
-            delete_bigquery_table(table_id, dataset_id, project_id, client)
+            delete_bigquery_table(project_id, dataset_id, table_id, client)
 
         raise IOError("Error uploading to BigQuery: {}".format(e))
 
