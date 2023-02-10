@@ -11,6 +11,7 @@ from affine import Affine
 import numpy as np
 import pandas as pd
 import pyproj
+import functools
 
 from raster_loader.quadbinarea import quadbin_area_zy
 
@@ -129,6 +130,27 @@ def block_geog(
             + coord_range(lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions)
             + coord_range(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions)
         )
+
+    # remove too-close coordinates cause they cause errors
+    # in BigQuery's ST_GEOGFROMGEOJSON
+    def are_too_close(point1, point2):
+        return (
+            math.fabs(point1[0] - point2[0]) <= sys.float_info.epsilon
+            and math.fabs(point1[1] - point2[1]) <= sys.float_info.epsilon
+        )
+
+    def filter_near_points(coords, point):
+        previous = None if not coords else coords[-1]
+        if not previous or not are_too_close(previous, point):
+            coords.append(point)
+        return coords
+
+    coords = functools.reduce(filter_near_points, coords, [])
+
+    # now let's make sure the initial and final points are exactly the same
+    if coords[0] != coords[-1]:
+        # replace the last point; never mind, it must be very close
+        coords[-1] = coords[0]
     if pseudo_planar:
         coords = [pseudoplanar(p[0], p[1]) for p in coords]
     else:
