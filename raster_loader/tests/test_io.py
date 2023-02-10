@@ -287,6 +287,44 @@ def test_rasterio_to_bigquery_with_generic_raster():
     # TODO: select some block row and check contents
 
 
+@pytest.mark.integration_test
+def test_rasterio_to_bigquery_with_quadbin_raster():
+    from raster_loader.io import rasterio_to_bigquery
+    from raster_loader.io import bigquery_to_records
+
+    check_integration_config()
+
+    table_name = "test_mosaic_quadbin_1"
+
+    rasterio_to_bigquery(
+        os.path.join(fixtures_dir, "quadbin_raster.tif"),
+        table_name,
+        BQ_DATASET_ID,
+        BQ_PROJECT_ID,
+        overwrite=True,
+        output_quadbin=True,
+    )
+
+    result = bigquery_to_records(
+        table_id=table_name,
+        project_id=BQ_PROJECT_ID,
+        dataset_id=BQ_DATASET_ID,
+    )
+
+    expected_columns = [
+        "quadbin",
+        "block_height",
+        "block_width",
+        "attrs",
+        "band_1_uint8",
+    ]
+
+    assert sorted(list(result.columns)) == sorted(expected_columns)
+
+    # TODO: select metadata row and check metadata contents
+    # TODO: select some block row and check contents
+
+
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
 def test_rasterio_to_bigquery(*args, **kwargs):
     client = mocks.bigquery_client()
