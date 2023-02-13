@@ -667,14 +667,40 @@ def sql_quote(value: any) -> str:
 
 
 def insert_in_bigquery_table(
-    rows,
+    rows: List[dict],
     project_id: str,
     dataset_id: str,
     table_id: str,
     client=None,
 ) -> bool:
-    """Requires bigquery."""
+    """Insert rows in a BigQuery table.
 
+    Requires the ``GOOGLE_APPLICATION_CREDENTIALS`` environment variable set to the path
+    of a JSON file containing your BigQuery credentials (see `the GCP documentation
+    <https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key>`_
+    for more information).
+
+    Parameters
+    ----------
+    rows : List[dict],
+        Rows to be inserted.
+    project_id : str
+        BigQuery project name.
+    dataset_id : str
+        BigQuery dataset name.
+    table_id : str
+        BigQuery table name.
+    client : google.cloud.bigquery.client.Client, optional
+        BigQuery client, by default None
+
+    Returns
+    -------
+    bool
+        True if the rows were inserted
+
+    """
+
+    """Requires bigquery."""
     if not _has_bigquery:  # pragma: no cover
         import_error_bigquery()
 
@@ -713,19 +739,14 @@ def delete_bigquery_table(
 ) -> bool:  # pragma: no cover
     """Delete a BigQuery table.
 
-    Requires the ``GOOGLE_APPLICATION_CREDENTIALS`` environment variable set to the path
-    of a JSON file containing your BigQuery credentials (see `the GCP documentation
-    <https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key>`_
-    for more information).
-
     Parameters
     ----------
-    table_id : str
-        BigQuery table name.
-    dataset_id : str
-        BigQuery dataset name.
     project_id : str
         BigQuery project name.
+    dataset_id : str
+        BigQuery dataset name.
+    table_id : str
+        BigQuery table name.
     client : google.cloud.bigquery.client.Client, optional
         BigQuery client, by default None
 
@@ -759,10 +780,12 @@ def check_if_bigquery_table_exists(
 
     Parameters
     ----------
+    project_id : str
+        BigQuery project name.
     dataset_id : str
-        The BigQuery dataset id.
+        BigQuery dataset name.
     table_id : str
-        The BigQuery table id.
+        BigQuery table name.
     client : google.cloud.bigquery.client.Client
         The BigQuery client.
 
@@ -797,10 +820,12 @@ def check_if_bigquery_table_is_empty(
 
     Parameters
     ----------
+    project_id : str
+        BigQuery project name.
     dataset_id : str
-        The BigQuery dataset id.
+        BigQuery dataset name.
     table_id : str
-        The BigQuery table id.
+        BigQuery table name.
     client : google.cloud.bigquery.client.Client
         The BigQuery client.
 
@@ -820,8 +845,25 @@ def run_bigquery_query(
     project_id: str,
     client=None,
 ) -> bool:
-    """Requires bigquery."""
+    """Run a BigQuery query
 
+    Parameters
+    ----------
+    query : str
+        Query to be run (standard SQL)
+    project_id : str
+        Project where the query is ran.
+    client : google.cloud.bigquery.client.Client, optional
+        BigQuery client, by default None
+
+    Returns
+    -------
+    bool
+        True if the query ran successfully.
+
+    """
+
+    """Requires bigquery."""
     if not _has_bigquery:  # pragma: no cover
         import_error_bigquery()
 
@@ -881,7 +923,8 @@ def rasterio_to_bigquery(
     band : int, optional
         Band number to read from the raster file, by default 1
     chunk_size : int, optional
-        Number of records to write to BigQuery at a time, by default None
+        Number of records to write to BigQuery at a time, the default (None)
+        writes all records in a single batch.
     input_crs : int, optional
         Input CRS, by default None
     client : [bigquery.Client()], optional
