@@ -114,15 +114,15 @@ def block_geog(
     pseudo_planar=False,
     format="wkt",
 ):
-    whole_earth = math.fabs(lon_NW - lon_NE) >= 360.0 or math.fabs(lon_SW - lon_SE)
+    whole_earth = (
+        math.fabs(lon_NW - lon_NE) >= 360.0 or math.fabs(lon_SW - lon_SE) >= 360
+    )
     if orientation < 0:
         coords = (
-            coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions, whole_earth),
-            +coord_range(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions, whole_earth)
+            coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions, whole_earth)
+            + coord_range(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions, whole_earth)
             + coord_range(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions, whole_earth)
-            + coord_range(
-                lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions, whole_earth
-            ),
+            + coord_range(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions, whole_earth)
         )
     else:
         coords = (
