@@ -13,8 +13,6 @@ import pandas as pd
 import pyproj
 import functools
 
-from raster_loader.quadbinarea import quadbin_area_zy
-
 try:
     import rio_cogeo
 except ImportError:  # pragma: no cover
@@ -268,7 +266,6 @@ def array_to_quadbin_record(
     )
 
     block_quadbin = quadbin.point_to_cell(x, y, resolution)
-    _, quadbin_y, _ = quadbin.cell_to_tile(block_quadbin)
 
     attrs = {
         "band": band,
@@ -278,7 +275,7 @@ def array_to_quadbin_record(
         "gdal_transform": geotransform.to_gdal(),
         "row_off": row_off,
         "col_off": col_off,
-        "block_area": quadbin_area_zy(resolution, quadbin_y),
+        "block_area": quadbin.cell_area(block_quadbin),
     }
 
     if should_swap[arr.dtype.byteorder]:
