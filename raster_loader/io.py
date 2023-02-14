@@ -1365,11 +1365,11 @@ def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
           TO_JSON(STRUCT(
             ({area_query}) AS raster_area,
             ({avg_pixel_area_query}) AS avg_pixel_area,
-            ({width_in_pixel_query}) AS width_in_pixel_query,
-            ({height_in_pixel_query}) AS height_in_pixel_query,
-            ({width_in_pixel_block_query}) AS width_in_pixel_block_query,
-            ({height_in_pixel_block_query}) AS height_in_pixel_block_query,
-            ({sparse_pixel_block_query}) AS sparse_pixel_block_query
+            ({width_in_pixel_query}) AS width_in_pixel,
+            ({height_in_pixel_query}) AS height_in_pixel,
+            ({width_in_pixel_block_query}) AS width_in_pixel_block,
+            ({height_in_pixel_block_query}) AS height_in_pixel_block,
+            ({sparse_pixel_block_query}) AS sparse_pixel_block
           ))
         ))
         WHERE {location_column} IS NULL;
