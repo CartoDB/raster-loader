@@ -61,6 +61,10 @@ def coord_range(start_x, start_y, end_x, end_y, num_subdivisions, whole_earth):
     if not whole_earth and math.fabs(end_x - start_x) > 180.0:
         end_x = math.fmod(end_x + 360.0, 360.0)
         start_x = math.fmod(start_x + 360.0, 360.0)
+    if math.fabs(end_x - start_x) <= 1e-13:
+        # No need to subdivide meridians, since they're geodesics
+        num_subdivisions = 1
+    num_subdivisions = max(num_subdivisions, 1)
     return [
         [
             start_x + (end_x - start_x) * i / num_subdivisions,
