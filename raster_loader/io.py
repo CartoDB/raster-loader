@@ -1102,7 +1102,7 @@ def write_metadata(
                 meta1 AS (
                   SELECT
                     JSON_VALUE_ARRAY(attrs, '$.bands') AS bands,
-                    ST_GEOGFROMGEOJSON(
+                    SAFE.ST_GEOGFROMGEOJSON(
                         JSON_VALUE(attrs, '$.raster_boundary')
                     ) AS raster_boundary,
                     INT64(JSON_QUERY(attrs, '$.nb_pixel')) AS nb_pixel,
@@ -1126,7 +1126,7 @@ def write_metadata(
                 meta2 AS (
                   SELECT
                     JSON_VALUE_ARRAY(attrs, '$.bands') AS bands,
-                    ST_GEOGFROMGEOJSON(
+                    SAFE.ST_GEOGFROMGEOJSON(
                         JSON_VALUE(attrs, '$.raster_boundary')
                     ) AS raster_boundary,
                     INT64(JSON_QUERY(attrs, '$.nb_pixel')) AS nb_pixel,
@@ -1159,7 +1159,7 @@ def write_metadata(
                 )
                 SELECT TO_JSON_STRING(TO_JSON(STRUCT(
                     (SELECT bands FROM bands) AS bands,
-                    ST_ASGEOJSON(ST_UNION_AGG(raster_boundary)) AS raster_boundary,
+                    ST_ASGEOJSON(SAFE.ST_UNION_AGG(raster_boundary)) AS raster_boundary,
                     SUM(nb_pixel) AS nb_pixel,
                     SUM(nb_pixel_blocks) AS nb_pixel_blocks,
                     MAX(max_pixel_block_height_in_pixel)
@@ -1275,7 +1275,7 @@ def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
     from_blocks_source = f"FROM `{raster_table}` WHERE {location_column} IS NOT NULL"
     area_query = f"""
         SELECT
-          ST_AREA(ST_GEOGFROMGEOJSON(JSON_VALUE(attrs, '$.raster_boundary')))
+          ST_AREA(SAFE.ST_GEOGFROMGEOJSON(JSON_VALUE(attrs, '$.raster_boundary')))
         {from_metadata_source}
     """
     if is_quadbin:
