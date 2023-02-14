@@ -136,8 +136,8 @@ def block_geog(
     # in BigQuery's ST_GEOGFROMGEOJSON
     def are_too_close(point1, point2):
         return (
-            math.fabs(point1[0] - point2[0]) <= sys.float_info.epsilon
-            and math.fabs(point1[1] - point2[1]) <= sys.float_info.epsilon
+            math.fabs(point1[0] - point2[0]) <= 1e-13
+            and math.fabs(point1[1] - point2[1]) <= 1e-13
         )
 
     def filter_near_points(coords, point):
@@ -409,6 +409,7 @@ def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
     lon_SE, lat_SE = transformer.transform(
         *(raster_dataset.transform * (width, height))
     )
+
     # use 1 subdivision in 64 pixels
     lon_subdivisions = math.ceil(width / 64.0)
     lat_subdivisions = math.ceil(height / 64.0)
