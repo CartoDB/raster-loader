@@ -114,21 +114,31 @@ def block_geog(
     pseudo_planar=False,
     format="wkt",
 ):
+    lon_subdivisions_N = math.ceil(
+        lon_subdivisions * math.cos(0.5 * math.pi / 180.0 * (lat_NW + lat_NE))
+    )
+    lon_subdivisions_S = math.ceil(
+        lon_subdivisions * math.cos(0.5 * math.pi / 180.0 * (lat_SW + lat_SE))
+    )
     whole_earth = (
         math.fabs(lon_NW - lon_NE) >= 360.0 or math.fabs(lon_SW - lon_SE) >= 360
     )
     if orientation < 0:
         coords = (
-            coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions, whole_earth)
+            coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions_N, whole_earth)
             + coord_range(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions, whole_earth)
-            + coord_range(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions, whole_earth)
+            + coord_range(
+                lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions_S, whole_earth
+            )
             + coord_range(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions, whole_earth)
         )
     else:
         coords = (
-            coord_range(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions, whole_earth)
+            coord_range(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions_S, whole_earth)
             + coord_range(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions, whole_earth)
-            + coord_range(lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions, whole_earth)
+            + coord_range(
+                lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions_N, whole_earth
+            )
             + coord_range(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions, whole_earth)
         )
 
