@@ -402,7 +402,7 @@ def table_columns(quadbin: bool, bands: List[str]) -> List[Tuple[str, str, str]]
 def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
     # compute whole bounds for metadata
     width = raster_dataset.width
-    height = raster_dataset.width
+    height = raster_dataset.height
     lon_NW, lat_NW = transformer.transform(*(raster_dataset.transform * (0, 0)))
     lon_NE, lat_NE = transformer.transform(*(raster_dataset.transform * (width, 0)))
     lon_SW, lat_SW = transformer.transform(*(raster_dataset.transform * (0, height)))
