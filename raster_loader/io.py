@@ -56,14 +56,7 @@ def batched(iterable, n):
         yield batch
 
 
-def coord_range(start_x, start_y, end_x, end_y, num_subdivisions, whole_earth):
-    # Assume all sources to be chuncked into blocks no wider than 180 deg.
-    if not whole_earth and math.fabs(end_x - start_x) > 180.0:
-        end_x = math.fmod(end_x + 360.0, 360.0)
-        start_x = math.fmod(start_x + 360.0, 360.0)
-    if math.fabs(end_x - start_x) <= 1e-13:
-        # No need to subdivide meridians, since they're geodesics
-        num_subdivisions = 1
+def coord_range(start_x, start_y, end_x, end_y, num_subdivisions):
     num_subdivisions = max(num_subdivisions, 1)
     return [
         [
@@ -74,6 +67,35 @@ def coord_range(start_x, start_y, end_x, end_y, num_subdivisions, whole_earth):
     ]
 
 
+MIN_SUBDIVISIONS_PER_DEGREE = 0.3
+
+
+def line_coords(start_x, start_y, end_x, end_y, num_subdivisions, whole_earth):
+    if not whole_earth and math.fabs(end_x - start_x) > 180.0:
+        end_x = math.fmod(end_x + 360.0, 360.0)
+        start_x = math.fmod(start_x + 360.0, 360.0)
+
+    x_length = math.fabs(end_x - start_x)
+    y_length = math.fabs(end_y - start_y)
+
+    near_meridian = x_length <= 1e-13
+    near_parallel = y_length < 1.0
+
+    if near_parallel:
+        scale = math.cos(0.5 * math.pi / 180.0 * (start_y + end_y))
+        x_length *= scale
+        num_subdivisions = math.ceil(num_subdivisions * scale)
+        num_subdivisions = max(
+            num_subdivisions, math.ceil(x_length * MIN_SUBDIVISIONS_PER_DEGREE)
+        )
+
+    if near_meridian:
+        # No need to subdivide meridians, since they're geodesics
+        num_subdivisions = 1
+
+    return coord_range(start_x, start_y, end_x, end_y, num_subdivisions)
+
+
 def norm_lon(x):
     return x - 360.0 if x > 180.0 else x + 360.0 if x <= -180.0 else x
 
@@ -82,25 +104,61 @@ def norm_coords(coords):
     return [[norm_lon(point[0]), point[1]] for point in coords]
 
 
-def polygon_geography(coords, format):
+def polygon_geography(rings, format, normalize_coords, pseudo_planar=False):
+    if pseudo_planar:
+        rings = [[pseudoplanar(p[0], p[1]) for p in coords] for coords in rings]
+    elif normalize_coords:
+        rings = [norm_coords(coords) for coords in rings]
+
     if format == "wkt":
-        return polygon_wkt(coords)
+        return polygon_wkt(rings)
     elif format == "geojson":
-        return polygon_geojson(coords)
+        return polygon_geojson(rings)
     else:
         raise ValueError(f"Invalid geography format {format}")
 
 
-def polygon_wkt(coords):
+def polygon_wkt(rings):
     return (
-        "POLYGON(("
-        + ",".join([" ".join([str(coord) for coord in point]) for point in coords])
-        + "))"
+        "POLYGON("
+        + ",".join(
+            [
+                "("
+                + ",".join(
+                    [" ".join([str(coord) for coord in point]) for point in coords]
+                )
+                + ")"
+                for coords in rings
+            ]
+        )
+        + ")"
     )
 
 
-def polygon_geojson(coords):
-    return json.dumps({"type": "Polygon", "coordinates": [coords]})
+def polygon_geojson(rings):
+    return json.dumps({"type": "Polygon", "coordinates": rings})
+
+
+def section_point(x, y):
+    if x == 180.0:
+        x = -180.0
+    return [x, y]
+
+
+def section_geog(lat_N, lat_S, num_subdivisions, pseudo_planar, format):
+    lat_S, lat_N = min(lat_N, lat_S), max(lat_N, lat_S)
+    num_subdivisions = max(num_subdivisions, 4)
+    ring1 = [
+        section_point(*p)
+        for p in coord_range(-180.0, lat_S, 180.0, lat_S, num_subdivisions)
+    ]
+    ring2 = [
+        section_point(*p)
+        for p in coord_range(180.0, lat_N, -180.0, lat_N, num_subdivisions)
+    ]
+    if lat_N < 0:
+        ring1, ring2 = ring2, ring1
+    return polygon_geography([ring1, ring2], format, False, pseudo_planar)
 
 
 def block_geog(
@@ -118,38 +176,30 @@ def block_geog(
     pseudo_planar=False,
     format="wkt",
 ):
-    lon_subdivisions_N = lon_subdivisions
-    lon_subdivisions_S = lon_subdivisions
-    # for near-parallel lines we can reduce subdivisions as the
-    # length of the parallel diminishes
-    if math.fabs(lat_NW - lat_NE) < 1.0:
-        lon_subdivisions_N = math.ceil(
-            lon_subdivisions * math.cos(0.5 * math.pi / 180.0 * (lat_NW + lat_NE))
-        )
-    if math.fabs(lat_SW - lat_SE) < 1.0:
-        lon_subdivisions_S = math.ceil(
-            lon_subdivisions * math.cos(0.5 * math.pi / 180.0 * (lat_SW + lat_SE))
-        )
     whole_earth = (
-        math.fabs(lon_NW - lon_NE) >= 360.0 or math.fabs(lon_SW - lon_SE) >= 360
+        math.fabs(lon_NW - lon_NE) >= 360.0 and math.fabs(lon_SW - lon_SE) >= 360
     )
+    if (
+        whole_earth
+        and lat_NW == lat_NE
+        and lat_SW == lat_SE
+        and math.fabs(max(lat_NW, lat_SE) >= 88.0)
+    ):
+        return section_geog(lat_NW, lat_SW, lon_subdivisions, pseudo_planar, format)
+
     if orientation < 0:
         coords = (
-            coord_range(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions_N, whole_earth)
-            + coord_range(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions, whole_earth)
-            + coord_range(
-                lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions_S, whole_earth
-            )
-            + coord_range(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions, whole_earth)
+            line_coords(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions, whole_earth)
+            + line_coords(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions, whole_earth)
+            + line_coords(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions, whole_earth)
+            + line_coords(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions, whole_earth)
         )
     else:
         coords = (
-            coord_range(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions_S, whole_earth)
-            + coord_range(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions, whole_earth)
-            + coord_range(
-                lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions_N, whole_earth
-            )
-            + coord_range(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions, whole_earth)
+            line_coords(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions, whole_earth)
+            + line_coords(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions, whole_earth)
+            + line_coords(lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions, whole_earth)
+            + line_coords(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions, whole_earth)
         )
 
     # remove too-close coordinates cause they cause errors
@@ -172,11 +222,7 @@ def block_geog(
     if coords[0] != coords[-1]:
         # replace the last point; never mind, it must be very close
         coords[-1] = coords[0]
-    if pseudo_planar:
-        coords = [pseudoplanar(p[0], p[1]) for p in coords]
-    elif not whole_earth:
-        coords = norm_coords(coords)
-    return polygon_geography(coords, format)
+    return polygon_geography([coords], format, not whole_earth, pseudo_planar)
 
 
 def pseudoplanar(x, y):
