@@ -1279,11 +1279,6 @@ def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
     location_column = "quadbin" if is_quadbin else "geog"
     from_metadata_source = f"FROM `{raster_table}` WHERE {location_column} IS NULL"
     from_blocks_source = f"FROM `{raster_table}` WHERE {location_column} IS NOT NULL"
-    area_query = f"""
-        SELECT
-          ST_AREA(SAFE.ST_GEOGFROMTEXT(JSON_VALUE(attrs, '$.raster_boundary')))
-        {from_metadata_source}
-    """
     if is_quadbin:
         block_y = "'$.y'"
         block_x = "'$.x'"
@@ -1295,6 +1290,11 @@ def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
               )
             {from_blocks_source}
         """
+        area_query = f"""
+            SELECT SUM(CAST(JSON_VALUE(attrs, '$.block_area') AS FLOAT64))
+            {from_blocks_source}
+        """
+
     else:
         block_y = "'$.row_off'"
         block_x = "'$.col_off'"
@@ -1302,6 +1302,11 @@ def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
             SELECT
               AVG(ST_AREA(geog)/(block_height*block_width))
             {from_blocks_source}
+        """
+        area_query = f"""
+            SELECT
+              ST_AREA(SAFE.ST_GEOGFROMTEXT(JSON_VALUE(attrs, '$.raster_boundary')))
+            {from_metadata_source}
         """
 
     width_in_pixel_query = f"""
