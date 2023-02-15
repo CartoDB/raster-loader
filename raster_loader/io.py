@@ -118,12 +118,18 @@ def block_geog(
     pseudo_planar=False,
     format="wkt",
 ):
-    lon_subdivisions_N = math.ceil(
-        lon_subdivisions * math.cos(0.5 * math.pi / 180.0 * (lat_NW + lat_NE))
-    )
-    lon_subdivisions_S = math.ceil(
-        lon_subdivisions * math.cos(0.5 * math.pi / 180.0 * (lat_SW + lat_SE))
-    )
+    lon_subdivisions_N = lon_subdivisions
+    lon_subdivisions_S = lon_subdivisions
+    # for near-parallel lines we can reduce subdivisions as the
+    # length of the parallel diminishes
+    if math.fabs(lat_NW - lat_NE) < 1.0:
+        lon_subdivisions_N = math.ceil(
+            lon_subdivisions * math.cos(0.5 * math.pi / 180.0 * (lat_NW + lat_NE))
+        )
+    if math.fabs(lat_SW - lat_SE) < 1.0:
+        lon_subdivisions_S = math.ceil(
+            lon_subdivisions * math.cos(0.5 * math.pi / 180.0 * (lat_SW + lat_SE))
+        )
     whole_earth = (
         math.fabs(lon_NW - lon_NE) >= 360.0 or math.fabs(lon_SW - lon_SE) >= 360
     )
