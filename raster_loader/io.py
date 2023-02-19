@@ -46,6 +46,10 @@ from raster_loader.utils import ask_yes_no_question
 should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
 
 
+SUBBLOCK_BITS = 6
+SUBBLOCK_SIZE = 1 << SUBBLOCK_BITS
+
+
 def batched(iterable, n):
     "Batch data into tuples of length n. The last batch may be shorter."
     # batched('ABCDEFG', 3) --> ABC DEF G
@@ -185,50 +189,6 @@ def coords_to_geography(coords, format, whole_earth, pseudo_planar):
     return polygon_geography([coords], format, not whole_earth, pseudo_planar)
 
 
-def block_geog(
-    lon_NW,
-    lat_NW,
-    lon_NE,
-    lat_NE,
-    lon_SE,
-    lat_SE,
-    lon_SW,
-    lat_SW,
-    lon_subdivisions,
-    lat_subdivisions,
-    orientation=1,
-    pseudo_planar=False,
-    format="wkt",
-):
-    whole_earth = (
-        math.fabs(lon_NW - lon_NE) >= 360.0 and math.fabs(lon_SW - lon_SE) >= 360
-    )
-    if (
-        whole_earth
-        and lat_NW == lat_NE
-        and lat_SW == lat_SE
-        and math.fabs(max(lat_NW, lat_SE) >= 88.0)
-    ):
-        return section_geog(lat_NW, lat_SW, lon_subdivisions, pseudo_planar, format)
-
-    if orientation < 0:
-        coords = (
-            line_coords(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions, whole_earth)
-            + line_coords(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions, whole_earth)
-            + line_coords(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions, whole_earth)
-            + line_coords(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions, whole_earth)
-        )
-    else:
-        coords = (
-            line_coords(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions, whole_earth)
-            + line_coords(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions, whole_earth)
-            + line_coords(lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions, whole_earth)
-            + line_coords(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions, whole_earth)
-        )
-
-    return coords_to_geography(coords, format, whole_earth, pseudo_planar)
-
-
 def pseudoplanar(x, y):
     return [x / 32768.0, y / 32768.0]
 
@@ -247,36 +207,38 @@ def array_to_record(
     row_off: int = 0,
     col_off: int = 0,
     crs: str = "EPSG:4326",
-    orientation=1,
     pseudo_planar: bool = False,
 ) -> dict:
     height, width = arr.shape
+    num_x_subs = 1 + math.ceil(width / float(SUBBLOCK_SIZE))
+    num_y_subs = 1 + math.ceil(height / float(SUBBLOCK_SIZE))
 
-    lon_NW, lat_NW = transformer.transform(*(geotransform * (col_off, row_off)))
-    lon_NE, lat_NE = transformer.transform(*(geotransform * (col_off + width, row_off)))
-    lon_SE, lat_SE = transformer.transform(
-        *(geotransform * (col_off + width, row_off + height))
-    )
-    lon_SW, lat_SW = transformer.transform(
-        *(geotransform * (col_off, row_off + height))
-    )
+    def sub_to_pixel(x, size, num_subs):
+        return x * SUBBLOCK_SIZE if x < num_subs - 1 else size
 
-    # use 1 subdivision in 64 pixels
-    lon_subdivisions = math.ceil(width / 64.0)
-    lat_subdivisions = math.ceil(height / 64.0)
-    geog = block_geog(
-        lon_NW,
-        lat_NW,
-        lon_NE,
-        lat_NE,
-        lon_SE,
-        lat_SE,
-        lon_SW,
-        lat_SW,
-        lon_subdivisions,
-        lat_subdivisions,
-        orientation,
+    coords = [
+        transformer.transform(
+            *(
+                geotransform
+                * (
+                    col_off + sub_to_pixel(x, width, num_x_subs),
+                    row_off + sub_to_pixel(y, height, num_y_subs),
+                )
+            )
+        )
+        for y in range(0, num_y_subs)
+        for x in range(0, num_x_subs)
+    ]
+
+    geog = pixel_window_to_geography(
+        transformer,
+        geotransform,
+        col_off,
+        row_off,
+        col_off + width,
+        row_off + height,
         pseudo_planar,
+        "wkt",
     )
 
     attrs = {
@@ -295,14 +257,10 @@ def array_to_record(
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
     record = {
-        "lat_NW": lat_NW,
-        "lon_NW": lon_NW,
-        "lat_NE": lat_NE,
-        "lon_NE": lon_NE,
-        "lat_SE": lat_SE,
-        "lon_SE": lon_SE,
-        "lat_SW": lat_SW,
-        "lon_SW": lon_SW,
+        "lon": [x for x, _y in coords],
+        "lat": [y for _x, y in coords],
+        "lonlat_width": num_x_subs,
+        "lonlat_height": num_y_subs,
         "geog": geog,
         "block_height": height,
         "block_width": width,
@@ -449,14 +407,10 @@ def table_columns(quadbin: bool, bands: List[str]) -> List[Tuple[str, str, str]]
         ]
     else:
         columns = [
-            ("lon_NW", "FLOAT", "NULLABLE"),
-            ("lat_NW", "FLOAT", "NULLABLE"),
-            ("lon_NE", "FLOAT", "NULLABLE"),
-            ("lat_NE", "FLOAT", "NULLABLE"),
-            ("lon_SE", "FLOAT", "NULLABLE"),
-            ("lat_SE", "FLOAT", "NULLABLE"),
-            ("lon_SW", "FLOAT", "NULLABLE"),
-            ("lat_SW", "FLOAT", "NULLABLE"),
+            ("lon", "FLOAT", "REPEATED"),
+            ("lat", "FLOAT", "REPEATED"),
+            ("lonlat_width", "INT64", "NULLABLE"),
+            ("lonlat_height", "INT64", "NULLABLE"),
             ("geog", "GEOGRAPHY", "NULLABLE"),
         ]
     columns += [
@@ -469,15 +423,11 @@ def table_columns(quadbin: bool, bands: List[str]) -> List[Tuple[str, str, str]]
     return columns
 
 
-def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
-    raster_dataset.transform,
-    min_x = 0
-    min_y = 0
-    max_x = raster_dataset.width
-    max_y = raster_dataset.height
-
-    x_subdivisions = math.ceil((max_x - min_x) / 64.0)
-    y_subdivisions = math.ceil((max_y - min_y) / 64.0)
+def pixel_window_to_geography(
+    transformer, transform, min_x, min_y, max_x, max_y, pseudo_planar, format
+):
+    x_subdivisions = math.ceil((max_x - min_x) / float(SUBBLOCK_SIZE))
+    y_subdivisions = math.ceil((max_y - min_y) / float(SUBBLOCK_SIZE))
     pixel_coords = (
         # SW -> SE
         coord_range(min_x, max_y, max_x, max_y, x_subdivisions)
@@ -488,18 +438,32 @@ def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
         # NW -> SW
         + coord_range(min_x, min_y, min_x, max_y, y_subdivisions)
     )
-    coords = [
-        transformer.transform(*(raster_dataset.transform * (x, y)))
-        for x, y in pixel_coords
-    ]
-    lon_NW, _ = transformer.transform(*(raster_dataset.transform * (min_x, min_y)))
-    lon_NE, _ = transformer.transform(*(raster_dataset.transform * (max_x, min_y)))
-    lon_SW, _ = transformer.transform(*(raster_dataset.transform * (min_x, max_y)))
-    lon_SE, _ = transformer.transform(*(raster_dataset.transform * (max_x, max_y)))
+    coords = [transformer.transform(*(transform * (x, y))) for x, y in pixel_coords]
+    lon_NW, _ = transformer.transform(*(transform * (min_x, min_y)))
+    lon_NE, _ = transformer.transform(*(transform * (max_x, min_y)))
+    lon_SW, _ = transformer.transform(*(transform * (min_x, max_y)))
+    lon_SE, _ = transformer.transform(*(transform * (max_x, max_y)))
     whole_earth = (
         math.fabs(lon_NW - lon_NE) >= 360.0 and math.fabs(lon_SW - lon_SE) >= 360
     )
     return coords_to_geography(coords, format, whole_earth, pseudo_planar)
+
+
+def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
+    min_x = 0
+    min_y = 0
+    max_x = raster_dataset.width
+    max_y = raster_dataset.height
+    return pixel_window_to_geography(
+        transformer,
+        raster_dataset.transform,
+        min_x,
+        min_y,
+        max_x,
+        max_y,
+        pseudo_planar,
+        format,
+    )
 
 
 def rasterio_windows_to_records(
@@ -556,7 +520,6 @@ def rasterio_windows_to_records(
         transformer = pyproj.Transformer.from_crs(
             input_crs, "EPSG:4326", always_xy=True
         )
-        orientation = raster_orientation(raster_dataset)
 
         band_type = raster_band_type(raster_dataset, band)
         band_name = band_field_name(band, band_type)
@@ -606,7 +569,6 @@ def rasterio_windows_to_records(
                     window.row_off,
                     window.col_off,
                     crs=input_crs,
-                    orientation=orientation,
                     pseudo_planar=pseudo_planar,
                 )
 
@@ -938,20 +900,6 @@ def run_bigquery_query(
 
     job = client.query(query)
     return job.result()
-
-
-def raster_orientation(raster_dataset):
-    raster_crs = raster_dataset.crs.to_string()
-    transformer = pyproj.Transformer.from_crs(raster_crs, "EPSG:4326", always_xy=True)
-    x0, y0 = transformer.transform(*(raster_dataset.transform * (0, 0)))
-    x1, y1 = transformer.transform(*(raster_dataset.transform * (0, 1)))
-    x2, y2 = transformer.transform(*(raster_dataset.transform * (1, 0)))
-    b11 = x1 - x0
-    b12 = y1 - y0
-    b21 = x2 - x0
-    b22 = y2 - y0
-    d = b11 * b22 - b12 * b21
-    return -1 if d < 0 else 1
 
 
 def rasterio_to_bigquery(
