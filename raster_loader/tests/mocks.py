@@ -13,4 +13,14 @@ def bigquery_client(load_error=False):
 
             return job
 
+        def query(self, query):
+            class job(object):
+                def result():
+                    return True
+
+            return job
+
+        def create_table(self, table):
+            return True
+
     return BigQueryClient(load_error=load_error)

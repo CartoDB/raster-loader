@@ -107,7 +107,14 @@ The test suite includes optional integration tests that require credentials for 
 BigQuery account. To run these tests, you need to set the `GOOGLE_APPLICATION_CREDENTIALS`
 environment variable to the path of a JSON file containing your BigQuery credentials
 (see the [GCP documentation](https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key)
-for more information). After setting up your credentials, you can enable the integration
+for more information).
+
+You must also copy the `/test/.env.sample` to `/test/.env` and edit it to set a
+test project and dataset in which the used credentials have permissions to create tables.
+
+If you're working on Windows, please set manually the env variables or the .env file in your terminal.
+
+After setting up your credentials and .env, you can enable the integration
 test with the following command:
 
 ```bash
