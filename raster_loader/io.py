@@ -197,6 +197,16 @@ def band_field_name(band: int, band_type: str, base_name: str = "band") -> str:
     return "_".join([base_name, str(band), band_type])
 
 
+# Since the block geometries are densified every SUBBLOCK_SIZE pixels,
+# and they will be interpreted spherically by BigQuery,
+# the pixel geometries generated in BigQuery for a block using the
+# `lon`, `lat` grid of coordinates will not match them perfectly.
+# To make sure that geographies intersected
+# by the block are also intersected by its generated pixels, the
+# block geometries will be extended.
+BLOCK_EXTENSION_IN_PIXELS = 0.5
+
+
 def array_to_record(
     arr: np.ndarray,
     band: int,
@@ -230,6 +240,8 @@ def array_to_record(
         for x in range(0, num_x_subs)
     ]
 
+    # FIXME: extension can be set to 0 when transformer
+    # maps to longitude-latitude (or is an equirectangular projection).
     geog = pixel_window_to_geography(
         transformer,
         geotransform,
@@ -237,6 +249,7 @@ def array_to_record(
         row_off,
         col_off + width,
         row_off + height,
+        BLOCK_EXTENSION_IN_PIXELS,
         pseudo_planar,
         "wkt",
     )
@@ -424,8 +437,22 @@ def table_columns(quadbin: bool, bands: List[str]) -> List[Tuple[str, str, str]]
 
 
 def pixel_window_to_geography(
-    transformer, transform, min_x, min_y, max_x, max_y, pseudo_planar, format
+    transformer,
+    transform,
+    min_x,
+    min_y,
+    max_x,
+    max_y,
+    extension=0,
+    pseudo_planar=False,
+    format="wkt",
 ):
+    if extension > 0.0:
+        # Extend the window outwards
+        min_x -= extension
+        min_y -= extension
+        max_x += extension
+        max_y += extension
     x_subdivisions = math.ceil((max_x - min_x) / float(SUBBLOCK_SIZE))
     y_subdivisions = math.ceil((max_y - min_y) / float(SUBBLOCK_SIZE))
     pixel_coords = (
@@ -461,9 +488,24 @@ def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
         min_y,
         max_x,
         max_y,
+        0.0,
         pseudo_planar,
         format,
     )
+
+
+def raster_orientation(raster_dataset):
+    raster_crs = raster_dataset.crs.to_string()
+    transformer = pyproj.Transformer.from_crs(raster_crs, "EPSG:4326", always_xy=True)
+    x0, y0 = transformer.transform(*(raster_dataset.transform * (0, 0)))
+    x1, y1 = transformer.transform(*(raster_dataset.transform * (0, 1)))
+    x2, y2 = transformer.transform(*(raster_dataset.transform * (1, 0)))
+    b11 = x1 - x0
+    b12 = y1 - y0
+    b21 = x2 - x0
+    b22 = y2 - y0
+    d = b11 * b22 - b12 * b21
+    return -1 if d < 0 else 1
 
 
 def rasterio_windows_to_records(
@@ -502,6 +544,9 @@ def rasterio_windows_to_records(
 
     """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
+
+        if raster_orientation(raster_dataset) < 0:
+            raise rasterio.errors.CRSError("Unsupported raster orientation")
 
         raster_crs = raster_dataset.crs.to_string()
 
