@@ -224,7 +224,7 @@ def array_to_record(
     num_y_subs = 1 + math.ceil(height / float(SUBBLOCK_SIZE))
 
     def sub_to_pixel(x, size, num_subs):
-        return x * SUBBLOCK_SIZE if x < num_subs - 1 else size
+        return x * SUBBLOCK_SIZE
 
     coords = [
         transformer.transform(
