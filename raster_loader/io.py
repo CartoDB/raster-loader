@@ -253,7 +253,6 @@ def array_to_record(
         row_off,
         col_off + width,
         row_off + height,
-        gridded,
         extension,
         pseudo_planar,
         "wkt",
@@ -448,7 +447,6 @@ def pixel_window_to_geography(
     min_y,
     max_x,
     max_y,
-    gridded,
     extension=0,
     pseudo_planar=False,
     format="wkt",
@@ -459,12 +457,8 @@ def pixel_window_to_geography(
         min_y -= extension
         max_x += extension
         max_y += extension
-    if gridded:
-        x_subdivisions = math.ceil((max_x - min_x) / float(SUBBLOCK_SIZE))
-        y_subdivisions = math.ceil((max_y - min_y) / float(SUBBLOCK_SIZE))
-    else:
-        x_subdivisions = 1
-        y_subdivisions = 1
+    x_subdivisions = math.ceil((max_x - min_x) / float(SUBBLOCK_SIZE))
+    y_subdivisions = math.ceil((max_y - min_y) / float(SUBBLOCK_SIZE))
     pixel_coords = (
         # SW -> SE
         coord_range(min_x, max_y, max_x, max_y, x_subdivisions)
@@ -498,7 +492,6 @@ def raster_bounds(raster_dataset, transformer, pseudo_planar, format, gridded):
         min_y,
         max_x,
         max_y,
-        gridded,
         0.0,
         pseudo_planar,
         format,
