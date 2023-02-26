@@ -214,34 +214,38 @@ def array_to_record(
     dtype_str: str,
     transformer: pyproj.Transformer,
     geotransform: Affine,
+    gridded: bool,
     row_off: int = 0,
     col_off: int = 0,
     crs: str = "EPSG:4326",
     pseudo_planar: bool = False,
 ) -> dict:
     height, width = arr.shape
-    num_x_subs = 1 + math.ceil(width / float(SUBBLOCK_SIZE))
-    num_y_subs = 1 + math.ceil(height / float(SUBBLOCK_SIZE))
-
-    def sub_to_pixel(x, size, num_subs):
-        return x * SUBBLOCK_SIZE
-
+    if gridded:
+        # For general projections block geometry is extended and
+        # lon, lat form a grid of size SUBBLOCK_SIZE in pixels.
+        extension = BLOCK_EXTENSION_IN_PIXELS
+        num_x_subs = 1 + math.ceil(width / float(SUBBLOCK_SIZE))
+        num_y_subs = 1 + math.ceil(height / float(SUBBLOCK_SIZE))
+        x_size = SUBBLOCK_SIZE
+        y_size = SUBBLOCK_SIZE
+    else:
+        # When coordinates are WGS84 longitude latitude or
+        # a WGS84 or spherical equirectangular projection,
+        # no extension nor subdivision is performed.
+        extension = 0
+        num_x_subs = 2
+        num_y_subs = 2
+        x_size = width
+        y_size = height
     coords = [
         transformer.transform(
-            *(
-                geotransform
-                * (
-                    col_off + sub_to_pixel(x, width, num_x_subs),
-                    row_off + sub_to_pixel(y, height, num_y_subs),
-                )
-            )
+            *(geotransform * (col_off + x * x_size, row_off + y * y_size))
         )
         for y in range(0, num_y_subs)
         for x in range(0, num_x_subs)
     ]
 
-    # FIXME: extension can be set to 0 when transformer
-    # maps to longitude-latitude (or is an equirectangular projection).
     geog = pixel_window_to_geography(
         transformer,
         geotransform,
@@ -249,7 +253,8 @@ def array_to_record(
         row_off,
         col_off + width,
         row_off + height,
-        BLOCK_EXTENSION_IN_PIXELS,
+        gridded,
+        extension,
         pseudo_planar,
         "wkt",
     )
@@ -443,6 +448,7 @@ def pixel_window_to_geography(
     min_y,
     max_x,
     max_y,
+    gridded,
     extension=0,
     pseudo_planar=False,
     format="wkt",
@@ -453,8 +459,12 @@ def pixel_window_to_geography(
         min_y -= extension
         max_x += extension
         max_y += extension
-    x_subdivisions = math.ceil((max_x - min_x) / float(SUBBLOCK_SIZE))
-    y_subdivisions = math.ceil((max_y - min_y) / float(SUBBLOCK_SIZE))
+    if gridded:
+        x_subdivisions = math.ceil((max_x - min_x) / float(SUBBLOCK_SIZE))
+        y_subdivisions = math.ceil((max_y - min_y) / float(SUBBLOCK_SIZE))
+    else:
+        x_subdivisions = 1
+        y_subdivisions = 1
     pixel_coords = (
         # SW -> SE
         coord_range(min_x, max_y, max_x, max_y, x_subdivisions)
@@ -476,7 +486,7 @@ def pixel_window_to_geography(
     return coords_to_geography(coords, format, whole_earth, pseudo_planar)
 
 
-def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
+def raster_bounds(raster_dataset, transformer, pseudo_planar, format, gridded):
     min_x = 0
     min_y = 0
     max_x = raster_dataset.width
@@ -488,6 +498,7 @@ def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
         min_y,
         max_x,
         max_y,
+        gridded,
         0.0,
         pseudo_planar,
         format,
@@ -566,6 +577,13 @@ def rasterio_windows_to_records(
             input_crs, "EPSG:4326", always_xy=True
         )
 
+        gridded = input_crs not in [
+            "EPSG:4326",
+            "EPSG:54002",
+            "EPSG:53002",
+            "EPSG:54001",
+            "EPSG:53001",
+        ]
         band_type = raster_band_type(raster_dataset, band)
         band_name = band_field_name(band, band_type)
         columns = table_columns(output_quadbin, [band_name])
@@ -573,8 +591,11 @@ def rasterio_windows_to_records(
         create_table(columns, clustering)
 
         # compute whole bounds for metadata
-        bounds_geog = raster_bounds(raster_dataset, transformer, pseudo_planar, "wkt")
+        bounds_geog = raster_bounds(
+            raster_dataset, transformer, pseudo_planar, "wkt", gridded
+        )
 
+        metadata["gridded"] = gridded
         metadata["bands"] = [band_name]
         metadata["raster_boundary"] = bounds_geog
         metadata["nb_pixel_blocks"] = 0
@@ -611,6 +632,7 @@ def rasterio_windows_to_records(
                     str(band_type),
                     transformer,
                     raster_dataset.transform,
+                    gridded,
                     window.row_off,
                     window.col_off,
                     crs=input_crs,
