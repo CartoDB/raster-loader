@@ -538,10 +538,12 @@ def rasterio_windows_to_records(
 
         resolution = raster_info["GEO"]["MaxZoom"]
 
-        if with_overviews:
-            overview_level = reversed([None] + list(range(len(raster_info.get("IFD", [None])) - 1)))
-        else:
-            overview_level = [None]
+    if with_overviews:
+        overview_level = reversed(
+            [None] + list(range(len(raster_info.get("IFD", [None])) - 1))
+        )
+    else:
+        overview_level = [None]
 
     """Requires rasterio."""
     if not _has_rasterio:  # pragma: no cover
@@ -979,6 +981,7 @@ def rasterio_to_bigquery(
     overwrite: bool = False,
     output_quadbin: bool = False,
     pseudo_planar: bool = False,
+    with_overviews: bool = False,
 ) -> bool:
     """Write a rasterio-compatible raster file to a BigQuery table.
     Compatible file formats include TIFF and GeoTIFF. See
@@ -1015,6 +1018,8 @@ def rasterio_to_bigquery(
         be a GoogleMapsCompatible raster)
     pseudo_planar : bool, optional
         Use pseudo-planar BigQuery geographies (coordinates are scaled down by 1/32768)
+    with_overviews : bool, optional
+        Upload overviews layers of the raster along with the native resolution.
 
     Returns
     -------
@@ -1074,6 +1079,7 @@ def rasterio_to_bigquery(
             input_crs,
             output_quadbin,
             pseudo_planar,
+            with_overviews,
         )
 
         total_blocks = get_number_of_blocks(file_path)
