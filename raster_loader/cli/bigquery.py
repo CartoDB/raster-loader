@@ -46,6 +46,12 @@ def bigquery(args=None):
     default=False,
     is_flag=True,
 )
+@click.option(
+    "--with_overviews",
+    help=("Upload overviews layers of the raster along with the native resolution."),
+    default=False,
+    is_flag=True,
+)
 @click.option("--test", help="Use Mock BigQuery Client", default=False, is_flag=True)
 def upload(
     file_path,
@@ -57,6 +63,7 @@ def upload(
     input_crs,
     overwrite=False,
     output_quadbin=False,
+    with_overviews=False,
     test=False,
 ):
 
@@ -111,6 +118,7 @@ def upload(
         client=client,
         overwrite=overwrite,
         output_quadbin=output_quadbin,
+        with_overviews=with_overviews,
     )
 
     click.echo("Raster file uploaded to Google BigQuery")

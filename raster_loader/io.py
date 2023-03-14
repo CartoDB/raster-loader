@@ -512,6 +512,9 @@ def rasterio_windows_to_records(
     pseudo_planar: bool = False,
     with_overviews: bool = False,
 ) -> Iterable:
+
+    overview_levels = [None]
+
     if output_quadbin:
 
         """Requires rasterio."""
@@ -520,6 +523,9 @@ def rasterio_windows_to_records(
 
         """Open a raster file with rio-cogeo."""
         raster_info = rio_cogeo.cog_info(file_path).dict()
+
+        if with_overviews:
+            overview_levels = overview_levels + list(range(len(raster_info.get("IFD", [None])) - 1))
 
         """Check if raster is quadbin compatible."""
         if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
@@ -538,18 +544,11 @@ def rasterio_windows_to_records(
 
         resolution = raster_info["GEO"]["MaxZoom"]
 
-    if with_overviews:
-        overview_level = reversed(
-            [None] + list(range(len(raster_info.get("IFD", [None])) - 1))
-        )
-    else:
-        overview_level = [None]
-
     """Requires rasterio."""
     if not _has_rasterio:  # pragma: no cover
         import_error_rasterio()
 
-    for overview_level in overview_level:
+    for agg_level, overview_level in enumerate(overview_levels):
 
         """Open a raster file with rasterio."""
         with rasterio.open(file_path, overview_level=overview_level) as raster_dataset:
@@ -593,6 +592,7 @@ def rasterio_windows_to_records(
             metadata["min_pixel_block_height_in_pixel"] = None
             metadata["min_pixel_block_width_in_pixel"] = None
             metadata["irregular_pixel_block_shape"] = False
+            metadata["agg_level"] = agg_level
 
             for _, window in raster_dataset.block_windows():
 
@@ -608,6 +608,7 @@ def rasterio_windows_to_records(
                         window.row_off,
                         window.col_off,
                         crs=input_crs,
+                        agg_level = agg_level if with_overviews else None
                     )
 
                 else:
