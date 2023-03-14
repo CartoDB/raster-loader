@@ -510,10 +510,22 @@ def rasterio_windows_to_records(
     input_crs: str = None,
     output_quadbin: bool = False,
     pseudo_planar: bool = False,
+    with_overviews: bool = False,
 ) -> Iterable:
+
+    overview_levels = [None]
+
     if output_quadbin:
+
+        """Requires rasterio."""
+        if not _has_rio_cogeo:  # pragma: no cover
+            import_error_rio_cogeo()
+
         """Open a raster file with rio-cogeo."""
         raster_info = rio_cogeo.cog_info(file_path).dict()
+
+        if with_overviews:
+            overview_levels = overview_levels + list(range(len(raster_info.get("IFD", [None])) - 1))
 
         """Check if raster is quadbin compatible."""
         if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
@@ -536,105 +548,109 @@ def rasterio_windows_to_records(
     if not _has_rasterio:  # pragma: no cover
         import_error_rasterio()
 
-    """Open a raster file with rasterio."""
-    with rasterio.open(file_path) as raster_dataset:
+    for agg_level, overview_level in enumerate(overview_levels):
 
-        raster_crs = raster_dataset.crs.to_string()
+        """Open a raster file with rasterio."""
+        with rasterio.open(file_path, overview_level=overview_level) as raster_dataset:
 
-        if input_crs is None:
-            input_crs = raster_crs
-        elif input_crs != raster_crs:
-            msg = "Input CRS conflicts with input raster metadata."
-            err = rasterio.errors.CRSError(msg)
-            raise err
+            raster_crs = raster_dataset.crs.to_string()
 
-        if not input_crs:  # pragma: no cover
-            msg = "Unable to find valid input_crs."
-            err = rasterio.errors.CRSError(msg)
-            raise err
+            if input_crs is None:
+                input_crs = raster_crs
+            elif input_crs != raster_crs:
+                msg = "Input CRS conflicts with input raster metadata."
+                err = rasterio.errors.CRSError(msg)
+                raise err
 
-        transformer = pyproj.Transformer.from_crs(
-            input_crs, "EPSG:4326", always_xy=True
-        )
-        orientation = raster_orientation(raster_dataset)
+            if not input_crs:  # pragma: no cover
+                msg = "Unable to find valid input_crs."
+                err = rasterio.errors.CRSError(msg)
+                raise err
 
-        band_type = raster_band_type(raster_dataset, band)
-        band_name = band_field_name(band, band_type)
-        columns = table_columns(output_quadbin, [band_name])
-        clustering = ["quadbin"] if output_quadbin else ["geog"]
-        create_table(columns, clustering)
+            transformer = pyproj.Transformer.from_crs(
+                input_crs, "EPSG:4326", always_xy=True
+            )
+            orientation = raster_orientation(raster_dataset)
 
-        # compute whole bounds for metadata
-        bounds_geog = raster_bounds(raster_dataset, transformer, pseudo_planar, "wkt")
+            band_type = raster_band_type(raster_dataset, band)
+            band_name = band_field_name(band, band_type)
+            columns = table_columns(output_quadbin, [band_name])
+            clustering = ["quadbin"] if output_quadbin else ["geog"]
+            create_table(columns, clustering)
 
-        metadata["bands"] = [band_name]
-        metadata["raster_boundary"] = bounds_geog
-        metadata["nb_pixel_blocks"] = 0
-        metadata["nb_pixel"] = 0
-        metadata["max_pixel_block_height_in_pixel"] = 0
-        metadata["max_pixel_block_width_in_pixel"] = 0
-        metadata["max_pixel_block_height_in_pixel"] = 0
-        metadata["max_pixel_block_width_in_pixel"] = 0
-        metadata["min_pixel_block_height_in_pixel"] = None
-        metadata["min_pixel_block_width_in_pixel"] = None
-        metadata["irregular_pixel_block_shape"] = False
+            # compute whole bounds for metadata
+            bounds_geog = raster_bounds(raster_dataset, transformer, pseudo_planar, "wkt")
 
-        for _, window in raster_dataset.block_windows():
+            metadata["bands"] = [band_name]
+            metadata["raster_boundary"] = bounds_geog
+            metadata["nb_pixel_blocks"] = 0
+            metadata["nb_pixel"] = 0
+            metadata["max_pixel_block_height_in_pixel"] = 0
+            metadata["max_pixel_block_width_in_pixel"] = 0
+            metadata["max_pixel_block_height_in_pixel"] = 0
+            metadata["max_pixel_block_width_in_pixel"] = 0
+            metadata["min_pixel_block_height_in_pixel"] = None
+            metadata["min_pixel_block_width_in_pixel"] = None
+            metadata["irregular_pixel_block_shape"] = False
+            metadata["agg_level"] = agg_level
 
-            if output_quadbin:
-                rec = array_to_quadbin_record(
-                    raster_dataset.read(band, window=window),
-                    band,
-                    band_name,
-                    str(band_type),
-                    transformer,
-                    raster_dataset.transform,
-                    resolution,
-                    window.row_off,
-                    window.col_off,
-                    crs=input_crs,
-                )
+            for _, window in raster_dataset.block_windows():
 
-            else:
-                rec = array_to_record(
-                    raster_dataset.read(band, window=window),
-                    band,
-                    band_name,
-                    str(band_type),
-                    transformer,
-                    raster_dataset.transform,
-                    window.row_off,
-                    window.col_off,
-                    crs=input_crs,
-                    orientation=orientation,
-                    pseudo_planar=pseudo_planar,
-                )
+                if output_quadbin:
+                    rec = array_to_quadbin_record(
+                        raster_dataset.read(band, window=window),
+                        band,
+                        band_name,
+                        str(band_type),
+                        transformer,
+                        raster_dataset.transform,
+                        resolution,
+                        window.row_off,
+                        window.col_off,
+                        crs=input_crs,
+                        agg_level = agg_level if with_overviews else None
+                    )
 
-            metadata["crs"] = input_crs
-            metadata["gdal_transform"] = raster_dataset.transform.to_gdal()
-            metadata["nb_pixel_blocks"] += 1
-            metadata["nb_pixel"] += window.width * window.height
-            if (
-                not metadata["min_pixel_block_height_in_pixel"]
-                or metadata["min_pixel_block_height_in_pixel"] > window.height
-            ):
-                metadata["min_pixel_block_height_in_pixel"] = window.height
-            if metadata["max_pixel_block_height_in_pixel"] < window.height:
-                metadata["max_pixel_block_height_in_pixel"] = window.height
-            if (
-                not metadata["min_pixel_block_width_in_pixel"]
-                or metadata["min_pixel_block_width_in_pixel"] > window.width
-            ):
-                metadata["min_pixel_block_width_in_pixel"] = window.width
-            if metadata["max_pixel_block_width_in_pixel"] < window.width:
-                metadata["max_pixel_block_width_in_pixel"] = window.width
-            if (
-                window.height != metadata["max_pixel_block_height_in_pixel"]
-                or window.width != metadata["max_pixel_block_width_in_pixel"]
-            ):
-                metadata["irregular_pixel_block_shape"] = True
+                else:
+                    rec = array_to_record(
+                        raster_dataset.read(band, window=window),
+                        band,
+                        band_name,
+                        str(band_type),
+                        transformer,
+                        raster_dataset.transform,
+                        window.row_off,
+                        window.col_off,
+                        crs=input_crs,
+                        orientation=orientation,
+                        pseudo_planar=pseudo_planar,
+                    )
 
-            yield rec
+                metadata["crs"] = input_crs
+                metadata["gdal_transform"] = raster_dataset.transform.to_gdal()
+                metadata["nb_pixel_blocks"] += 1
+                metadata["nb_pixel"] += window.width * window.height
+                if (
+                    not metadata["min_pixel_block_height_in_pixel"]
+                    or metadata["min_pixel_block_height_in_pixel"] > window.height
+                ):
+                    metadata["min_pixel_block_height_in_pixel"] = window.height
+                if metadata["max_pixel_block_height_in_pixel"] < window.height:
+                    metadata["max_pixel_block_height_in_pixel"] = window.height
+                if (
+                    not metadata["min_pixel_block_width_in_pixel"]
+                    or metadata["min_pixel_block_width_in_pixel"] > window.width
+                ):
+                    metadata["min_pixel_block_width_in_pixel"] = window.width
+                if metadata["max_pixel_block_width_in_pixel"] < window.width:
+                    metadata["max_pixel_block_width_in_pixel"] = window.width
+                if (
+                    window.height != metadata["max_pixel_block_height_in_pixel"]
+                    or window.width != metadata["max_pixel_block_width_in_pixel"]
+                ):
+                    metadata["irregular_pixel_block_shape"] = True
+
+                yield rec
 
 
 def records_to_bigquery(
@@ -966,6 +982,7 @@ def rasterio_to_bigquery(
     overwrite: bool = False,
     output_quadbin: bool = False,
     pseudo_planar: bool = False,
+    with_overviews: bool = False,
 ) -> bool:
     """Write a rasterio-compatible raster file to a BigQuery table.
     Compatible file formats include TIFF and GeoTIFF. See
@@ -1002,6 +1019,8 @@ def rasterio_to_bigquery(
         be a GoogleMapsCompatible raster)
     pseudo_planar : bool, optional
         Use pseudo-planar BigQuery geographies (coordinates are scaled down by 1/32768)
+    with_overviews : bool, optional
+        Upload overviews layers of the raster along with the native resolution.
 
     Returns
     -------
@@ -1061,6 +1080,7 @@ def rasterio_to_bigquery(
             input_crs,
             output_quadbin,
             pseudo_planar,
+            with_overviews,
         )
 
         total_blocks = get_number_of_blocks(file_path)

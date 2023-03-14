@@ -515,3 +515,23 @@ def test_rasterio_to_bigquery_valid_quadbbin_raster(*args, **kwargs):
         output_quadbin=True,
     )
     assert success
+
+
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
+@patch("raster_loader.io.delete_bigquery_table", return_value=None)
+@patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
+@patch("raster_loader.io.ask_yes_no_question", return_value=True)
+def test_rasterio_to_bigquery_valid_quadbbin_raster_with_overviews(*args, **kwargs):
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "quadbin_raster.tif")
+
+    success = io.rasterio_to_bigquery(
+        test_file,
+        project_id="test",
+        dataset_id="test",
+        table_id="test",
+        client=client,
+        output_quadbin=True,
+        with_overviews=True,
+    )
+    assert success
