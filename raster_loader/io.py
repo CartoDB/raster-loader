@@ -595,6 +595,7 @@ def rasterio_windows_to_records(
                     window.col_off,
                     crs=input_crs,
                 )
+
             else:
                 rec = array_to_record(
                     raster_dataset.read(band, window=window),
