@@ -531,6 +531,7 @@ def rasterio_windows_to_records(
             raise ValueError(msg)
 
         resolution = raster_info["GEO"]["MaxZoom"]
+        metadata["resolution"] = resolution
 
     """Requires rasterio."""
     if not _has_rasterio:  # pragma: no cover
@@ -594,11 +595,6 @@ def rasterio_windows_to_records(
                     window.col_off,
                     crs=input_crs,
                 )
-                attrs = json.loads(rec["attrs"])
-                if "min_level" not in metadata or metadata["min_level"] > attrs["z"]: 
-                    metadata["min_level"] = attrs["z"]
-                if "max_level" not in metadata or metadata["max_level"] < attrs["z"]: 
-                    metadata["max_level"] = attrs["z"]
             else:
                 rec = array_to_record(
                     raster_dataset.read(band, window=window),
@@ -1159,19 +1155,15 @@ def write_metadata(
     if append_records:
         table_ref = f"{project_id}.{dataset_id}.{table_id}"
         location = "quadbin" if is_quadbin else "geog"
-        get_quadbin_levels = ""
-        fetch_quadbin_levels = ""
+        get_resolution = ""
+        fetch_resolution = ""
         if is_quadbin:
-            get_quadbin_levels = """
+            get_resolution = """
                 ,INT64(
-                    JSON_QUERY(attrs, '$.min_level')
-                ) AS min_level,
-                INT64(
-                    JSON_QUERY(attrs, '$.max_level')
-                ) AS max_level"""
-            fetch_quadbin_levels = """
-                ,MIN(min_level) AS min_level,
-                MAX(max_level) AS max_level"""
+                    JSON_QUERY(attrs, '$.resolution')
+                ) AS resolution"""
+            fetch_resolution = """
+                ,ANY_VALUE(resolution) AS resolution"""
         query = f"""
             UPDATE `{table_ref}`
             SET attrs = (
@@ -1202,7 +1194,7 @@ def write_metadata(
                     ) AS max_pixel_block_width_in_pixel,
                     JSON_VALUE(attrs, '$.crs') AS crs,
                     JSON_QUERY_ARRAY(attrs, '$.gdal_transform') AS gdal_transform
-                    {get_quadbin_levels}
+                    {get_resolution}
                   FROM parsed_meta
                 ),
                 meta2 AS (
@@ -1227,7 +1219,7 @@ def write_metadata(
                     ) AS max_pixel_block_width_in_pixel,
                     JSON_VALUE(attrs, '$.crs') AS crs,
                     JSON_QUERY_ARRAY(attrs, '$.gdal_transform') AS gdal_transform
-                    {get_quadbin_levels}
+                    {get_resolution}
                   FROM
                     (SELECT PARSE_JSON({sql_quote(json.dumps(metadata))}) AS attrs)
                 ),
@@ -1270,7 +1262,7 @@ def write_metadata(
                         ANY_VALUE(gdal_transform),
                         NULL
                     ) AS gdal_transform
-                    {fetch_quadbin_levels}
+                    {fetch_resolution}
                 )))
                 FROM united
             ) WHERE {location} IS NULL
