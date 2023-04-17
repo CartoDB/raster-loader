@@ -531,6 +531,7 @@ def rasterio_windows_to_records(
             raise ValueError(msg)
 
         resolution = raster_info["GEO"]["MaxZoom"]
+        metadata["resolution"] = resolution
 
     """Requires rasterio."""
     if not _has_rasterio:  # pragma: no cover
@@ -1155,6 +1156,15 @@ def write_metadata(
     if append_records:
         table_ref = f"{project_id}.{dataset_id}.{table_id}"
         location = "quadbin" if is_quadbin else "geog"
+        get_resolution = ""
+        fetch_resolution = ""
+        if is_quadbin:
+            get_resolution = """
+                ,INT64(
+                    JSON_QUERY(attrs, '$.resolution')
+                ) AS resolution"""
+            fetch_resolution = """
+                ,ANY_VALUE(resolution) AS resolution"""
         query = f"""
             UPDATE `{table_ref}`
             SET attrs = (
@@ -1184,7 +1194,8 @@ def write_metadata(
                         JSON_QUERY(attrs, '$.max_pixel_block_width_in_pixel')
                     ) AS max_pixel_block_width_in_pixel,
                     JSON_VALUE(attrs, '$.crs') AS crs,
-                    JSON_QUERY_ARRAY(attrs, '$.gdal_transform') AS gdal_transform,
+                    JSON_QUERY_ARRAY(attrs, '$.gdal_transform') AS gdal_transform
+                    {get_resolution}
                   FROM parsed_meta
                 ),
                 meta2 AS (
@@ -1208,7 +1219,8 @@ def write_metadata(
                         JSON_QUERY(attrs, '$.max_pixel_block_width_in_pixel')
                     ) AS max_pixel_block_width_in_pixel,
                     JSON_VALUE(attrs, '$.crs') AS crs,
-                    JSON_QUERY_ARRAY(attrs, '$.gdal_transform') AS gdal_transform,
+                    JSON_QUERY_ARRAY(attrs, '$.gdal_transform') AS gdal_transform
+                    {get_resolution}
                   FROM
                     (SELECT PARSE_JSON({sql_quote(json.dumps(metadata))}) AS attrs)
                 ),
@@ -1251,6 +1263,7 @@ def write_metadata(
                         ANY_VALUE(gdal_transform),
                         NULL
                     ) AS gdal_transform
+                    {fetch_resolution}
                 )))
                 FROM united
             ) WHERE {location} IS NULL
