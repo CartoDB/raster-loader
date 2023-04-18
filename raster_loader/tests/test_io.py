@@ -46,10 +46,11 @@ def test_array_to_record():
     transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     band = 1
+    nodata = -1
     value_field = "band_1_float64"
     dtype_str = "float64"
     record = io.array_to_record(
-        arr, band, value_field, dtype_str, transformer, geotransform, crs=crs
+        arr, nodata, band, value_field, dtype_str, transformer, geotransform, crs=crs
     )
 
     if should_swap[arr.dtype.byteorder]:
@@ -73,6 +74,7 @@ def test_array_to_record():
         "band": band,
         "value_field": "band_1_float64",
         "dtype": "float64",
+        "nodata": nodata,
         "crs": crs,
         "gdal_transform": list(geotransform.to_gdal()),
         "row_off": 0,
@@ -90,6 +92,7 @@ def test_array_to_record_offset():
 
     record = io.array_to_record(
         arr,
+        -1,
         1,
         "band_1_float64",
         "float64",
@@ -136,6 +139,7 @@ def test_array_to_quadbin_record():
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     record = io.array_to_quadbin_record(
         arr,
+        -1,
         1,
         "band_1_float64",
         "float64",
@@ -160,6 +164,7 @@ def test_array_to_quadbin_record():
         "band": 1,
         "value_field": "band_1_float64",
         "dtype": "float64",
+        "nodata": -1,
         "crs": "EPSG:4326",
         "gdal_transform": list(geotransform.to_gdal()),
         "row_off": 20,
@@ -177,10 +182,11 @@ def test_record_to_array():
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     crs = "EPSG:4326"
     band = 1
+    nodata = 1
     value_field = "band_1_float64"
     dtype_str = "float64"
     record = io.array_to_record(
-        arr, band, value_field, dtype_str, transformer, geotransform, crs=crs
+        arr, nodata, band, value_field, dtype_str, transformer, geotransform, crs=crs
     )
     arr2 = io.record_to_array(record)
     assert np.allclose(arr, arr2)
@@ -194,10 +200,11 @@ def test_record_to_array_invalid_dtype():
     transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
     band = 1
+    nodata = 1
     value_field = "band_1_dtype"
     dtype_str = "dtype"
     record = io.array_to_record(
-        arr, band, value_field, dtype_str, transformer, geotransform, crs=crs
+        arr, nodata, band, value_field, dtype_str, transformer, geotransform, crs=crs
     )
 
     with pytest.raises(TypeError):
@@ -217,6 +224,7 @@ def test_rasterio_to_record():
     with rasterio.open(test_file) as src:
         record = io.array_to_record(
             src.read(band),
+            src.nodata,
             band,
             value_field,
             dtype_str,
@@ -232,6 +240,45 @@ def test_rasterio_to_record():
         "value_field": "band_1_uint8",
         "dtype": "uint8",
         "crs": "EPSG:4326",
+        "gdal_transform": list(src.transform.to_gdal()),
+        "row_off": 0,
+        "col_off": 0,
+    }
+
+    for key, value in expected_attrs.items():
+        assert json.loads(record["attrs"])[key] == value
+
+
+def test_rasterio_to_record_with_nodata():
+    import rasterio
+    import os
+
+    test_file = os.path.join(fixtures_dir, "fuji.tif")
+    band = 1
+    value_field = "band_1_uint8"
+    dtype_str = "uint8"
+    transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:4326", always_xy=True)
+
+    with rasterio.open(test_file) as src:
+        record = io.array_to_record(
+            src.read(band),
+            src.nodata,
+            band,
+            value_field,
+            dtype_str,
+            transformer,
+            src.transform,
+            crs=src.crs.to_string(),
+        )
+
+    assert isinstance(record, dict)
+
+    expected_attrs = {
+        "band": 1,
+        "value_field": "band_1_uint8",
+        "dtype": "uint8",
+        "nodata": -32767,
+        "crs": "EPSG:8692",
         "gdal_transform": list(src.transform.to_gdal()),
         "row_off": 0,
         "col_off": 0,
