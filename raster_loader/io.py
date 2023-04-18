@@ -239,6 +239,7 @@ def band_field_name(band: int, band_type: str, base_name: str = "band") -> str:
 
 def array_to_record(
     arr: np.ndarray,
+    nodata: float,
     band: int,
     value_field: str,
     dtype_str: str,
@@ -283,6 +284,7 @@ def array_to_record(
         "band": band,
         "value_field": value_field,
         "dtype": dtype_str,
+        "nodata": nodata,
         "crs": crs,
         "gdal_transform": geotransform.to_gdal(),
         "row_off": row_off,
@@ -315,6 +317,7 @@ def array_to_record(
 
 def array_to_quadbin_record(
     arr: np.ndarray,
+    nodata: float,
     band: int,
     value_field: str,
     dtype_str: str,
@@ -342,6 +345,7 @@ def array_to_quadbin_record(
         "band": band,
         "value_field": value_field,
         "dtype": dtype_str,
+        "nodata": nodata,
         "crs": crs,
         "gdal_transform": geotransform.to_gdal(),
         "row_off": row_off,
@@ -585,6 +589,7 @@ def rasterio_windows_to_records(
             if output_quadbin:
                 rec = array_to_quadbin_record(
                     raster_dataset.read(band, window=window),
+                    raster_dataset.nodata,
                     band,
                     band_name,
                     str(band_type),
@@ -599,6 +604,7 @@ def rasterio_windows_to_records(
             else:
                 rec = array_to_record(
                     raster_dataset.read(band, window=window),
+                    raster_dataset.nodata,
                     band,
                     band_name,
                     str(band_type),
