@@ -1234,13 +1234,12 @@ def write_metadata(
                     SELECT * FROM meta1
                     UNION ALL
                     SELECT * FROM meta2
-                ),
-                bands AS (
-                    SELECT ARRAY_AGG(DISTINCT band) AS bands
-                    FROM united, UNNEST(bands) AS band
                 )
                 SELECT TO_JSON_STRING(TO_JSON(STRUCT(
-                    (SELECT bands FROM bands) AS bands,
+                    (
+                        SELECT ARRAY_AGG(DISTINCT b)
+                        FROM united, UNNEST(bands) b
+                    ) AS bands,
                     ST_ASTEXT(ST_UNION_AGG(raster_boundary)) AS raster_boundary,
                     SUM(nb_pixel) AS nb_pixel,
                     SUM(nb_pixel_blocks) AS nb_pixel_blocks,
