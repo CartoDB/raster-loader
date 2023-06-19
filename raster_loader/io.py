@@ -1319,6 +1319,15 @@ def size_mb_of_rasterio_band(file_path: str, band: int = 1) -> int:
         S = np.dtype(raster_dataset.dtypes[band - 1]).itemsize
         return (W * H * S) / 1024 / 1024
 
+def get_bands_number(file_path: str):
+    """Returns the number of bands in a raster file."""
+
+    """Requires rasterio."""
+    if not _has_rasterio:  # pragma: no cover
+        import_error_rasterio()
+
+    with rasterio.open(file_path) as raster_dataset:
+        return raster_dataset.count
 
 def print_band_information(file_path: str):
     """Print out information about the bands in a raster file."""
