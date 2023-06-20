@@ -13,11 +13,12 @@ https://console.cloud.google.com/storage/browser/carto-hackathon-2023-bqcarto;ta
 try:
     import ee
 
-    service_account = "hackathon-2023@bqcarto.iam.gserviceaccount.com"
-    credentials = ee.ServiceAccountCredentials(
-        service_account, "/home/ginetto/.carto/gee_service_account.json"
-    )
-    ee.Initialize(credentials)
+    # service_account = "<account-mail>@<project>.iam.gserviceaccount.com"
+    # credentials = ee.ServiceAccountCredentials(
+    #     service_account, "/path/to/gee_service_account.json"
+    # )
+    # ee.Initialize(credentials)
+    ee.Initialize(project='cartobq')
 except ImportError:  # pragma: no cover
     _has_gee = False
 except Exception as e:
