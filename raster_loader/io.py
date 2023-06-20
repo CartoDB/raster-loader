@@ -1,3 +1,4 @@
+import time
 import json
 import sys
 import math
@@ -12,6 +13,15 @@ import numpy as np
 import pandas as pd
 import pyproj
 import functools
+
+try:
+    import ee
+except ImportError:  # pragma: no cover
+    _has_gee = False
+except Exception as e:
+    raise e
+else:
+    _has_gee = True
 
 try:
     import rio_cogeo
@@ -413,6 +423,17 @@ def import_error_rasterio():  # pragma: no cover
         "See https://rasterio.readthedocs.io/en/latest/installation.html\n"
         "for installation instructions.\n"
         "Alternatively, run `pip install rasterio` to install from pypi."
+    )
+    raise ImportError(msg)
+
+
+def import_error_gee():  # pragma: no cover
+    msg = (
+        "GEE is not installed.\n"
+        "Please install GEE to use this function.\n"
+        "See https://developers.google.com/earth-engine/guides/python_install\n"
+        "for installation instructions.\n"
+        "Alternatively, run `pip install earthengine-api` to install from pypi."
     )
     raise ImportError(msg)
 
@@ -961,6 +982,31 @@ def raster_orientation(raster_dataset):
     return -1 if d < 0 else 1
 
 
+def gee_to_bucket(
+    image: ee.Image,
+    roi: ee.Geometry,
+    outputBucket: str,
+    table_id: str,
+) -> bool:
+    # Export the image, specifying scale and region.
+    task = ee.batch.Export.image.toCloudStorage(
+        **{
+            "image": image,
+            "description": table_id,
+            "scale": 100,
+            "region": roi.getInfo()["coordinates"],
+            "fileFormat": "GeoTIFF",
+            "bucket": outputBucket,
+            "formatOptions": {"cloudOptimized": True},
+        }
+    )
+    task.start()
+
+    while task.active():
+        print("Polling for task (id: {}).".format(task.id))
+        time.sleep(2)
+
+
 def rasterio_to_bigquery(
     file_path: str,
     table_id: str,
@@ -1347,6 +1393,17 @@ def print_band_information(file_path: str):
                 ]
             )
         )
+
+
+def gee_print_band_information(image: ee.Image):
+    """Print out information about the bands in a GEE raster file."""
+
+    """Requires gee."""
+    if not _has_gee:  # pragma: no cover
+        import_error_gee()
+
+    data = image.getInfo()
+    print("Number of bands: {}".format(len(data.bandNames())))
 
 
 def get_block_dims(file_path: str) -> tuple:
