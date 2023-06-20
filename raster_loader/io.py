@@ -984,22 +984,23 @@ def raster_orientation(raster_dataset):
 
 def gee_to_bucket(
     image: ee.Image,
-    roi: ee.Geometry,
+    roi: ee.Geometry | None,
     outputBucket: str,
     table_id: str,
 ) -> bool:
     # Export the image, specifying scale and region.
-    task = ee.batch.Export.image.toCloudStorage(
-        **{
+    export_params = {
             "image": image,
             "description": table_id,
             "scale": 100,
-            "region": roi.getInfo()["coordinates"],
             "fileFormat": "GeoTIFF",
             "bucket": outputBucket,
             "formatOptions": {"cloudOptimized": True},
         }
-    )
+    if roi:
+        export_params["region"]=roi.getInfo()["coordinates"]
+
+    task = ee.batch.Export.image.toCloudStorage(**export_params)
     task.start()
 
     while task.active():
