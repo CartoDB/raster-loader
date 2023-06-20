@@ -1,4 +1,4 @@
-from raster_loader import get_bands_number, rasterio_to_bigquery
+from raster_loader import rasterio_to_bigquery, gee_to_bucket
 import multiprocessing
 
 INTERMEDIATE_BUCKET = """
