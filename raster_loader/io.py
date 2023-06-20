@@ -2,6 +2,7 @@ import time
 import json
 import sys
 import math
+import geojson
 from itertools import islice
 from typing import Iterable
 from typing import Callable
@@ -13,9 +14,11 @@ import numpy as np
 import pandas as pd
 import pyproj
 import functools
+import click
 
 try:
     import ee
+    ee.Initialize(project='cartobq')
 except ImportError:  # pragma: no cover
     _has_gee = False
 except Exception as e:
@@ -990,26 +993,26 @@ def gee_to_bucket_wrapper(
     table_id: str,
 ) -> bool:
     if roi is not None:
-        roi_geojson = geojson.load(roi)
+        roi_geojson = geojson.loads(roi)
 
     gee_image = ee.Image(image).select(band)
 
     # introspect raster file
     # num_blocks = get_number_of_blocks(file_path)
-    file_size_mb = gee_image.size() / 1024 / 1024
-
+    # file_size_mb = gee_image.size() / 1024 / 1024
+    
     # center = geometry.centroid().getInfo()['coordinates']
     # center.reverse()
 
     click.echo("GEE Image: {}".format(image))
     click.echo("Source Band: {}".format(band))
-    click.echo("File Size: {} MB".format(file_size_mb))
+    # click.echo("File Size: {} MB".format(file_size_mb))
     click.echo("Bucket: {}".format(outputBucket))
     click.echo("Key: {}".format(table_id))
     gee_print_band_information(gee_image)
 
     # step1 download GEE image in intermediate bucket
-    click.echo("Downloading band {band} to bucket")
+    click.echo(f"Downloading band {band} to bucket")
     gee_to_bucket(gee_image, roi_geojson, outputBucket, table_id)
 
 
@@ -1029,14 +1032,15 @@ def gee_to_bucket(
             "formatOptions": {"cloudOptimized": True},
         }
     if roi:
-        export_params["region"]=roi.getInfo()["coordinates"]
+        if isinstance(roi, ee.Geometry):
+            export_params["region"]=roi.getInfo()["coordinates"]
 
     task = ee.batch.Export.image.toCloudStorage(**export_params)
     task.start()
 
     while task.active():
-        print("Polling for task (id: {}).".format(task.id))
-        time.sleep(2)
+        print(f"Polling for task (id: {task.id}) about exporting {table_id}.")
+        time.sleep(5)
 
 
 def rasterio_to_bigquery(
@@ -1435,7 +1439,7 @@ def gee_print_band_information(image: ee.Image):
         import_error_gee()
 
     data = image.getInfo()
-    print("Number of bands: {}".format(len(data.bandNames())))
+    print("Number of bands: {}".format(len(data["bands"])))
 
 
 def get_block_dims(file_path: str) -> tuple:

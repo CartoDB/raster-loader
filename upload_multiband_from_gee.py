@@ -1,3 +1,4 @@
+import os
 from raster_loader import rasterio_to_bigquery, gee_to_bucket_wrapper
 import multiprocessing
 
