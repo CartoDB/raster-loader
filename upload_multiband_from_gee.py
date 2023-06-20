@@ -24,7 +24,7 @@ def gee_to_bigquery_wrapper(band):
         table_name,
     )
 
-    bucket_ref = f'{INTERMEDIATE_BUCKET}table_name'
+    bucket_ref = f'{INTERMEDIATE_BUCKET}{table_name}'
 
     rasterio_to_bigquery(
         file_path = bucket_ref,
