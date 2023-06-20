@@ -1,4 +1,4 @@
-from raster_loader import rasterio_to_bigquery, gee_to_bucket
+from raster_loader import rasterio_to_bigquery, gee_to_bucket_wrapper
 import multiprocessing
 
 INTERMEDIATE_BUCKET = """
@@ -14,12 +14,15 @@ project_id, dataset_id, table_id = table_prefix.split('.')
 
 # OPTIONAL bands to include
 bands = ['B4', 'B3', 'B2']
+roi = '''{"type":"FeatureCollection","features":[{"type":"Feature","properties":{},"geometry":{"coordinates":[[[-12.765280594184702,46.21566957897852],[-11.956614277143075,39.17436777332358],[-3.235950496052567,38.09334028690674],[-1.2584258877862737,40.94195324624033],[-2.381163412646032,43.33057722262623],[-7.925228669539251,45.765725946727],[-12.765280594184702,46.21566957897852]]],"type":"Polygon"}}]}'''
+
 
 def gee_to_bigquery_wrapper(band):
     table_name = f'{table_id}_band_{band}'
-    gee_to_bucket(
+    gee_to_bucket_wrapper(
         gee_image,
-        None,
+        band,
+        roi,
         INTERMEDIATE_BUCKET,
         table_name,
     )

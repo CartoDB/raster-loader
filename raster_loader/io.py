@@ -982,6 +982,37 @@ def raster_orientation(raster_dataset):
     return -1 if d < 0 else 1
 
 
+def gee_to_bucket_wrapper(
+    image: str,
+    band: str | None,
+    roi: str | None,
+    outputBucket: str,
+    table_id: str,
+) -> bool:
+    if roi is not None:
+        roi_geojson = geojson.load(roi)
+
+    gee_image = ee.Image(image).select(band)
+
+    # introspect raster file
+    # num_blocks = get_number_of_blocks(file_path)
+    file_size_mb = gee_image.size() / 1024 / 1024
+
+    # center = geometry.centroid().getInfo()['coordinates']
+    # center.reverse()
+
+    click.echo("GEE Image: {}".format(image))
+    click.echo("Source Band: {}".format(band))
+    click.echo("File Size: {} MB".format(file_size_mb))
+    click.echo("Bucket: {}".format(outputBucket))
+    click.echo("Key: {}".format(table_id))
+    gee_print_band_information(gee_image)
+
+    # step1 download GEE image in intermediate bucket
+    click.echo("Downloading band {band} to bucket")
+    gee_to_bucket(gee_image, roi_geojson, outputBucket, table_id)
+
+
 def gee_to_bucket(
     image: ee.Image,
     roi: ee.Geometry | None,
