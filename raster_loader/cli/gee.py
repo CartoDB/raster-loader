@@ -18,7 +18,7 @@ try:
     #     service_account, "/path/to/gee_service_account.json"
     # )
     # ee.Initialize(credentials)
-    ee.Initialize(project='cartobq')
+    ee.Initialize()
 except ImportError:  # pragma: no cover
     _has_gee = False
 except Exception as e:
