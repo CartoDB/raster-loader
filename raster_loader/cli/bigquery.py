@@ -38,6 +38,12 @@ def bigquery(args=None):
     is_flag=True,
 )
 @click.option(
+    "--append",
+    help="Append records into a table if it already exists.",
+    default=False,
+    is_flag=True,
+)
+@click.option(
     "--output_quadbin",
     help=(
         "Upload the raster to the BigQuery table in a quadbin format "
@@ -56,6 +62,7 @@ def upload(
     chunk_size,
     input_crs,
     overwrite=False,
+    append=False,
     output_quadbin=False,
     test=False,
 ):
@@ -110,6 +117,7 @@ def upload(
         input_crs,
         client=client,
         overwrite=overwrite,
+        append=append,
         output_quadbin=output_quadbin,
     )
 
