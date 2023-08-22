@@ -971,6 +971,7 @@ def rasterio_to_bigquery(
     input_crs: int = None,
     client=None,
     overwrite: bool = False,
+    append: bool = False,
     output_quadbin: bool = False,
     pseudo_planar: bool = False,
 ) -> bool:
@@ -1041,7 +1042,7 @@ def rasterio_to_bigquery(
             elif not check_if_bigquery_table_is_empty(
                 project_id, dataset_id, table_id, client
             ):
-                append_records = ask_yes_no_question(
+                append_records = append or ask_yes_no_question(
                     f"Table {table_id} already exists in dataset {dataset_id} "
                     "and is not empty. Append records? [yes/no] "
                 )
