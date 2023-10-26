@@ -155,24 +155,24 @@ def test_array_to_quadbin_record():
     else:
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
-    assert record["quadbin"] == 5209556461146865663
-    assert record["block_height"] == 160
-    assert record["block_width"] == 340
+    assert record["block"] == 5209556461146865663
+    # assert record["block_height"] == 160
+    # assert record["block_width"] == 340
     assert record["band_1_float64"] == arr_bytes
+    assert record["metadata"] is None
 
-    expected_attrs = {
-        "band": 1,
-        "value_field": "band_1_float64",
-        "dtype": "float64",
-        "nodata": -1,
-        "crs": "EPSG:4326",
-        "gdal_transform": list(geotransform.to_gdal()),
-        "row_off": 20,
-        "col_off": 20,
-    }
-
-    for key, value in expected_attrs.items():
-        assert json.loads(record["attrs"])[key] == value
+    # expected_attrs = {
+    #     "band": 1,
+    #     "value_field": "band_1_float64",
+    #     "dtype": "float64",
+    #     "nodata": -1,
+    #     "crs": "EPSG:4326",
+    #     "gdal_transform": list(geotransform.to_gdal()),
+    #     "row_off": 20,
+    #     "col_off": 20,
+    # }
+    # for key, value in expected_attrs.items():
+    #     assert json.loads(record["metadata"])[key] == value
 
 
 def test_record_to_array():
@@ -360,9 +360,9 @@ def test_rasterio_to_bigquery_with_quadbin_raster():
 
     expected_columns = [
         "quadbin",
-        "block_height",
-        "block_width",
-        "attrs",
+        # "block_height",
+        # "block_width",
+        "metadata",
         "band_1_uint8",
     ]
 
@@ -385,6 +385,10 @@ def test_rasterio_to_bigquery(*args, **kwargs):
 
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
+@patch("raster_loader.io.rasterio_windows_to_records", return_value={})
+@patch("raster_loader.io.get_number_of_blocks", return_value=1)
+@patch("raster_loader.io.write_metadata", return_value=None)
+@patch("raster_loader.io.run_bigquery_query", return_value=None)
 def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
