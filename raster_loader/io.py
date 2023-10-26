@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import pyproj
 import functools
+import shapely
 
 try:
     import rio_cogeo
@@ -339,22 +340,22 @@ def array_to_quadbin_record(
     )
 
     block_quadbin = quadbin.point_to_cell(x, y, resolution)
-    tile_x, tile_y, tile_z = quadbin.cell_to_tile(block_quadbin)
+    # tile_x, tile_y, tile_z = quadbin.cell_to_tile(block_quadbin)
 
-    attrs = {
-        "band": band,
-        "value_field": value_field,
-        "dtype": dtype_str,
-        "nodata": nodata,
-        "crs": crs,
-        "gdal_transform": geotransform.to_gdal(),
-        "row_off": row_off,
-        "col_off": col_off,
-        "block_area": quadbin.cell_area(block_quadbin),
-        "z": tile_z,
-        "x": tile_x,
-        "y": tile_y,
-    }
+    # attrs = {
+    #     "band": band,
+    #     "value_field": value_field,
+    #     "dtype": dtype_str,
+    #     "nodata": nodata,
+    #     "crs": crs,
+    #     "gdal_transform": geotransform.to_gdal(),
+    #     "row_off": row_off,
+    #     "col_off": col_off,
+    #     "block_area": quadbin.cell_area(block_quadbin),
+    #     "z": tile_z,
+    #     "x": tile_x,
+    #     "y": tile_y,
+    # }
 
     if should_swap[arr.dtype.byteorder]:
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
@@ -362,10 +363,11 @@ def array_to_quadbin_record(
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
     record = {
-        "quadbin": block_quadbin,
-        "block_height": height,
-        "block_width": width,
-        "attrs": json.dumps(attrs),
+        "block": block_quadbin,
+        # "block_height": height,
+        # "block_width": width,
+        # "attrs": json.dumps(attrs),
+        "metadata": None,
         value_field: arr_bytes,
     }
 
@@ -464,9 +466,10 @@ def table_columns(quadbin: bool, bands: List[str]) -> List[Tuple[str, str, str]]
             ("geog", "GEOGRAPHY", "NULLABLE"),
         ]
     columns += [
-        ("block_height", "INTEGER", "NULLABLE"),
-        ("block_width", "INTEGER", "NULLABLE"),
-        ("attrs", "STRING", "REQUIRED"),
+        # ("block_height", "INTEGER", "NULLABLE"),
+        # ("block_width", "INTEGER", "NULLABLE"),
+        # ("attrs", "STRING", "REQUIRED"),
+        ("metadata", "STRING", "REQUIRED"),
         # TODO: upgrade BQ client version and use 'JSON' type for 'attrs'
     ]
     columns += [(band_name, "BYTES", "NULLABLE") for band_name in bands]
@@ -503,6 +506,7 @@ def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
     whole_earth = (
         math.fabs(lon_NW - lon_NE) >= 360.0 and math.fabs(lon_SW - lon_SE) >= 360
     )
+
     return coords_to_geography(coords, format, whole_earth, pseudo_planar)
 
 
@@ -571,18 +575,29 @@ def rasterio_windows_to_records(
 
         # compute whole bounds for metadata
         bounds_geog = raster_bounds(raster_dataset, transformer, pseudo_planar, "wkt")
+        bounds_coords = json.loads(bounds_geog)["coordinates"][0]
+        bounds_polygon = shapely.Polygon(bounds_coords)
+        center_coords = bounds_polygon.centroid.coords[0]
+        center_coords.append(resolution)
 
+        # metadata["bands"] = [band_name]
+        # metadata["raster_boundary"] = bounds_geog
+        # metadata["nb_pixel_blocks"] = 0
+        # metadata["nb_pixel"] = 0
+        # metadata["max_pixel_block_height_in_pixel"] = 0
+        # metadata["max_pixel_block_width_in_pixel"] = 0
+        # metadata["max_pixel_block_height_in_pixel"] = 0
+        # metadata["max_pixel_block_width_in_pixel"] = 0
+        # metadata["min_pixel_block_height_in_pixel"] = None
+        # metadata["min_pixel_block_width_in_pixel"] = None
+        # metadata["irregular_pixel_block_shape"] = False
         metadata["bands"] = [band_name]
-        metadata["raster_boundary"] = bounds_geog
-        metadata["nb_pixel_blocks"] = 0
-        metadata["nb_pixel"] = 0
-        metadata["max_pixel_block_height_in_pixel"] = 0
-        metadata["max_pixel_block_width_in_pixel"] = 0
-        metadata["max_pixel_block_height_in_pixel"] = 0
-        metadata["max_pixel_block_width_in_pixel"] = 0
-        metadata["min_pixel_block_height_in_pixel"] = None
-        metadata["min_pixel_block_width_in_pixel"] = None
-        metadata["irregular_pixel_block_shape"] = False
+        metadata["bounds"] = bounds_polygon.bounds
+        metadata["center"] = center_coords
+        metadata["block_width"] = raster_dataset.window.width
+        metadata["block_height"] = raster_dataset.window.height
+        metadata["num_blocks"] = 0
+        metadata["num_pixels"] = 0
 
         for _, window in raster_dataset.block_windows():
 
@@ -602,6 +617,7 @@ def rasterio_windows_to_records(
                 )
 
             else:
+                # no more used code
                 rec = array_to_record(
                     raster_dataset.read(band, window=window),
                     raster_dataset.nodata,
@@ -617,29 +633,10 @@ def rasterio_windows_to_records(
                     pseudo_planar=pseudo_planar,
                 )
 
-            metadata["crs"] = input_crs
-            metadata["gdal_transform"] = raster_dataset.transform.to_gdal()
-            metadata["nb_pixel_blocks"] += 1
-            metadata["nb_pixel"] += window.width * window.height
-            if (
-                not metadata["min_pixel_block_height_in_pixel"]
-                or metadata["min_pixel_block_height_in_pixel"] > window.height
-            ):
-                metadata["min_pixel_block_height_in_pixel"] = window.height
-            if metadata["max_pixel_block_height_in_pixel"] < window.height:
-                metadata["max_pixel_block_height_in_pixel"] = window.height
-            if (
-                not metadata["min_pixel_block_width_in_pixel"]
-                or metadata["min_pixel_block_width_in_pixel"] > window.width
-            ):
-                metadata["min_pixel_block_width_in_pixel"] = window.width
-            if metadata["max_pixel_block_width_in_pixel"] < window.width:
-                metadata["max_pixel_block_width_in_pixel"] = window.width
-            if (
-                window.height != metadata["max_pixel_block_height_in_pixel"]
-                or window.width != metadata["max_pixel_block_width_in_pixel"]
-            ):
-                metadata["irregular_pixel_block_shape"] = True
+            # metadata["nb_pixel_blocks"] += 1
+            # metadata["nb_pixel"] += window.width * window.height
+            metadata["num_blocks"] += 1
+            metadata["num_pixels"] += window.width * window.height
 
             yield rec
 
@@ -1072,7 +1069,7 @@ def rasterio_to_bigquery(
         )
 
         total_blocks = get_number_of_blocks(file_path)
-        metadata["total_pixel_blocks"] = total_blocks  # FIXME: for debugging purposes
+        # metadata["total_pixel_blocks"] = total_blocks  # FIXME: for debugging purposes
 
         if chunk_size is None:
             job = records_to_bigquery(
@@ -1163,116 +1160,15 @@ def write_metadata(
     if append_records:
         table_ref = f"{project_id}.{dataset_id}.{table_id}"
         location = "quadbin" if is_quadbin else "geog"
-        get_resolution = ""
-        fetch_resolution = ""
-        if is_quadbin:
-            get_resolution = """
-                ,INT64(
-                    JSON_QUERY(attrs, '$.resolution')
-                ) AS resolution"""
-            fetch_resolution = """
-                ,ANY_VALUE(resolution) AS resolution"""
         query = f"""
             UPDATE `{table_ref}`
-            SET attrs = (
-                WITH parsed_meta AS (
-                    SELECT PARSE_JSON(attrs, wide_number_mode=>'round') AS attrs
-                    FROM `{table_ref}`
-                    WHERE {location} IS NULL
-                ),
-                meta1 AS (
-                  SELECT
-                    JSON_VALUE_ARRAY(attrs, '$.bands') AS bands,
-                    SAFE.ST_GEOGFROMTEXT(
-                        JSON_VALUE(attrs, '$.raster_boundary')
-                    ) AS raster_boundary,
-                    INT64(JSON_QUERY(attrs, '$.nb_pixel')) AS nb_pixel,
-                    INT64(JSON_QUERY(attrs, '$.nb_pixel_blocks')) AS nb_pixel_blocks,
-                    INT64(
-                        JSON_QUERY(attrs, '$.min_pixel_block_height_in_pixel')
-                    ) AS min_pixel_block_height_in_pixel,
-                    INT64(
-                        JSON_QUERY(attrs, '$.min_pixel_block_width_in_pixel')
-                    ) AS min_pixel_block_width_in_pixel,
-                    INT64(
-                        JSON_QUERY(attrs, '$.max_pixel_block_height_in_pixel')
-                        ) AS max_pixel_block_height_in_pixel,
-                    INT64(
-                        JSON_QUERY(attrs, '$.max_pixel_block_width_in_pixel')
-                    ) AS max_pixel_block_width_in_pixel,
-                    JSON_VALUE(attrs, '$.crs') AS crs,
-                    JSON_QUERY_ARRAY(attrs, '$.gdal_transform') AS gdal_transform
-                    {get_resolution}
-                  FROM parsed_meta
-                ),
-                meta2 AS (
-                  SELECT
-                    JSON_VALUE_ARRAY(attrs, '$.bands') AS bands,
-                    SAFE.ST_GEOGFROMTEXT(
-                        JSON_VALUE(attrs, '$.raster_boundary')
-                    ) AS raster_boundary,
-                    INT64(JSON_QUERY(attrs, '$.nb_pixel')) AS nb_pixel,
-                    INT64(JSON_QUERY(attrs, '$.nb_pixel_blocks')) AS nb_pixel_blocks,
-                    INT64(
-                        JSON_QUERY(attrs, '$.min_pixel_block_height_in_pixel')
-                    ) AS min_pixel_block_height_in_pixel,
-                    INT64(
-                        JSON_QUERY(attrs, '$.min_pixel_block_width_in_pixel')
-                    ) AS min_pixel_block_width_in_pixel,
-                    INT64(
-                        JSON_QUERY(attrs, '$.max_pixel_block_height_in_pixel')
-                        ) AS max_pixel_block_height_in_pixel,
-                    INT64(
-                        JSON_QUERY(attrs, '$.max_pixel_block_width_in_pixel')
-                    ) AS max_pixel_block_width_in_pixel,
-                    JSON_VALUE(attrs, '$.crs') AS crs,
-                    JSON_QUERY_ARRAY(attrs, '$.gdal_transform') AS gdal_transform
-                    {get_resolution}
-                  FROM (SELECT PARSE_JSON({sql_quote(json.dumps(metadata))},
-                    wide_number_mode=>'round') AS attrs)
-                ),
-                united AS (
-                    SELECT * FROM meta1
-                    UNION ALL
-                    SELECT * FROM meta2
+            SET metadata = (
+                SELECT TO_JSON_STRING(
+                    PARSE_JSON(
+                        {sql_quote(json.dumps(metadata))}
+                    )
                 )
-                SELECT TO_JSON_STRING(TO_JSON(STRUCT(
-                    (
-                        SELECT ARRAY_AGG(DISTINCT b)
-                        FROM united, UNNEST(bands) b
-                    ) AS bands,
-                    ST_ASTEXT(ST_UNION_AGG(raster_boundary)) AS raster_boundary,
-                    SUM(nb_pixel) AS nb_pixel,
-                    SUM(nb_pixel_blocks) AS nb_pixel_blocks,
-                    MAX(max_pixel_block_height_in_pixel)
-                      AS max_pixel_block_height_in_pixel,
-                    MIN(min_pixel_block_height_in_pixel)
-                      AS min_pixel_block_height_in_pixel,
-                    MAX(max_pixel_block_width_in_pixel)
-                      AS max_pixel_block_width_in_pixel,
-                    MIN(min_pixel_block_width_in_pixel)
-                      AS min_pixel_block_width_in_pixel,
-                    MAX(max_pixel_block_height_in_pixel)
-                      <>MIN(min_pixel_block_height_in_pixel)
-                    OR MAX(max_pixel_block_width_in_pixel)
-                      <>MIN(min_pixel_block_width_in_pixel)
-                      AS irregular_pixel_block_shape,
-                    IF(
-                        ARRAY_LENGTH(ARRAY_AGG(DISTINCT CRS)) = 1,
-                        ANY_VALUE(CRS),
-                        NULL
-                    ) AS crs,
-                    IF(
-                        ARRAY_LENGTH(
-                            ARRAY_AGG(DISTINCT TO_JSON_STRING(gdal_transform))
-                        ) = 1,
-                        ANY_VALUE(gdal_transform),
-                        NULL
-                    ) AS gdal_transform
-                    {fetch_resolution}
-                )))
-                FROM united
-            ) WHERE {location} IS NULL
+            ) WHERE {location} = 0
         """
 
         """Requires bigquery."""
@@ -1288,7 +1184,12 @@ def write_metadata(
         return True
     else:
         return insert_in_bigquery_table(
-            [{"attrs": json.dumps(metadata)}],
+            [
+                {
+                    "block": 0,  # store metadata in the record with this block number
+                    "metadata": json.dumps(metadata),
+                }
+            ],
             project_id,
             dataset_id,
             table_id,
