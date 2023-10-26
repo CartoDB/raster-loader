@@ -512,7 +512,7 @@ def rasterio_windows_to_records(
     band: int,
     metadata: dict,
     input_crs: str = None,
-    output_quadbin: bool = False,
+    output_quadbin: bool = True,
     pseudo_planar: bool = False,
 ) -> Iterable:
     if output_quadbin:
@@ -972,7 +972,7 @@ def rasterio_to_bigquery(
     client=None,
     overwrite: bool = False,
     append: bool = False,
-    output_quadbin: bool = False,
+    output_quadbin: bool = True,
     pseudo_planar: bool = False,
 ) -> bool:
     """Write a rasterio-compatible raster file to a BigQuery table.
@@ -1005,7 +1005,7 @@ def rasterio_to_bigquery(
         BigQuery client, by default None
     overwrite : bool, optional
         Overwrite the table if it already contains data, by default False
-    output_quadbin : bool, optional
+    output_quadbin : bool, by default True
         Upload the raster to the BigQuery table in a quadbin format (input raster must
         be a GoogleMapsCompatible raster)
     pseudo_planar : bool, optional
