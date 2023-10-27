@@ -82,52 +82,6 @@ def test_array_to_quadbin_record():
 
 
 @pytest.mark.integration_test
-def test_rasterio_to_bigquery_with_generic_raster():
-    from raster_loader.io import rasterio_to_bigquery
-    from raster_loader.io import bigquery_to_records
-
-    check_integration_config()
-
-    table_name = "test_mosaic_1"
-
-    rasterio_to_bigquery(
-        os.path.join(fixtures_dir, "mosaic.tif"),
-        table_name,
-        BQ_DATASET_ID,
-        BQ_PROJECT_ID,
-        overwrite=True,
-        output_quadbin=False,
-    )
-
-    result = bigquery_to_records(
-        table_id=table_name,
-        project_id=BQ_PROJECT_ID,
-        dataset_id=BQ_DATASET_ID,
-    )
-
-    expected_columns = [
-        "lon_NW",
-        "lat_NW",
-        "lon_NE",
-        "lat_NE",
-        "lon_SE",
-        "lat_SE",
-        "lon_SW",
-        "lat_SW",
-        "geog",
-        "block_height",
-        "block_width",
-        "attrs",
-        "band_1_uint8",
-    ]
-
-    assert sorted(list(result.columns)) == sorted(expected_columns)
-
-    # TODO: select metadata row and check metadata contents
-    # TODO: select some block row and check contents
-
-
-@pytest.mark.integration_test
 def test_rasterio_to_bigquery_with_quadbin_raster():
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import bigquery_to_records
@@ -151,9 +105,7 @@ def test_rasterio_to_bigquery_with_quadbin_raster():
     )
 
     expected_columns = [
-        "quadbin",
-        # "block_height",
-        # "block_width",
+        "block",
         "metadata",
         "band_1_uint8",
     ]
