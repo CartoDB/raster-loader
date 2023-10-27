@@ -186,134 +186,12 @@ def coords_to_geography(coords, format, whole_earth, pseudo_planar):
     return polygon_geography([coords], format, not whole_earth, pseudo_planar)
 
 
-def block_geog(
-    lon_NW,
-    lat_NW,
-    lon_NE,
-    lat_NE,
-    lon_SE,
-    lat_SE,
-    lon_SW,
-    lat_SW,
-    lon_subdivisions,
-    lat_subdivisions,
-    orientation=1,
-    pseudo_planar=False,
-    format="wkt",
-):
-    whole_earth = (
-        math.fabs(lon_NW - lon_NE) >= 360.0 and math.fabs(lon_SW - lon_SE) >= 360
-    )
-    if (
-        whole_earth
-        and lat_NW == lat_NE
-        and lat_SW == lat_SE
-        and math.fabs(max(lat_NW, lat_SE) >= 88.0)
-    ):
-        return section_geog(lat_NW, lat_SW, lon_subdivisions, pseudo_planar, format)
-
-    if orientation < 0:
-        coords = (
-            line_coords(lon_NW, lat_NW, lon_NE, lat_NE, lon_subdivisions, whole_earth)
-            + line_coords(lon_NE, lat_NE, lon_SE, lat_SE, lat_subdivisions, whole_earth)
-            + line_coords(lon_SE, lat_SE, lon_SW, lat_SW, lon_subdivisions, whole_earth)
-            + line_coords(lon_SW, lat_SW, lon_NW, lat_NW, lat_subdivisions, whole_earth)
-        )
-    else:
-        coords = (
-            line_coords(lon_SW, lat_SW, lon_SE, lat_SE, lon_subdivisions, whole_earth)
-            + line_coords(lon_SE, lat_SE, lon_NE, lat_NE, lat_subdivisions, whole_earth)
-            + line_coords(lon_NE, lat_NE, lon_NW, lat_NW, lon_subdivisions, whole_earth)
-            + line_coords(lon_NW, lat_NW, lon_SW, lat_SW, lat_subdivisions, whole_earth)
-        )
-
-    return coords_to_geography(coords, format, whole_earth, pseudo_planar)
-
-
 def pseudoplanar(x, y):
     return [x / 32768.0, y / 32768.0]
 
 
 def band_field_name(band: int, band_type: str, base_name: str = "band") -> str:
     return "_".join([base_name, str(band), band_type])
-
-
-def array_to_record(
-    arr: np.ndarray,
-    nodata: float,
-    band: int,
-    value_field: str,
-    dtype_str: str,
-    transformer: pyproj.Transformer,
-    geotransform: Affine,
-    row_off: int = 0,
-    col_off: int = 0,
-    crs: str = "EPSG:4326",
-    orientation=1,
-    pseudo_planar: bool = False,
-) -> dict:
-    height, width = arr.shape
-
-    lon_NW, lat_NW = transformer.transform(*(geotransform * (col_off, row_off)))
-    lon_NE, lat_NE = transformer.transform(*(geotransform * (col_off + width, row_off)))
-    lon_SE, lat_SE = transformer.transform(
-        *(geotransform * (col_off + width, row_off + height))
-    )
-    lon_SW, lat_SW = transformer.transform(
-        *(geotransform * (col_off, row_off + height))
-    )
-
-    # use 1 subdivision in 64 pixels
-    lon_subdivisions = math.ceil(width / 64.0)
-    lat_subdivisions = math.ceil(height / 64.0)
-    geog = block_geog(
-        lon_NW,
-        lat_NW,
-        lon_NE,
-        lat_NE,
-        lon_SE,
-        lat_SE,
-        lon_SW,
-        lat_SW,
-        lon_subdivisions,
-        lat_subdivisions,
-        orientation,
-        pseudo_planar,
-    )
-
-    attrs = {
-        "band": band,
-        "value_field": value_field,
-        "dtype": dtype_str,
-        "nodata": nodata,
-        "crs": crs,
-        "gdal_transform": geotransform.to_gdal(),
-        "row_off": row_off,
-        "col_off": col_off,
-    }
-
-    if should_swap[arr.dtype.byteorder]:
-        arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
-    else:
-        arr_bytes = np.ascontiguousarray(arr).tobytes()
-
-    record = {
-        "lat_NW": lat_NW,
-        "lon_NW": lon_NW,
-        "lat_NE": lat_NE,
-        "lon_NE": lon_NE,
-        "lat_SE": lat_SE,
-        "lon_SE": lon_SE,
-        "lat_SW": lat_SW,
-        "lon_SW": lon_SW,
-        "geog": geog,
-        "block_height": height,
-        "block_width": width,
-        "attrs": json.dumps(attrs),
-        value_field: arr_bytes,
-    }
-
-    return record
 
 
 def array_to_quadbin_record(
@@ -374,29 +252,6 @@ def array_to_quadbin_record(
     return record
 
 
-def record_to_array(record: dict, value_field: str = None) -> np.ndarray:
-    """Convert a record to a numpy array."""
-
-    if value_field is None:
-        value_field = json.loads(record["attrs"])["value_field"]
-
-    # determine dtype
-    try:
-        dtype_str = value_field.split("_")[-1]
-        dtype = np.dtype(dtype_str)
-        dtype = dtype.newbyteorder("<")
-    except TypeError:
-        raise TypeError(f"Invalid dtype: {dtype_str}")
-
-    # determine shape
-    shape = (record["block_height"], record["block_width"])
-
-    arr = np.frombuffer(record[value_field], dtype=dtype)
-    arr = arr.reshape(shape)
-
-    return arr
-
-
 def import_error_bigquery():  # pragma: no cover
     msg = (
         "Google Cloud BigQuery is not installed.\n"
@@ -448,27 +303,11 @@ def raster_band_type(raster_dataset: rasterio.io.DatasetReader, band: int) -> st
     return str(types[band])
 
 
-def table_columns(quadbin: bool, bands: List[str]) -> List[Tuple[str, str, str]]:
-    if quadbin:
-        columns = [
-            ("quadbin", "INTEGER", "NULLABLE"),
-        ]
-    else:
-        columns = [
-            ("lon_NW", "FLOAT", "NULLABLE"),
-            ("lat_NW", "FLOAT", "NULLABLE"),
-            ("lon_NE", "FLOAT", "NULLABLE"),
-            ("lat_NE", "FLOAT", "NULLABLE"),
-            ("lon_SE", "FLOAT", "NULLABLE"),
-            ("lat_SE", "FLOAT", "NULLABLE"),
-            ("lon_SW", "FLOAT", "NULLABLE"),
-            ("lat_SW", "FLOAT", "NULLABLE"),
-            ("geog", "GEOGRAPHY", "NULLABLE"),
-        ]
+def table_columns(bands: List[str]) -> List[Tuple[str, str, str]]:
+    columns = [
+        ("block", "INTEGER", "NULLABLE"),
+    ]
     columns += [
-        # ("block_height", "INTEGER", "NULLABLE"),
-        # ("block_width", "INTEGER", "NULLABLE"),
-        # ("attrs", "STRING", "REQUIRED"),
         ("metadata", "STRING", "REQUIRED"),
         # TODO: upgrade BQ client version and use 'JSON' type for 'attrs'
     ]
@@ -516,30 +355,27 @@ def rasterio_windows_to_records(
     band: int,
     metadata: dict,
     input_crs: str = None,
-    output_quadbin: bool = True,
     pseudo_planar: bool = False,
 ) -> Iterable:
-    if output_quadbin:
-        """Open a raster file with rio-cogeo."""
-        raster_info = rio_cogeo.cog_info(file_path).dict()
+    """Open a raster file with rio-cogeo."""
+    raster_info = rio_cogeo.cog_info(file_path).dict()
 
-        """Check if raster is quadbin compatible."""
-        if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
-            "Tiling Scheme", {}
-        ).get("NAME"):
-            msg = (
-                "To use the output_quadbin option, "
-                "the input raster must be a GoogleMapsCompatible raster.\n"
-                "You can make your raster compatible "
-                "by converting it using the following command:\n"
-                "gdalwarp your_raster.tif -of COG "
-                "-co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE "
-                "your_compatible_raster.tif"
-            )
-            raise ValueError(msg)
+    """Check if raster is quadbin compatible."""
+    if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
+        "Tiling Scheme", {}
+    ).get("NAME"):
+        msg = (
+            "The input raster must be a GoogleMapsCompatible raster.\n"
+            "You can make your raster compatible "
+            "by converting it using the following command:\n"
+            "gdalwarp your_raster.tif -of COG "
+            "-co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE "
+            "your_compatible_raster.tif"
+        )
+        raise ValueError(msg)
 
-        resolution = raster_info["GEO"]["MaxZoom"]
-        metadata["resolution"] = resolution
+    resolution = raster_info["GEO"]["MaxZoom"]
+    metadata["resolution"] = resolution
 
     """Requires rasterio."""
     if not _has_rasterio:  # pragma: no cover
@@ -565,73 +401,45 @@ def rasterio_windows_to_records(
         transformer = pyproj.Transformer.from_crs(
             input_crs, "EPSG:4326", always_xy=True
         )
-        orientation = raster_orientation(raster_dataset)
 
         band_type = raster_band_type(raster_dataset, band)
         band_name = band_field_name(band, band_type)
-        columns = table_columns(output_quadbin, [band_name])
-        clustering = ["quadbin"] if output_quadbin else ["geog"]
+        columns = table_columns([band_name])
+        clustering = ["block"]
         create_table(columns, clustering)
 
         # compute whole bounds for metadata
         bounds_geog = raster_bounds(raster_dataset, transformer, pseudo_planar, "wkt")
-        bounds_coords = json.loads(bounds_geog)["coordinates"][0]
-        bounds_polygon = shapely.Polygon(bounds_coords)
-        center_coords = bounds_polygon.centroid.coords[0]
+        bounds_polygon = shapely.Polygon(shapely.wkt.loads(bounds_geog))
+        center_coords = list(*bounds_polygon.centroid.coords)
         center_coords.append(resolution)
 
-        # metadata["bands"] = [band_name]
-        # metadata["raster_boundary"] = bounds_geog
-        # metadata["nb_pixel_blocks"] = 0
-        # metadata["nb_pixel"] = 0
-        # metadata["max_pixel_block_height_in_pixel"] = 0
-        # metadata["max_pixel_block_width_in_pixel"] = 0
-        # metadata["max_pixel_block_height_in_pixel"] = 0
-        # metadata["max_pixel_block_width_in_pixel"] = 0
-        # metadata["min_pixel_block_height_in_pixel"] = None
-        # metadata["min_pixel_block_width_in_pixel"] = None
-        # metadata["irregular_pixel_block_shape"] = False
+        # assuming all windows have the same dimensions
+        a_window = next(raster_dataset.block_windows())
+
         metadata["bands"] = [band_name]
-        metadata["bounds"] = bounds_polygon.bounds
+        metadata["bounds"] = list(bounds_polygon.bounds)
         metadata["center"] = center_coords
-        metadata["block_width"] = raster_dataset.window.width
-        metadata["block_height"] = raster_dataset.window.height
+        metadata["block_width"] = a_window[1].width
+        metadata["block_height"] = a_window[1].height
         metadata["num_blocks"] = 0
         metadata["num_pixels"] = 0
 
         for _, window in raster_dataset.block_windows():
 
-            if output_quadbin:
-                rec = array_to_quadbin_record(
-                    raster_dataset.read(band, window=window),
-                    raster_dataset.nodata,
-                    band,
-                    band_name,
-                    str(band_type),
-                    transformer,
-                    raster_dataset.transform,
-                    resolution,
-                    window.row_off,
-                    window.col_off,
-                    crs=input_crs,
-                )
-
-            else:
-                # no more used code
-                rec = array_to_record(
-                    raster_dataset.read(band, window=window),
-                    raster_dataset.nodata,
-                    band,
-                    band_name,
-                    str(band_type),
-                    transformer,
-                    raster_dataset.transform,
-                    window.row_off,
-                    window.col_off,
-                    crs=input_crs,
-                    orientation=orientation,
-                    pseudo_planar=pseudo_planar,
-                )
+            rec = array_to_quadbin_record(
+                raster_dataset.read(band, window=window),
+                raster_dataset.nodata,
+                band,
+                band_name,
+                str(band_type),
+                transformer,
+                raster_dataset.transform,
+                resolution,
+                window.row_off,
+                window.col_off,
+                crs=input_crs,
+            )
 
             # metadata["nb_pixel_blocks"] += 1
             # metadata["nb_pixel"] += window.width * window.height
@@ -969,7 +777,6 @@ def rasterio_to_bigquery(
     client=None,
     overwrite: bool = False,
     append: bool = False,
-    output_quadbin: bool = True,
     pseudo_planar: bool = False,
 ) -> bool:
     """Write a rasterio-compatible raster file to a BigQuery table.
@@ -1002,9 +809,6 @@ def rasterio_to_bigquery(
         BigQuery client, by default None
     overwrite : bool, optional
         Overwrite the table if it already contains data, by default False
-    output_quadbin : bool, by default True
-        Upload the raster to the BigQuery table in a quadbin format (input raster must
-        be a GoogleMapsCompatible raster)
     pseudo_planar : bool, optional
         Use pseudo-planar BigQuery geographies (coordinates are scaled down by 1/32768)
 
@@ -1064,7 +868,6 @@ def rasterio_to_bigquery(
             band,
             metadata,
             input_crs,
-            output_quadbin,
             pseudo_planar,
         )
 
@@ -1104,7 +907,6 @@ def rasterio_to_bigquery(
         write_metadata(
             metadata,
             append_records,
-            output_quadbin,
             project_id,
             dataset_id,
             table_id,
@@ -1113,7 +915,7 @@ def rasterio_to_bigquery(
 
         # Postprocess: compute metadata areas
         run_bigquery_query(
-            inject_areas_query(f"{project_id}.{dataset_id}.{table_id}", output_quadbin),
+            inject_areas_query(f"{project_id}.{dataset_id}.{table_id}"),
             project_id,
             client=client,
         )
@@ -1151,7 +953,6 @@ def rasterio_to_bigquery(
 def write_metadata(
     metadata,
     append_records,
-    is_quadbin,
     project_id,
     dataset_id,
     table_id,
@@ -1159,7 +960,7 @@ def write_metadata(
 ):
     if append_records:
         table_ref = f"{project_id}.{dataset_id}.{table_id}"
-        location = "quadbin" if is_quadbin else "geog"
+        location = "block"
         query = f"""
             UPDATE `{table_ref}`
             SET metadata = (
@@ -1253,39 +1054,25 @@ def get_block_dims(file_path: str) -> tuple:
         return raster_dataset.block_shapes[0]
 
 
-def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
-    location_column = "quadbin" if is_quadbin else "geog"
+def inject_areas_query(raster_table: str) -> str:
+    location_column = "quadbin"
     from_metadata_source = f"FROM `{raster_table}` WHERE {location_column} IS NULL"
     from_blocks_source = f"FROM `{raster_table}` WHERE {location_column} IS NOT NULL"
-    if is_quadbin:
-        block_y = "'$.y'"
-        block_x = "'$.x'"
-        avg_pixel_area_query = f"""
-            SELECT
-              AVG(
-                CAST(JSON_VALUE(attrs, '$.block_area') AS FLOAT64)
-                / (block_height*block_width)
-              )
-            {from_blocks_source}
-        """
-        area_query = f"""
-            SELECT SUM(CAST(JSON_VALUE(attrs, '$.block_area') AS FLOAT64))
-            {from_blocks_source}
-        """
 
-    else:
-        block_y = "'$.row_off'"
-        block_x = "'$.col_off'"
-        avg_pixel_area_query = f"""
-            SELECT
-              AVG(ST_AREA(geog)/(block_height*block_width))
-            {from_blocks_source}
-        """
-        area_query = f"""
-            SELECT
-              ST_AREA(SAFE.ST_GEOGFROMTEXT(JSON_VALUE(attrs, '$.raster_boundary')))
-            {from_metadata_source}
-        """
+    block_y = "'$.y'"
+    block_x = "'$.x'"
+    avg_pixel_area_query = f"""
+        SELECT
+            AVG(
+            CAST(JSON_VALUE(attrs, '$.block_area') AS FLOAT64)
+            / (block_height*block_width)
+            )
+        {from_blocks_source}
+    """
+    area_query = f"""
+        SELECT SUM(CAST(JSON_VALUE(attrs, '$.block_area') AS FLOAT64))
+        {from_blocks_source}
+    """
 
     width_in_pixel_query = f"""
         SELECT MAX(row_width) FROM (
@@ -1336,17 +1123,6 @@ def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
             ({query}),
             NULL)
         """
-
-    if not is_quadbin:
-        width_in_pixel_query = only_if_unique_crs_query(width_in_pixel_query)
-        height_in_pixel_query = only_if_unique_crs_query(height_in_pixel_query)
-        width_in_pixel_block_query = only_if_unique_crs_query(
-            width_in_pixel_block_query
-        )
-        height_in_pixel_block_query = only_if_unique_crs_query(
-            height_in_pixel_block_query
-        )
-        sparse_pixel_block_query = only_if_unique_crs_query(sparse_pixel_block_query)
 
     return f"""
         CREATE TEMP FUNCTION _mergeJSONs(a JSON, b JSON)

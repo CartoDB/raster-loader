@@ -43,15 +43,6 @@ def bigquery(args=None):
     default=False,
     is_flag=True,
 )
-@click.option(
-    "--output_blocks",
-    help=(
-        "Upload the raster to the BigQuery table in a blocks "
-        "(input raster must be a GoogleMapsCompatible raster)."
-    ),
-    default=True,
-    is_flag=True,
-)
 @click.option("--test", help="Use Mock BigQuery Client", default=False, is_flag=True)
 def upload(
     file_path,
@@ -63,7 +54,6 @@ def upload(
     input_crs,
     overwrite=False,
     append=False,
-    output_blocks=True,
     test=False,
 ):
 
@@ -118,7 +108,6 @@ def upload(
         client=client,
         overwrite=overwrite,
         append=append,
-        output_quadbin=output_blocks,
     )
 
     click.echo("Raster file uploaded to Google BigQuery")
