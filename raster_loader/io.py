@@ -245,7 +245,7 @@ def array_to_quadbin_record(
         # "block_height": height,
         # "block_width": width,
         # "attrs": json.dumps(attrs),
-        "metadata": "",
+        "metadata": None,
         value_field: arr_bytes,
     }
 
@@ -305,10 +305,10 @@ def raster_band_type(raster_dataset: rasterio.io.DatasetReader, band: int) -> st
 
 def table_columns(bands: List[str]) -> List[Tuple[str, str, str]]:
     columns = [
-        ("block", "INTEGER", "NULLABLE"),
+        ("block", "INTEGER", "REQUIRED"),
     ]
     columns += [
-        ("metadata", "STRING", "REQUIRED"),
+        ("metadata", "STRING", "NULLABLE"),
         # TODO: upgrade BQ client version and use 'JSON' type for 'attrs'
     ]
     columns += [(band_name, "BYTES", "NULLABLE") for band_name in bands]
@@ -874,7 +874,7 @@ def rasterio_to_bigquery(
         total_blocks = get_number_of_blocks(file_path)
         # metadata["total_pixel_blocks"] = total_blocks  # FIXME: for debugging purposes
 
-        if chunk_size is not None:
+        if chunk_size is None:
             job = records_to_bigquery(
                 records_gen, table_id, dataset_id, project_id, client=client
             )
