@@ -420,6 +420,8 @@ def rasterio_windows_to_records(
         metadata["bands"] = [band_name]
         metadata["bounds"] = list(bounds_polygon.bounds)
         metadata["center"] = center_coords
+        metadata["width"] = raster_info["Profile"]["Width"]
+        metadata["height"] = raster_info["Profile"]["Height"]
         metadata["block_width"] = a_window[1].width
         metadata["block_height"] = a_window[1].height
         metadata["num_blocks"] = 0
