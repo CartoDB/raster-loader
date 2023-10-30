@@ -1176,7 +1176,7 @@ def write_metadata(
             UPDATE `{table_ref}`
             SET attrs = (
                 WITH parsed_meta AS (
-                    SELECT PARSE_JSON(attrs) AS attrs
+                    SELECT PARSE_JSON(attrs, wide_number_mode=>'round') AS attrs
                     FROM `{table_ref}`
                     WHERE {location} IS NULL
                 ),
@@ -1228,8 +1228,8 @@ def write_metadata(
                     JSON_VALUE(attrs, '$.crs') AS crs,
                     JSON_QUERY_ARRAY(attrs, '$.gdal_transform') AS gdal_transform
                     {get_resolution}
-                  FROM
-                    (SELECT PARSE_JSON({sql_quote(json.dumps(metadata))}) AS attrs)
+                  FROM (SELECT PARSE_JSON({sql_quote(json.dumps(metadata))},
+                    wide_number_mode=>'round') AS attrs)
                 ),
                 united AS (
                     SELECT * FROM meta1
@@ -1389,7 +1389,8 @@ def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
     width_in_pixel_query = f"""
         SELECT MAX(row_width) FROM (
           SELECT SUM(block_width) OVER (
-            PARTITION BY INT64(JSON_QUERY(PARSE_JSON(attrs), {block_y}))
+            PARTITION BY INT64(JSON_QUERY(
+                PARSE_JSON(attrs, wide_number_mode=>'round'), {block_y}))
           ) AS row_width
           {from_blocks_source}
         )
@@ -1398,24 +1399,28 @@ def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
     height_in_pixel_query = f"""
         SELECT MAX(col_height) FROM (
           SELECT SUM(block_height) OVER (
-            PARTITION BY INT64(JSON_QUERY(PARSE_JSON(attrs), {block_x}))
+            PARTITION BY INT64(JSON_QUERY(
+                PARSE_JSON(attrs, wide_number_mode=>'round'), {block_x}))
           ) AS col_height
           {from_blocks_source}
         )
     """
 
     width_in_pixel_block_query = f"""
-        SELECT COUNT(DISTINCT INT64(JSON_QUERY(PARSE_JSON(attrs), {block_x})))
+        SELECT COUNT(DISTINCT INT64(JSON_QUERY(
+            PARSE_JSON(attrs, wide_number_mode=>'round'), {block_x})))
         {from_blocks_source}
     """
 
     height_in_pixel_block_query = f"""
-        SELECT COUNT(DISTINCT INT64(JSON_QUERY(PARSE_JSON(attrs), {block_y})))
+        SELECT COUNT(DISTINCT INT64(JSON_QUERY(
+            PARSE_JSON(attrs, wide_number_mode=>'round'), {block_y})))
         {from_blocks_source}
     """
 
     sparse_pixel_block_query = f"""
-      (SELECT INT64(JSON_QUERY(PARSE_JSON(attrs), '$.nb_pixel_blocks'))
+      (SELECT INT64(JSON_QUERY(
+        PARSE_JSON(attrs, wide_number_mode=>'round'), '$.nb_pixel_blocks'))
        {from_metadata_source})
       < ({width_in_pixel_block_query}) * ({height_in_pixel_block_query})
     """
@@ -1449,7 +1454,7 @@ def inject_areas_query(raster_table: str, is_quadbin: bool) -> str:
            AS r'return {{...a, ...b}};';
         UPDATE `{raster_table}`
         SET attrs = TO_JSON_STRING(_mergeJSONs(
-          PARSE_JSON(attrs),
+          PARSE_JSON(attrs, wide_number_mode=>'round'),
           TO_JSON(STRUCT(
             ({area_query}) AS raster_area,
             ({avg_pixel_area_query}) AS avg_pixel_area,
