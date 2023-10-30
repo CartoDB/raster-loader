@@ -245,7 +245,7 @@ def array_to_quadbin_record(
         # "block_height": height,
         # "block_width": width,
         # "attrs": json.dumps(attrs),
-        "metadata": None,
+        "metadata": "",
         value_field: arr_bytes,
     }
 
@@ -874,7 +874,7 @@ def rasterio_to_bigquery(
         total_blocks = get_number_of_blocks(file_path)
         # metadata["total_pixel_blocks"] = total_blocks  # FIXME: for debugging purposes
 
-        if chunk_size is None:
+        if chunk_size is not None:
             job = records_to_bigquery(
                 records_gen, table_id, dataset_id, project_id, client=client
             )
@@ -913,12 +913,14 @@ def rasterio_to_bigquery(
             client=client,
         )
 
+        # !!! outdated due the fact that raster windows is constant for each
+        # row in the table and area is that stated by the rasterio directly.
         # Postprocess: compute metadata areas
-        run_bigquery_query(
-            inject_areas_query(f"{project_id}.{dataset_id}.{table_id}"),
-            project_id,
-            client=client,
-        )
+        # run_bigquery_query(
+        #     inject_areas_query(f"{project_id}.{dataset_id}.{table_id}"),
+        #     project_id,
+        #     client=client,
+        # )
 
     except KeyboardInterrupt:
         delete_table = ask_yes_no_question(
@@ -1055,22 +1057,22 @@ def get_block_dims(file_path: str) -> tuple:
 
 
 def inject_areas_query(raster_table: str) -> str:
-    location_column = "quadbin"
-    from_metadata_source = f"FROM `{raster_table}` WHERE {location_column} IS NULL"
-    from_blocks_source = f"FROM `{raster_table}` WHERE {location_column} IS NOT NULL"
+    location_column = "block"
+    from_metadata_source = f"FROM `{raster_table}` WHERE {location_column} = 0"
+    from_blocks_source = f"FROM `{raster_table}` WHERE {location_column} != 0"
 
     block_y = "'$.y'"
     block_x = "'$.x'"
     avg_pixel_area_query = f"""
         SELECT
             AVG(
-            CAST(JSON_VALUE(attrs, '$.block_area') AS FLOAT64)
+            CAST(JSON_VALUE(metadata, '$.block_area') AS FLOAT64)
             / (block_height*block_width)
             )
         {from_blocks_source}
     """
     area_query = f"""
-        SELECT SUM(CAST(JSON_VALUE(attrs, '$.block_area') AS FLOAT64))
+        SELECT SUM(CAST(JSON_VALUE(metadata, '$.block_area') AS FLOAT64))
         {from_blocks_source}
     """
 
@@ -1078,7 +1080,7 @@ def inject_areas_query(raster_table: str) -> str:
         SELECT MAX(row_width) FROM (
           SELECT SUM(block_width) OVER (
             PARTITION BY INT64(JSON_QUERY(
-                PARSE_JSON(attrs, wide_number_mode=>'round'), {block_y}))
+                PARSE_JSON(metadata, wide_number_mode=>'round'), {block_y}))
           ) AS row_width
           {from_blocks_source}
         )
@@ -1088,7 +1090,7 @@ def inject_areas_query(raster_table: str) -> str:
         SELECT MAX(col_height) FROM (
           SELECT SUM(block_height) OVER (
             PARTITION BY INT64(JSON_QUERY(
-                PARSE_JSON(attrs, wide_number_mode=>'round'), {block_x}))
+                PARSE_JSON(metadata, wide_number_mode=>'round'), {block_x}))
           ) AS col_height
           {from_blocks_source}
         )
@@ -1096,19 +1098,19 @@ def inject_areas_query(raster_table: str) -> str:
 
     width_in_pixel_block_query = f"""
         SELECT COUNT(DISTINCT INT64(JSON_QUERY(
-            PARSE_JSON(attrs, wide_number_mode=>'round'), {block_x})))
+            PARSE_JSON(metadata, wide_number_mode=>'round'), {block_x})))
         {from_blocks_source}
     """
 
     height_in_pixel_block_query = f"""
         SELECT COUNT(DISTINCT INT64(JSON_QUERY(
-            PARSE_JSON(attrs, wide_number_mode=>'round'), {block_y})))
+            PARSE_JSON(metadata, wide_number_mode=>'round'), {block_y})))
         {from_blocks_source}
     """
 
     sparse_pixel_block_query = f"""
       (SELECT INT64(JSON_QUERY(
-        PARSE_JSON(attrs, wide_number_mode=>'round'), '$.nb_pixel_blocks'))
+        PARSE_JSON(metadata, wide_number_mode=>'round'), '$.nb_pixel_blocks'))
        {from_metadata_source})
       < ({width_in_pixel_block_query}) * ({height_in_pixel_block_query})
     """
@@ -1116,9 +1118,9 @@ def inject_areas_query(raster_table: str) -> str:
     def only_if_unique_crs_query(query):
         return f"""IF(
             (SELECT
-              JSON_VALUE(attrs, '$.crs') IS NOT NULL
+              JSON_VALUE(metadata, '$.crs') IS NOT NULL
               AND
-              JSON_QUERY_ARRAY(attrs, '$.gdal_transform') IS NOT NULL,
+              JSON_QUERY_ARRAY(metadata, '$.gdal_transform') IS NOT NULL,
              {from_metadata_source}),
             ({query}),
             NULL)
@@ -1130,8 +1132,8 @@ def inject_areas_query(raster_table: str) -> str:
           LANGUAGE js
            AS r'return {{...a, ...b}};';
         UPDATE `{raster_table}`
-        SET attrs = TO_JSON_STRING(_mergeJSONs(
-          PARSE_JSON(attrs, wide_number_mode=>'round'),
+        SET metadata = TO_JSON_STRING(_mergeJSONs(
+          PARSE_JSON(metadata, wide_number_mode=>'round'),
           TO_JSON(STRUCT(
             ({area_query}) AS raster_area,
             ({avg_pixel_area_query}) AS avg_pixel_area,
@@ -1142,5 +1144,5 @@ def inject_areas_query(raster_table: str) -> str:
             ({sparse_pixel_block_query}) AS sparse_pixel_block
           ))
         ))
-        WHERE {location_column} IS NULL;
+        WHERE {location_column} = 0;
     """
