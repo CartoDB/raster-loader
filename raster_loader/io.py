@@ -190,8 +190,11 @@ def pseudoplanar(x, y):
     return [x / 32768.0, y / 32768.0]
 
 
-def band_field_name(band: int, band_type: str, base_name: str = "band") -> str:
-    return "_".join([base_name, str(band), band_type])
+def band_field_name(band: int, band_type: str, base_name: str = None) -> str:
+    if not base_name:
+        base_name = "band" + str(band)
+
+    return "_".join([base_name, band_type])
 
 
 def array_to_quadbin_record(
@@ -353,6 +356,7 @@ def rasterio_windows_to_records(
     file_path: str,
     create_table: Callable,
     band: int,
+    band_name_prefix: str,
     metadata: dict,
     input_crs: str = None,
     pseudo_planar: bool = False,
@@ -403,7 +407,7 @@ def rasterio_windows_to_records(
         )
 
         band_type = raster_band_type(raster_dataset, band)
-        band_name = band_field_name(band, band_type)
+        band_name = band_field_name(band, band_type, band_name_prefix)
         columns = table_columns([band_name])
         clustering = ["block"]
         create_table(columns, clustering)
@@ -413,11 +417,17 @@ def rasterio_windows_to_records(
         bounds_polygon = shapely.Polygon(shapely.wkt.loads(bounds_geog))
         center_coords = list(*bounds_polygon.centroid.coords)
         center_coords.append(resolution)
+        band_metadata = {
+            "band": band,
+            "type": str(band_type),
+            "nodata": raster_dataset.nodata,
+            "value_field": band_name,
+        }
 
         # assuming all windows have the same dimensions
         a_window = next(raster_dataset.block_windows())
 
-        metadata["bands"] = [band_name]
+        metadata["bands"] = [band_metadata]
         metadata["bounds"] = list(bounds_polygon.bounds)
         metadata["center"] = center_coords
         metadata["width"] = raster_info["Profile"]["Width"]
@@ -774,6 +784,7 @@ def rasterio_to_bigquery(
     dataset_id: str,
     project_id: str,
     band: int = 1,
+    band_name_prefix: str = None,
     chunk_size: int = None,
     input_crs: int = None,
     client=None,
@@ -802,6 +813,8 @@ def rasterio_to_bigquery(
         BigQuery project name.
     band : int, optional
         Band number to read from the raster file, by default 1
+    band_name_prefix : str, optional
+        Band column name prefix used to store band (Default: band<band_num>)
     chunk_size : int, optional
         Number of records to write to BigQuery at a time, the default (None)
         writes all records in a single batch.
@@ -868,6 +881,7 @@ def rasterio_to_bigquery(
             table_creator,
             # metadata_writer,
             band,
+            band_name_prefix,
             metadata,
             input_crs,
             pseudo_planar,
