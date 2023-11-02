@@ -107,7 +107,7 @@ def test_rasterio_to_bigquery_with_quadbin_raster():
     expected_columns = [
         "block",
         "metadata",
-        "band1_uint8",
+        "band1",
     ]
 
     assert sorted(list(result.columns)) == sorted(expected_columns)
@@ -131,7 +131,7 @@ def test_rasterio_to_bigquery_with_quadbin_raster_custom_band_column():
         BQ_DATASET_ID,
         BQ_PROJECT_ID,
         overwrite=True,
-        band_name_prefix="customband",
+        band_column_name="customband",
     )
 
     result = bigquery_to_records(
@@ -143,7 +143,7 @@ def test_rasterio_to_bigquery_with_quadbin_raster_custom_band_column():
     expected_columns = [
         "block",
         "metadata",
-        "customband_uint8",
+        "customband",
     ]
 
     assert sorted(list(result.columns)) == sorted(expected_columns)

@@ -26,8 +26,8 @@ def bigquery(args=None):
 @click.option("--table", help="The name of the table.", default=None)
 @click.option("--band", help="Band within raster to upload.", default=1)
 @click.option(
-    "--band_name_prefix",
-    help="Column name prefix used to store band (Default: band<band_num>).",
+    "--band_column_name",
+    help="Column name used to store band (Default: band<band_num>).",
     default=None,
 )
 @click.option(
@@ -55,7 +55,7 @@ def upload(
     dataset,
     table,
     band,
-    band_name_prefix,
+    band_column_name,
     chunk_size,
     input_crs,
     overwrite=False,
@@ -93,7 +93,7 @@ def upload(
     click.echo("File Size: {} MB".format(file_size_mb))
     print_band_information(file_path)
     click.echo("Source Band: {}".format(band))
-    click.echo("Band name prefix: {}".format(band_name_prefix))
+    click.echo("Band column name: {}".format(band_column_name))
     click.echo("Number of Blocks: {}".format(num_blocks))
     click.echo("Block Dims: {}".format(get_block_dims(file_path)))
     click.echo("Project: {}".format(project))
@@ -110,7 +110,7 @@ def upload(
         dataset,
         project,
         band,
-        band_name_prefix,
+        band_column_name,
         chunk_size,
         input_crs,
         client=client,
