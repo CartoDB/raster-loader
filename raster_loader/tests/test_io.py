@@ -1,3 +1,4 @@
+import math
 import os
 import sys
 from unittest.mock import patch
@@ -5,6 +6,7 @@ import pyproj
 
 from affine import Affine
 import numpy as np
+import pandas as pd
 import pytest
 
 from raster_loader import io
@@ -82,7 +84,7 @@ def test_array_to_quadbin_record():
 
 
 @pytest.mark.integration_test
-def test_rasterio_to_bigquery_with_quadbin_raster():
+def test_rasterio_to_bigquery_with_quadbin_raster_default_band_name():
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import bigquery_to_records
 
@@ -91,7 +93,7 @@ def test_rasterio_to_bigquery_with_quadbin_raster():
     table_name = "test_mosaic_quadbin_1"
 
     rasterio_to_bigquery(
-        os.path.join(fixtures_dir, "quadbin_raster.tif"),
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
         table_name,
         BQ_DATASET_ID,
         BQ_PROJECT_ID,
@@ -104,16 +106,31 @@ def test_rasterio_to_bigquery_with_quadbin_raster():
         dataset_id=BQ_DATASET_ID,
     )
 
-    expected_columns = [
-        "block",
-        "metadata",
-        "band_1",
-    ]
+    # get expected data from fixture numpy array
+    expected_ndarray = np.load(
+        os.path.join(fixtures_dir, "expected_default_column.npy"), allow_pickle=True
+    )
+    expected_dataframe = pd.DataFrame(
+        expected_ndarray, columns=["block", "metadata", "band_1"]
+    )
+    expected_dataframe = expected_dataframe.sort_values("block")
 
-    assert sorted(list(result.columns)) == sorted(expected_columns)
-
-    # TODO: select metadata row and check metadata contents
-    # TODO: select some block row and check contents
+    assert sorted(result.columns) == sorted(expected_dataframe.columns)
+    assert sorted(
+        list(result.block), key=lambda x: x if x is not None else -math.inf
+    ) == sorted(
+        list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
+    )
+    assert sorted(
+        list(result.metadata), key=lambda x: x if x is not None else ""
+    ) == sorted(
+        list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
+    )
+    assert sorted(
+        list(result.band_1), key=lambda x: x if x is not None else b""
+    ) == sorted(
+        list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
+    )
 
 
 @pytest.mark.integration_test
@@ -126,7 +143,8 @@ def test_rasterio_to_bigquery_with_quadbin_raster_custom_band_column():
     table_name = "test_mosaic_quadbin_custom_band_column_1"
 
     rasterio_to_bigquery(
-        os.path.join(fixtures_dir, "quadbin_raster.tif"),
+        # os.path.join(fixtures_dir, "quadbin_raster.tif"),
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
         table_name,
         BQ_DATASET_ID,
         BQ_PROJECT_ID,
@@ -139,17 +157,34 @@ def test_rasterio_to_bigquery_with_quadbin_raster_custom_band_column():
         project_id=BQ_PROJECT_ID,
         dataset_id=BQ_DATASET_ID,
     )
+    # sort value because return query can vary the order of rows
+    result = result.sort_values("block")
 
-    expected_columns = [
-        "block",
-        "metadata",
-        "customband",
-    ]
+    # get expected data from fixture numpy array
+    expected_ndarray = np.load(
+        os.path.join(fixtures_dir, "expected_custom_column.npy"), allow_pickle=True
+    )
+    expected_dataframe = pd.DataFrame(
+        expected_ndarray, columns=["block", "metadata", "customband"]
+    )
+    expected_dataframe = expected_dataframe.sort_values("block")
 
-    assert sorted(list(result.columns)) == sorted(expected_columns)
-
-    # TODO: select metadata row and check metadata contents
-    # TODO: select some block row and check contents
+    assert sorted(result.columns) == sorted(expected_dataframe.columns)
+    assert sorted(
+        list(result.block), key=lambda x: x if x is not None else -math.inf
+    ) == sorted(
+        list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
+    )
+    assert sorted(
+        list(result.metadata), key=lambda x: x if x is not None else ""
+    ) == sorted(
+        list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
+    )
+    assert sorted(
+        list(result.customband), key=lambda x: x if x is not None else b""
+    ) == sorted(
+        list(expected_dataframe.customband), key=lambda x: x if x is not None else b""
+    )
 
 
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
