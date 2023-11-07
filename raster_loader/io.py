@@ -190,11 +190,11 @@ def pseudoplanar(x, y):
     return [x / 32768.0, y / 32768.0]
 
 
-def band_field_name(band: int, band_type: str, custom_name: str = None) -> str:
+def band_field_name(band: int, custom_name: str = None) -> str:
     if custom_name:
         return custom_name
     else:
-        return "band" + str(band)
+        return "band_" + str(band)
 
 
 def array_to_quadbin_record(
@@ -407,7 +407,7 @@ def rasterio_windows_to_records(
         )
 
         band_type = raster_band_type(raster_dataset, band)
-        band_name = band_field_name(band, band_type, band_column_name)
+        band_name = band_field_name(band, band_column_name)
         columns = table_columns([band_name])
         clustering = ["block"]
         create_table(columns, clustering)
