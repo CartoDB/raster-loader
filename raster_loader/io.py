@@ -812,7 +812,7 @@ def rasterio_to_bigquery(
     band : int, optional
         Band number to read from the raster file, by default 1
     band_column_name : str, optional
-        Band column name used to store band (Default: band<band_num>)
+        Band column name used to store band (Default: band_<band_num>)
     chunk_size : int, optional
         Number of records to write to BigQuery at a time, the default (None)
         writes all records in a single batch.
