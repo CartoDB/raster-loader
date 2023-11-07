@@ -419,7 +419,7 @@ def rasterio_windows_to_records(
         center_coords.append(resolution)
         band_metadata = {
             "name": band,
-            "type": str(band_type),
+            "type": band_type,
             "nodata": raster_dataset.nodata,
             "value_field": band_name,
         }
@@ -444,7 +444,7 @@ def rasterio_windows_to_records(
                 raster_dataset.nodata,
                 band,
                 band_name,
-                str(band_type),
+                band_type,
                 transformer,
                 raster_dataset.transform,
                 resolution,
