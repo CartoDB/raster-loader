@@ -418,10 +418,8 @@ def rasterio_windows_to_records(
         center_coords = list(*bounds_polygon.centroid.coords)
         center_coords.append(resolution)
         band_metadata = {
-            "name": band,
             "type": band_type,
-            "nodata": raster_dataset.nodata,
-            "value_field": band_name,
+            "band_name": band_name,
         }
 
         # assuming all windows have the same dimensions
