@@ -107,7 +107,7 @@ def test_rasterio_to_bigquery_with_quadbin_raster():
     expected_columns = [
         "block",
         "metadata",
-        "band1",
+        "band_1",
     ]
 
     assert sorted(list(result.columns)) == sorted(expected_columns)
