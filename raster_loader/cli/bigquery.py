@@ -27,7 +27,7 @@ def bigquery(args=None):
 @click.option("--band", help="Band within raster to upload.", default=1)
 @click.option(
     "--band_column_name",
-    help="Column name used to store band (Default: band<band_num>).",
+    help="Column name used to store band (Default: band_<band_num>).",
     default=None,
 )
 @click.option(
