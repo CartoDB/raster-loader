@@ -25,12 +25,18 @@ def bigquery(args=None):
 @click.option("--dataset", help="The name of the dataset.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
 @click.option(
-    "--band", help="Band(s) within raster to upload.", default=1, multiple=True
+    "--band",
+    help="Band(s) within raster to upload. "
+    "Could repeat --band to specify multiple bands.",
+    default=[1],
+    multiple=True,
 )
 @click.option(
     "--band_column_name",
-    help="Column name(s) used to store band (Default: band_<band_num>).",
-    default=None,
+    help="Column name(s) used to store band (Default: band_<band_num>). "
+    "Could repeat --band_column_name to specify multiple bands column names. "
+    "List of columns names HAVE to pair --band list with the same order.",
+    default=[None],
     multiple=True,
 )
 @click.option(
@@ -75,7 +81,7 @@ def upload(
 
     # check that band and band_column_name are the same length
     # if band_column_name provided
-    if band_column_name:
+    if band_column_name != (None,):
         if len(band) != len(band_column_name):
             raise ValueError(
                 "The number of bands must equal the number of band column names."

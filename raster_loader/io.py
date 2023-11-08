@@ -393,7 +393,7 @@ def rasterio_windows_to_records(
             }
             bands_metadata.append(meta)
 
-        columns = table_columns([e.band_name for e in bands_metadata])
+        columns = table_columns([e["band_name"] for e in bands_metadata])
         clustering = ["block"]
         create_table(columns, clustering)
 
@@ -407,11 +407,7 @@ def rasterio_windows_to_records(
         a_window = next(raster_dataset.block_windows())
 
         metadata["bands"] = [
-            {
-                "band_name": e["band_name"],
-                "type": e["type"],
-            }
-            for e in bands_metadata
+            {"type": e["type"], "band_name": e["band_name"]} for e in bands_metadata
         ]
         metadata["bounds"] = list(bounds_polygon.bounds)
         metadata["center"] = center_coords
@@ -867,7 +863,6 @@ def rasterio_to_bigquery(
         records_gen = rasterio_windows_to_records(
             file_path,
             table_creator,
-            # metadata_writer,
             bands_info,
             metadata,
             input_crs,
