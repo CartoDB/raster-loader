@@ -191,7 +191,7 @@ def pseudoplanar(x, y):
 
 
 def band_field_name(band: int, custom_name: str = None) -> str:
-    if custom_name:
+    if custom_name and custom_name.lower() != "none":
         return custom_name
     else:
         return "band_" + str(band)
@@ -199,16 +199,12 @@ def band_field_name(band: int, custom_name: str = None) -> str:
 
 def array_to_quadbin_record(
     arr: np.ndarray,
-    nodata: float,
-    band: int,
     value_field: str,
-    dtype_str: str,
     transformer: pyproj.Transformer,
     geotransform: Affine,
     resolution: int,
     row_off: int = 0,
     col_off: int = 0,
-    crs: str = "EPSG:4326",
 ) -> dict:
     """Requires quadbin."""
     if not _has_quadbin:  # pragma: no cover
@@ -221,22 +217,6 @@ def array_to_quadbin_record(
     )
 
     block_quadbin = quadbin.point_to_cell(x, y, resolution)
-    # tile_x, tile_y, tile_z = quadbin.cell_to_tile(block_quadbin)
-
-    # attrs = {
-    #     "band": band,
-    #     "value_field": value_field,
-    #     "dtype": dtype_str,
-    #     "nodata": nodata,
-    #     "crs": crs,
-    #     "gdal_transform": geotransform.to_gdal(),
-    #     "row_off": row_off,
-    #     "col_off": col_off,
-    #     "block_area": quadbin.cell_area(block_quadbin),
-    #     "z": tile_z,
-    #     "x": tile_x,
-    #     "y": tile_y,
-    # }
 
     if should_swap[arr.dtype.byteorder]:
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
@@ -245,9 +225,6 @@ def array_to_quadbin_record(
 
     record = {
         "block": block_quadbin,
-        # "block_height": height,
-        # "block_width": width,
-        # "attrs": json.dumps(attrs),
         "metadata": None,
         value_field: arr_bytes,
     }
@@ -355,8 +332,7 @@ def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
 def rasterio_windows_to_records(
     file_path: str,
     create_table: Callable,
-    band: int,
-    band_column_name: str,
+    bands_info: List[Tuple[int, str]],
     metadata: dict,
     input_crs: str = None,
     pseudo_planar: bool = False,
@@ -406,9 +382,18 @@ def rasterio_windows_to_records(
             input_crs, "EPSG:4326", always_xy=True
         )
 
-        band_type = raster_band_type(raster_dataset, band)
-        band_name = band_field_name(band, band_column_name)
-        columns = table_columns([band_name])
+        bands_metadata = []
+        for band, band_column_name in bands_info:
+            band_type = raster_band_type(raster_dataset, band)
+            band_name = band_field_name(band, band_column_name)
+            meta = {
+                "band": band,
+                "type": band_type,
+                "band_name": band_name,
+            }
+            bands_metadata.append(meta)
+
+        columns = table_columns([e.band_name for e in bands_metadata])
         clustering = ["block"]
         create_table(columns, clustering)
 
@@ -417,15 +402,17 @@ def rasterio_windows_to_records(
         bounds_polygon = shapely.Polygon(shapely.wkt.loads(bounds_geog))
         center_coords = list(*bounds_polygon.centroid.coords)
         center_coords.append(resolution)
-        band_metadata = {
-            "type": band_type,
-            "band_name": band_name,
-        }
 
         # assuming all windows have the same dimensions
         a_window = next(raster_dataset.block_windows())
 
-        metadata["bands"] = [band_metadata]
+        metadata["bands"] = [
+            {
+                "band_name": e["band_name"],
+                "type": e["type"],
+            }
+            for e in bands_metadata
+        ]
         metadata["bounds"] = list(bounds_polygon.bounds)
         metadata["center"] = center_coords
         metadata["width"] = raster_info["Profile"]["Width"]
@@ -437,26 +424,30 @@ def rasterio_windows_to_records(
 
         for _, window in raster_dataset.block_windows():
 
-            rec = array_to_quadbin_record(
-                raster_dataset.read(band, window=window),
-                raster_dataset.nodata,
-                band,
-                band_name,
-                band_type,
-                transformer,
-                raster_dataset.transform,
-                resolution,
-                window.row_off,
-                window.col_off,
-                crs=input_crs,
-            )
+            record = {}
+            for band_metadata in bands_metadata:
+                band = band_metadata["band"]
+                band_name = band_metadata["band_name"]
+                band_type = band_metadata["type"]
 
-            # metadata["nb_pixel_blocks"] += 1
-            # metadata["nb_pixel"] += window.width * window.height
+                newrecord = array_to_quadbin_record(
+                    raster_dataset.read(band, window=window),
+                    band_name,
+                    transformer,
+                    raster_dataset.transform,
+                    resolution,
+                    window.row_off,
+                    window.col_off,
+                )
+
+                # add the new columns generated by array_to_quadbin_record
+                # but leaving unchanged the index e.g. the block column
+                record.update(newrecord)
+
             metadata["num_blocks"] += 1
             metadata["num_pixels"] += window.width * window.height
 
-            yield rec
+            yield record
 
 
 def records_to_bigquery(
@@ -781,8 +772,7 @@ def rasterio_to_bigquery(
     table_id: str,
     dataset_id: str,
     project_id: str,
-    band: int = 1,
-    band_column_name: str = None,
+    bands_info: List[Tuple[int, str]] = [(1, None)],
     chunk_size: int = None,
     input_crs: int = None,
     client=None,
@@ -809,10 +799,10 @@ def rasterio_to_bigquery(
         BigQuery dataset name.
     project_id : str
         BigQuery project name.
-    band : int, optional
-        Band number to read from the raster file, by default 1
-    band_column_name : str, optional
-        Band column name used to store band (Default: band_<band_num>)
+    bands_info : [(int, str)], optional
+        Band number(s) and column name(s) to read from the
+        raster file, by default [(1, None)].
+        If column_name is None default column name is band_<band_num>.
     chunk_size : int, optional
         Number of records to write to BigQuery at a time, the default (None)
         writes all records in a single batch.
@@ -878,8 +868,7 @@ def rasterio_to_bigquery(
             file_path,
             table_creator,
             # metadata_writer,
-            band,
-            band_column_name,
+            bands_info,
             metadata,
             input_crs,
             pseudo_planar,
