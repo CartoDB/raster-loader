@@ -463,7 +463,9 @@ def records_to_bigquery(
     data_df = pd.DataFrame(records)
 
     return client.load_table_from_dataframe(
-        data_df, f"{project_id}.{dataset_id}.{table_id}"
+        dataframe=data_df,
+        destination=f"{project_id}.{dataset_id}.{table_id}",
+        job_id_prefix=f"{table_id}",
     )
 
 
