@@ -11,6 +11,9 @@ def bigquery_client(load_error=False):
                 def result():
                     return True
 
+                def add_done_callback(callback):
+                    pass
+
             return job
 
         def query(self, query):
