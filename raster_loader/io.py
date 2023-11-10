@@ -872,8 +872,6 @@ def rasterio_to_bigquery(
         )
 
         total_blocks = get_number_of_blocks(file_path)
-        # metadata["total_pixel_blocks"] = total_blocks  # FIXME: for debugging purposes
-
         if chunk_size is None:
             job = records_to_bigquery(
                 records_gen, table_id, dataset_id, project_id, client=client
@@ -884,43 +882,35 @@ def rasterio_to_bigquery(
             from tqdm.auto import tqdm
 
             jobs = []
+            total_blocks += 1  # add one for the metadata record
             with tqdm(total=total_blocks) as pbar:
+
+                if total_blocks < chunk_size:
+                    chunk_size = total_blocks
+
+                def done_callback(future):
+                    pbar.update(chunk_size)
+                    future.result()
+                    jobs.remove(future)
+
                 for records in batched(records_gen, chunk_size):
-
-                    try:
-                        # raise error if job went wrong (blocking call)
-                        jobs.pop().result()
-                    except IndexError:
-                        pass
-
-                    jobs.append(
-                        records_to_bigquery(
-                            records, table_id, dataset_id, project_id, client=client
-                        )
+                    job = records_to_bigquery(
+                        records, table_id, dataset_id, project_id, client=client
                     )
+                    job.add_done_callback(done_callback)
+                    jobs.append(job)
                     pbar.update(chunk_size)
 
-            # raise error if something went wrong (blocking call)
-            while jobs:
-                jobs.pop().result()
-
-        write_metadata(
-            metadata,
-            append_records,
-            project_id,
-            dataset_id,
-            table_id,
-            client=client,
-        )
-
-        # !!! outdated due the fact that raster windows is constant for each
-        # row in the table and area is that stated by the rasterio directly.
-        # Postprocess: compute metadata areas
-        # run_bigquery_query(
-        #     inject_areas_query(f"{project_id}.{dataset_id}.{table_id}"),
-        #     project_id,
-        #     client=client,
-        # )
+                print("writing metadata record")
+                write_metadata(
+                    metadata,
+                    append_records,
+                    project_id,
+                    dataset_id,
+                    table_id,
+                    client=client,
+                )
+                pbar.update(1)
 
     except KeyboardInterrupt:
         delete_table = ask_yes_no_question(
