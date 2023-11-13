@@ -1,3 +1,5 @@
+from functools import partial
+import time
 import json
 import sys
 import math
@@ -465,7 +467,7 @@ def records_to_bigquery(
     return client.load_table_from_dataframe(
         dataframe=data_df,
         destination=f"{project_id}.{dataset_id}.{table_id}",
-        job_id_prefix=f"{table_id}",
+        job_id_prefix=f"{table_id}_",
     )
 
 
@@ -882,26 +884,46 @@ def rasterio_to_bigquery(
             from tqdm.auto import tqdm
 
             jobs = []
+            errors = []
             total_blocks += 1  # add one for the metadata record
+            print(f"Writing {total_blocks} blocks to BigQuery...")
             with tqdm(total=total_blocks) as pbar:
 
                 if total_blocks < chunk_size:
                     chunk_size = total_blocks
 
-                def done_callback(future):
-                    pbar.update(chunk_size)
-                    future.result()
-                    jobs.remove(future)
+                def done_callback(future, chunk_size=None):
+                    pbar.update(chunk_size or 0)
+                    try:
+                        future.result()
+                    except Exception as e:
+                        errors.append(e)
+                    try:
+                        jobs.remove(future)
+                    except ValueError:
+                        # job already removed because failed
+                        pass
 
                 for records in batched(records_gen, chunk_size):
                     job = records_to_bigquery(
                         records, table_id, dataset_id, project_id, client=client
                     )
-                    job.add_done_callback(done_callback)
+                    job.add_done_callback(
+                        partial(lambda job: done_callback(job, chunk_size=len(records)))
+                    )
                     jobs.append(job)
-                    pbar.update(chunk_size)
 
-                print("writing metadata record")
+                    # do no continue to schedule jobs if there are errors
+                    if len(errors):
+                        raise Exception(errors)
+
+                # wait for end of jobs or any error
+                while len(jobs) > 0 and len(errors) == 0:
+                    time.sleep(0.1)
+                if len(errors):
+                    raise Exception(errors)
+
+                pbar.set_postfix_str("Uploading metadata")
                 write_metadata(
                     metadata,
                     append_records,
