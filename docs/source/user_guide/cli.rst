@@ -27,6 +27,13 @@ BigQuery:
 #. A `GCP project`_
 #. A `BigQuery dataset`_
 
+The input raster must be a ``GoogleMapsCompatible`` raster. You can make your raster compatible
+by converting it with the following GDAL command:
+
+.. code-block:: bash
+
+   gdalwarp your_raster.tif -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE your_compatible_raster.tif
+
 You have the option to also set up a `BigQuery table`_ and use this table to upload
 your data to. In case you do not specify a table name, Raster Loader will automatically
 generate a table name for you and create that table.
@@ -51,15 +58,59 @@ project named ``my-gcp-project``, a dataset named ``my-bigquery-dataset``, and a
 named ``my-bigquery-table``. If the table already contains data, this data will be
 overwritten because the ``--overwrite`` flag is set.
 
-You can also use the ``--output_quadbin`` flag to upload the raster to the BigQuery
-table in a quadbin format. To use this option, the input raster must be a
-``GoogleMapsCompatible`` raster. You can make your raster compatible by converting it with
-the following command with GDAL:
+If the the no band is specified, the first band of the raster will be uploaded. If the
+``--band`` flag is set, the specified band will be uploaded. For example, the following
+command uploads the second band of the raster:
 
 .. code-block:: bash
 
-   gdalwarp your_raster.tif -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE your_compatible_raster.tif
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --band 2
 
+Band names can be specified with the ``--band_column_name`` flag. For example, the following
+command uploads the ``red`` band of the raster:
+
+.. code-block:: bash
+
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --band 2 \
+     --band_column_name red
+
+If the raster contains multiple bands, you can upload multiple bands at once by
+specifying a list of bands. For example, the following command uploads the first and
+second bands of the raster:
+
+.. code-block:: bash
+
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --band 1
+     --band 2
+
+Or, with band names:
+
+.. code-block:: bash
+
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --band 1 \
+     --band 2 \
+     --band_column_name red \
+     --band_column_name green \
 .. seealso::
    See the :ref:`cli_details` for a full list of options.
 
