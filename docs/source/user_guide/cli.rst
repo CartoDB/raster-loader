@@ -58,7 +58,7 @@ project named ``my-gcp-project``, a dataset named ``my-bigquery-dataset``, and a
 named ``my-bigquery-table``. If the table already contains data, this data will be
 overwritten because the ``--overwrite`` flag is set.
 
-If the the no band is specified, the first band of the raster will be uploaded. If the
+If no band is specified, the first band of the raster will be uploaded. If the
 ``--band`` flag is set, the specified band will be uploaded. For example, the following
 command uploads the second band of the raster:
 
