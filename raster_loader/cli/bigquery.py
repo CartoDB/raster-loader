@@ -24,9 +24,23 @@ def bigquery(args=None):
 @click.option("--project", help="The name of the Google Cloud project.", required=True)
 @click.option("--dataset", help="The name of the dataset.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
-@click.option("--band", help="Band within raster to upload.", default=1)
 @click.option(
-    "--chunk_size", help="The number of blocks to upload in each chunk.", default=100
+    "--band",
+    help="Band(s) within raster to upload. "
+    "Could repeat --band to specify multiple bands.",
+    default=[1],
+    multiple=True,
+)
+@click.option(
+    "--band_column_name",
+    help="Column name(s) used to store band (Default: band_<band_num>). "
+    "Could repeat --band_column_name to specify multiple bands column names. "
+    "List of columns names HAVE to pair --band list with the same order.",
+    default=[None],
+    multiple=True,
+)
+@click.option(
+    "--chunk_size", help="The number of blocks to upload in each chunk.", default=600
 )
 @click.option(
     "--input_crs", help="The EPSG code of the input raster's CRS.", default=None
@@ -50,6 +64,7 @@ def upload(
     dataset,
     table,
     band,
+    band_column_name,
     chunk_size,
     input_crs,
     overwrite=False,
@@ -63,6 +78,19 @@ def upload(
     from raster_loader.io import get_number_of_blocks
     from raster_loader.io import print_band_information
     from raster_loader.io import get_block_dims
+
+    # check that band and band_column_name are the same length
+    # if band_column_name provided
+    if band_column_name != (None,):
+        if len(band) != len(band_column_name):
+            raise ValueError(
+                "The number of bands must equal the number of band column names."
+            )
+    else:
+        band_column_name = [None] * len(band)
+
+    # pair band and band_column_name in a list of tuple
+    bands_info = list(zip(band, band_column_name))
 
     # create default table name if not provided
     if table is None:
@@ -87,6 +115,7 @@ def upload(
     click.echo("File Size: {} MB".format(file_size_mb))
     print_band_information(file_path)
     click.echo("Source Band: {}".format(band))
+    click.echo("Band column name: {}".format(band_column_name))
     click.echo("Number of Blocks: {}".format(num_blocks))
     click.echo("Block Dims: {}".format(get_block_dims(file_path)))
     click.echo("Project: {}".format(project))
@@ -102,7 +131,7 @@ def upload(
         table,
         dataset,
         project,
-        band,
+        bands_info,
         chunk_size,
         input_crs,
         client=client,

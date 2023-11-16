@@ -1,3 +1,5 @@
+from functools import partial
+import time
 import json
 import sys
 import math
@@ -190,22 +192,21 @@ def pseudoplanar(x, y):
     return [x / 32768.0, y / 32768.0]
 
 
-def band_field_name(band: int, band_type: str, base_name: str = "band") -> str:
-    return "_".join([base_name, str(band), band_type])
+def band_field_name(band: int, custom_name: str = None) -> str:
+    if custom_name and custom_name.lower() != "none":
+        return custom_name
+    else:
+        return "band_" + str(band)
 
 
 def array_to_quadbin_record(
     arr: np.ndarray,
-    nodata: float,
-    band: int,
     value_field: str,
-    dtype_str: str,
     transformer: pyproj.Transformer,
     geotransform: Affine,
     resolution: int,
     row_off: int = 0,
     col_off: int = 0,
-    crs: str = "EPSG:4326",
 ) -> dict:
     """Requires quadbin."""
     if not _has_quadbin:  # pragma: no cover
@@ -218,22 +219,6 @@ def array_to_quadbin_record(
     )
 
     block_quadbin = quadbin.point_to_cell(x, y, resolution)
-    # tile_x, tile_y, tile_z = quadbin.cell_to_tile(block_quadbin)
-
-    # attrs = {
-    #     "band": band,
-    #     "value_field": value_field,
-    #     "dtype": dtype_str,
-    #     "nodata": nodata,
-    #     "crs": crs,
-    #     "gdal_transform": geotransform.to_gdal(),
-    #     "row_off": row_off,
-    #     "col_off": col_off,
-    #     "block_area": quadbin.cell_area(block_quadbin),
-    #     "z": tile_z,
-    #     "x": tile_x,
-    #     "y": tile_y,
-    # }
 
     if should_swap[arr.dtype.byteorder]:
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
@@ -242,9 +227,6 @@ def array_to_quadbin_record(
 
     record = {
         "block": block_quadbin,
-        # "block_height": height,
-        # "block_width": width,
-        # "attrs": json.dumps(attrs),
         "metadata": None,
         value_field: arr_bytes,
     }
@@ -352,11 +334,17 @@ def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
 def rasterio_windows_to_records(
     file_path: str,
     create_table: Callable,
-    band: int,
+    bands_info: List[Tuple[int, str]],
     metadata: dict,
     input_crs: str = None,
     pseudo_planar: bool = False,
 ) -> Iterable:
+    invalid_names = [
+        name for _, name in bands_info if name and name.lower() in ["block", "metadata"]
+    ]
+    if invalid_names:
+        raise ValueError(f"Invalid band column names: {', '.join(invalid_names)}")
+
     """Open a raster file with rio-cogeo."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
 
@@ -383,7 +371,6 @@ def rasterio_windows_to_records(
 
     """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
-
         raster_crs = raster_dataset.crs.to_string()
 
         if input_crs is None:
@@ -402,9 +389,18 @@ def rasterio_windows_to_records(
             input_crs, "EPSG:4326", always_xy=True
         )
 
-        band_type = raster_band_type(raster_dataset, band)
-        band_name = band_field_name(band, band_type)
-        columns = table_columns([band_name])
+        bands_metadata = []
+        for band, band_column_name in bands_info:
+            band_type = raster_band_type(raster_dataset, band)
+            band_name = band_field_name(band, band_column_name)
+            meta = {
+                "band": band,
+                "type": band_type,
+                "band_name": band_name,
+            }
+            bands_metadata.append(meta)
+
+        columns = table_columns([e["band_name"] for e in bands_metadata])
         clustering = ["block"]
         create_table(columns, clustering)
 
@@ -417,7 +413,9 @@ def rasterio_windows_to_records(
         # assuming all windows have the same dimensions
         a_window = next(raster_dataset.block_windows())
 
-        metadata["bands"] = [band_name]
+        metadata["bands"] = [
+            {"type": e["type"], "band_name": e["band_name"]} for e in bands_metadata
+        ]
         metadata["bounds"] = list(bounds_polygon.bounds)
         metadata["center"] = center_coords
         metadata["width"] = raster_info["Profile"]["Width"]
@@ -428,27 +426,30 @@ def rasterio_windows_to_records(
         metadata["num_pixels"] = 0
 
         for _, window in raster_dataset.block_windows():
+            record = {}
+            for band_metadata in bands_metadata:
+                band = band_metadata["band"]
+                band_name = band_metadata["band_name"]
+                band_type = band_metadata["type"]
 
-            rec = array_to_quadbin_record(
-                raster_dataset.read(band, window=window),
-                raster_dataset.nodata,
-                band,
-                band_name,
-                str(band_type),
-                transformer,
-                raster_dataset.transform,
-                resolution,
-                window.row_off,
-                window.col_off,
-                crs=input_crs,
-            )
+                newrecord = array_to_quadbin_record(
+                    raster_dataset.read(band, window=window),
+                    band_name,
+                    transformer,
+                    raster_dataset.transform,
+                    resolution,
+                    window.row_off,
+                    window.col_off,
+                )
 
-            # metadata["nb_pixel_blocks"] += 1
-            # metadata["nb_pixel"] += window.width * window.height
+                # add the new columns generated by array_to_quadbin_record
+                # but leaving unchanged the index e.g. the block column
+                record.update(newrecord)
+
             metadata["num_blocks"] += 1
             metadata["num_pixels"] += window.width * window.height
 
-            yield rec
+            yield record
 
 
 def records_to_bigquery(
@@ -468,7 +469,9 @@ def records_to_bigquery(
     data_df = pd.DataFrame(records)
 
     return client.load_table_from_dataframe(
-        data_df, f"{project_id}.{dataset_id}.{table_id}"
+        dataframe=data_df,
+        destination=f"{project_id}.{dataset_id}.{table_id}",
+        job_id_prefix=f"{table_id}_",
     )
 
 
@@ -773,7 +776,7 @@ def rasterio_to_bigquery(
     table_id: str,
     dataset_id: str,
     project_id: str,
-    band: int = 1,
+    bands_info: List[Tuple[int, str]] = [(1, None)],
     chunk_size: int = None,
     input_crs: int = None,
     client=None,
@@ -800,8 +803,10 @@ def rasterio_to_bigquery(
         BigQuery dataset name.
     project_id : str
         BigQuery project name.
-    band : int, optional
-        Band number to read from the raster file, by default 1
+    bands_info : [(int, str)], optional
+        Band number(s) and column name(s) to read from the
+        raster file, by default [(1, None)].
+        If column_name is None default column name is band_<band_num>.
     chunk_size : int, optional
         Number of records to write to BigQuery at a time, the default (None)
         writes all records in a single batch.
@@ -866,16 +871,13 @@ def rasterio_to_bigquery(
         records_gen = rasterio_windows_to_records(
             file_path,
             table_creator,
-            # metadata_writer,
-            band,
+            bands_info,
             metadata,
             input_crs,
             pseudo_planar,
         )
 
         total_blocks = get_number_of_blocks(file_path)
-        # metadata["total_pixel_blocks"] = total_blocks  # FIXME: for debugging purposes
-
         if chunk_size is None:
             job = records_to_bigquery(
                 records_gen, table_id, dataset_id, project_id, client=client
@@ -886,43 +888,50 @@ def rasterio_to_bigquery(
             from tqdm.auto import tqdm
 
             jobs = []
+            errors = []
+            total_blocks += 1  # add one for the metadata record
+            print(f"Writing {total_blocks} blocks to BigQuery...")
             with tqdm(total=total_blocks) as pbar:
-                for records in batched(records_gen, chunk_size):
 
+                if total_blocks < chunk_size:
+                    chunk_size = total_blocks
+
+                def done_callback(future, chunk_size=None):
+                    pbar.update(chunk_size or 0)
                     try:
-                        # raise error if job went wrong (blocking call)
-                        jobs.pop().result()
-                    except IndexError:
-                        pass
+                        future.result()
+                    except Exception as e:
+                        errors.append(e)
 
-                    jobs.append(
-                        records_to_bigquery(
-                            records, table_id, dataset_id, project_id, client=client
-                        )
+                for records in batched(records_gen, chunk_size):
+                    job = records_to_bigquery(
+                        records, table_id, dataset_id, project_id, client=client
                     )
-                    pbar.update(chunk_size)
+                    job.add_done_callback(
+                        partial(lambda job: done_callback(job, chunk_size=len(records)))
+                    )
+                    jobs.append(job)
 
-            # raise error if something went wrong (blocking call)
-            while jobs:
-                jobs.pop().result()
+                    # do no continue to schedule jobs if there are errors
+                    if len(errors):
+                        raise Exception(errors)
 
-        write_metadata(
-            metadata,
-            append_records,
-            project_id,
-            dataset_id,
-            table_id,
-            client=client,
-        )
+                # wait for end of jobs or any error
+                while len(jobs) > 0 and len(errors) == 0:
+                    time.sleep(0.1)
+                if len(errors):
+                    raise Exception(errors)
 
-        # !!! outdated due the fact that raster windows is constant for each
-        # row in the table and area is that stated by the rasterio directly.
-        # Postprocess: compute metadata areas
-        # run_bigquery_query(
-        #     inject_areas_query(f"{project_id}.{dataset_id}.{table_id}"),
-        #     project_id,
-        #     client=client,
-        # )
+                pbar.set_postfix_str("Uploading metadata")
+                write_metadata(
+                    metadata,
+                    append_records,
+                    project_id,
+                    dataset_id,
+                    table_id,
+                    client=client,
+                )
+                pbar.update(1)
 
     except KeyboardInterrupt:
         delete_table = ask_yes_no_question(

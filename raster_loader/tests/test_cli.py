@@ -41,6 +41,107 @@ def test_bigquery_upload(*args, **kwargs):
 
 
 @patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
+def test_bigquery_upload_multiple_bands(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+            "--chunk_size",
+            1,
+            "--input_crs",
+            "4326",
+            "--band",
+            1,
+            "--band",
+            2,
+            "--test",
+        ],
+    )
+    assert result.exit_code == 0
+
+
+def test_bigquery_fail_upload_multiple_bands_misaligned_with_band_names(
+    *args, **kwargs
+):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+            "--chunk_size",
+            1,
+            "--input_crs",
+            "4326",
+            "--band",
+            1,
+            "--band_column_name",
+            "band_1",
+            "--band",
+            2,
+            "--test",
+        ],
+    )
+    assert result.exit_code == 1
+    assert (
+        str(result.exception)
+        == "The number of bands must equal the number of band column names."
+    )
+
+
+@patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
+def test_bigquery_upload_multiple_bands_aligned_with_band_names(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+            "--chunk_size",
+            1,
+            "--input_crs",
+            "4326",
+            "--band",
+            1,
+            "--band_column_name",
+            "band_1",
+            "--band_column_name",
+            "band_2",
+            "--band",
+            2,
+            "--test",
+        ],
+    )
+    assert result.exit_code == 0
+
+
+@patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
 def test_bigquery_upload_no_table_name(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
