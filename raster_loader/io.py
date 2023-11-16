@@ -337,6 +337,12 @@ def rasterio_windows_to_records(
     input_crs: str = None,
     pseudo_planar: bool = False,
 ) -> Iterable:
+    invalid_names = [
+        name for _, name in bands_info if name and name.lower() in ["block", "metadata"]
+    ]
+    if invalid_names:
+        raise ValueError(f"Invalid band column names: {', '.join(invalid_names)}")
+
     """Open a raster file with rio-cogeo."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
 
