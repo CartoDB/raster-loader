@@ -361,6 +361,9 @@ def rasterio_windows_to_records(
     input_crs: str = None,
     pseudo_planar: bool = False,
 ) -> Iterable:
+    if band_column_name.lower() in ["block", "metadata"]:
+        raise ValueError(f"Invalid band_column_name: {band_column_name}")
+
     """Open a raster file with rio-cogeo."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
 
@@ -387,7 +390,6 @@ def rasterio_windows_to_records(
 
     """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
-
         raster_crs = raster_dataset.crs.to_string()
 
         if input_crs is None:
@@ -436,7 +438,6 @@ def rasterio_windows_to_records(
         metadata["num_pixels"] = 0
 
         for _, window in raster_dataset.block_windows():
-
             rec = array_to_quadbin_record(
                 raster_dataset.read(band, window=window),
                 raster_dataset.nodata,
@@ -900,7 +901,6 @@ def rasterio_to_bigquery(
             jobs = []
             with tqdm(total=total_blocks) as pbar:
                 for records in batched(records_gen, chunk_size):
-
                     try:
                         # raise error if job went wrong (blocking call)
                         jobs.pop().result()
