@@ -369,7 +369,6 @@ def rasterio_windows_to_records(
 
     """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
-
         raster_crs = raster_dataset.crs.to_string()
 
         if input_crs is None:
@@ -425,7 +424,6 @@ def rasterio_windows_to_records(
         metadata["num_pixels"] = 0
 
         for _, window in raster_dataset.block_windows():
-
             record = {}
             for band_metadata in bands_metadata:
                 band = band_metadata["band"]
@@ -890,7 +888,6 @@ def rasterio_to_bigquery(
             jobs = []
             with tqdm(total=total_blocks) as pbar:
                 for records in batched(records_gen, chunk_size):
-
                     try:
                         # raise error if job went wrong (blocking call)
                         jobs.pop().result()
