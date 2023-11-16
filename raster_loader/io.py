@@ -339,6 +339,12 @@ def rasterio_windows_to_records(
     input_crs: str = None,
     pseudo_planar: bool = False,
 ) -> Iterable:
+    invalid_names = [
+        name for _, name in bands_info if name and name.lower() in ["block", "metadata"]
+    ]
+    if invalid_names:
+        raise ValueError(f"Invalid band column names: {', '.join(invalid_names)}")
+
     """Open a raster file with rio-cogeo."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
 
@@ -365,7 +371,6 @@ def rasterio_windows_to_records(
 
     """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
-
         raster_crs = raster_dataset.crs.to_string()
 
         if input_crs is None:
@@ -421,7 +426,6 @@ def rasterio_windows_to_records(
         metadata["num_pixels"] = 0
 
         for _, window in raster_dataset.block_windows():
-
             record = {}
             for band_metadata in bands_metadata:
                 band = band_metadata["band"]
@@ -898,11 +902,6 @@ def rasterio_to_bigquery(
                         future.result()
                     except Exception as e:
                         errors.append(e)
-                    try:
-                        jobs.remove(future)
-                    except ValueError:
-                        # job already removed because failed
-                        pass
 
                 for records in batched(records_gen, chunk_size):
                     job = records_to_bigquery(
