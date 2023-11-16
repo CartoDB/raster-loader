@@ -1,3 +1,7 @@
+from threading import Timer
+from functools import partial
+
+
 def bigquery_client(load_error=False):
     class BigQueryClient:
         def __init__(self, load_error):
@@ -10,6 +14,12 @@ def bigquery_client(load_error=False):
             class job(object):
                 def result():
                     return True
+
+                def add_done_callback(callback):
+                    # need to simulate async behavior
+                    # simulating calling callback after chunk download
+                    # is completed
+                    Timer(0.2, partial(lambda: callback(job))).start()
 
             return job
 

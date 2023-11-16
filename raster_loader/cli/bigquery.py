@@ -40,7 +40,7 @@ def bigquery(args=None):
     multiple=True,
 )
 @click.option(
-    "--chunk_size", help="The number of blocks to upload in each chunk.", default=100
+    "--chunk_size", help="The number of blocks to upload in each chunk.", default=600
 )
 @click.option(
     "--input_crs", help="The EPSG code of the input raster's CRS.", default=None

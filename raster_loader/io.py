@@ -1,3 +1,5 @@
+from functools import partial
+import time
 import json
 import sys
 import math
@@ -467,7 +469,9 @@ def records_to_bigquery(
     data_df = pd.DataFrame(records)
 
     return client.load_table_from_dataframe(
-        data_df, f"{project_id}.{dataset_id}.{table_id}"
+        dataframe=data_df,
+        destination=f"{project_id}.{dataset_id}.{table_id}",
+        job_id_prefix=f"{table_id}_",
     )
 
 
@@ -874,8 +878,6 @@ def rasterio_to_bigquery(
         )
 
         total_blocks = get_number_of_blocks(file_path)
-        # metadata["total_pixel_blocks"] = total_blocks  # FIXME: for debugging purposes
-
         if chunk_size is None:
             job = records_to_bigquery(
                 records_gen, table_id, dataset_id, project_id, client=client
@@ -886,42 +888,50 @@ def rasterio_to_bigquery(
             from tqdm.auto import tqdm
 
             jobs = []
+            errors = []
+            total_blocks += 1  # add one for the metadata record
+            print(f"Writing {total_blocks} blocks to BigQuery...")
             with tqdm(total=total_blocks) as pbar:
-                for records in batched(records_gen, chunk_size):
+
+                if total_blocks < chunk_size:
+                    chunk_size = total_blocks
+
+                def done_callback(future, chunk_size=None):
+                    pbar.update(chunk_size or 0)
                     try:
-                        # raise error if job went wrong (blocking call)
-                        jobs.pop().result()
-                    except IndexError:
-                        pass
+                        future.result()
+                    except Exception as e:
+                        errors.append(e)
 
-                    jobs.append(
-                        records_to_bigquery(
-                            records, table_id, dataset_id, project_id, client=client
-                        )
+                for records in batched(records_gen, chunk_size):
+                    job = records_to_bigquery(
+                        records, table_id, dataset_id, project_id, client=client
                     )
-                    pbar.update(chunk_size)
+                    job.add_done_callback(
+                        partial(lambda job: done_callback(job, chunk_size=len(records)))
+                    )
+                    jobs.append(job)
 
-            # raise error if something went wrong (blocking call)
-            while jobs:
-                jobs.pop().result()
+                    # do no continue to schedule jobs if there are errors
+                    if len(errors):
+                        raise Exception(errors)
 
-        write_metadata(
-            metadata,
-            append_records,
-            project_id,
-            dataset_id,
-            table_id,
-            client=client,
-        )
+                # wait for end of jobs or any error
+                while len(jobs) > 0 and len(errors) == 0:
+                    time.sleep(0.1)
+                if len(errors):
+                    raise Exception(errors)
 
-        # !!! outdated due the fact that raster windows is constant for each
-        # row in the table and area is that stated by the rasterio directly.
-        # Postprocess: compute metadata areas
-        # run_bigquery_query(
-        #     inject_areas_query(f"{project_id}.{dataset_id}.{table_id}"),
-        #     project_id,
-        #     client=client,
-        # )
+                pbar.set_postfix_str("Uploading metadata")
+                write_metadata(
+                    metadata,
+                    append_records,
+                    project_id,
+                    dataset_id,
+                    table_id,
+                    client=client,
+                )
+                pbar.update(1)
 
     except KeyboardInterrupt:
         delete_table = ask_yes_no_question(
