@@ -286,13 +286,8 @@ def raster_band_type(raster_dataset: rasterio.io.DatasetReader, band: int) -> st
 
 
 def table_columns(bands: List[str]) -> List[Tuple[str, str, str]]:
-    columns = [
-        ("block", "INTEGER", "REQUIRED"),
-    ]
-    columns += [
-        ("metadata", "STRING", "NULLABLE"),
-        # TODO: upgrade BQ client version and use 'JSON' type for 'attrs'
-    ]
+    # TODO: upgrade BQ client version and use 'JSON' type for 'attrs'
+    columns = [("block", "INTEGER", "REQUIRED"), ("metadata", "STRING", "NULLABLE")]
     columns += [(band_name, "BYTES", "NULLABLE") for band_name in bands]
     return columns
 
@@ -358,7 +353,8 @@ def rasterio_windows_to_records(
             "by converting it using the following command:\n"
             "gdalwarp your_raster.tif -of COG "
             "-co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE "
-            "your_compatible_raster.tif"
+            "-co OVERVIEWS=NONE -co ADD_ALPHA=NO -co RESAMPLING=NEAREST "
+            "<input_raster>.tif <output_raster>.tif"
         )
         raise ValueError(msg)
 
@@ -892,7 +888,6 @@ def rasterio_to_bigquery(
             total_blocks += 1  # add one for the metadata record
             print(f"Writing {total_blocks} blocks to BigQuery...")
             with tqdm(total=total_blocks) as pbar:
-
                 if total_blocks < chunk_size:
                     chunk_size = total_blocks
 
@@ -973,7 +968,6 @@ def write_metadata(
 ):
     if append_records:
         table_ref = f"{project_id}.{dataset_id}.{table_id}"
-        location = "block"
         query = f"""
             UPDATE `{table_ref}`
             SET metadata = (
@@ -982,7 +976,7 @@ def write_metadata(
                         {sql_quote(json.dumps(metadata))}
                     )
                 )
-            ) WHERE {location} = 0
+            ) WHERE block = 0
         """
 
         """Requires bigquery."""
@@ -1065,95 +1059,3 @@ def get_block_dims(file_path: str) -> tuple:
 
     with rasterio.open(file_path) as raster_dataset:
         return raster_dataset.block_shapes[0]
-
-
-def inject_areas_query(raster_table: str) -> str:
-    location_column = "block"
-    from_metadata_source = f"FROM `{raster_table}` WHERE {location_column} = 0"
-    from_blocks_source = f"FROM `{raster_table}` WHERE {location_column} != 0"
-
-    block_y = "'$.y'"
-    block_x = "'$.x'"
-    avg_pixel_area_query = f"""
-        SELECT
-            AVG(
-            CAST(JSON_VALUE(metadata, '$.block_area') AS FLOAT64)
-            / (block_height*block_width)
-            )
-        {from_blocks_source}
-    """
-    area_query = f"""
-        SELECT SUM(CAST(JSON_VALUE(metadata, '$.block_area') AS FLOAT64))
-        {from_blocks_source}
-    """
-
-    width_in_pixel_query = f"""
-        SELECT MAX(row_width) FROM (
-          SELECT SUM(block_width) OVER (
-            PARTITION BY INT64(JSON_QUERY(
-                PARSE_JSON(metadata, wide_number_mode=>'round'), {block_y}))
-          ) AS row_width
-          {from_blocks_source}
-        )
-    """
-
-    height_in_pixel_query = f"""
-        SELECT MAX(col_height) FROM (
-          SELECT SUM(block_height) OVER (
-            PARTITION BY INT64(JSON_QUERY(
-                PARSE_JSON(metadata, wide_number_mode=>'round'), {block_x}))
-          ) AS col_height
-          {from_blocks_source}
-        )
-    """
-
-    width_in_pixel_block_query = f"""
-        SELECT COUNT(DISTINCT INT64(JSON_QUERY(
-            PARSE_JSON(metadata, wide_number_mode=>'round'), {block_x})))
-        {from_blocks_source}
-    """
-
-    height_in_pixel_block_query = f"""
-        SELECT COUNT(DISTINCT INT64(JSON_QUERY(
-            PARSE_JSON(metadata, wide_number_mode=>'round'), {block_y})))
-        {from_blocks_source}
-    """
-
-    sparse_pixel_block_query = f"""
-      (SELECT INT64(JSON_QUERY(
-        PARSE_JSON(metadata, wide_number_mode=>'round'), '$.nb_pixel_blocks'))
-       {from_metadata_source})
-      < ({width_in_pixel_block_query}) * ({height_in_pixel_block_query})
-    """
-
-    def only_if_unique_crs_query(query):
-        return f"""IF(
-            (SELECT
-              JSON_VALUE(metadata, '$.crs') IS NOT NULL
-              AND
-              JSON_QUERY_ARRAY(metadata, '$.gdal_transform') IS NOT NULL,
-             {from_metadata_source}),
-            ({query}),
-            NULL)
-        """
-
-    return f"""
-        CREATE TEMP FUNCTION _mergeJSONs(a JSON, b JSON)
-          RETURNS JSON
-          LANGUAGE js
-           AS r'return {{...a, ...b}};';
-        UPDATE `{raster_table}`
-        SET metadata = TO_JSON_STRING(_mergeJSONs(
-          PARSE_JSON(metadata, wide_number_mode=>'round'),
-          TO_JSON(STRUCT(
-            ({area_query}) AS raster_area,
-            ({avg_pixel_area_query}) AS avg_pixel_area,
-            ({width_in_pixel_query}) AS width_in_pixel,
-            ({height_in_pixel_query}) AS height_in_pixel,
-            ({width_in_pixel_block_query}) AS width_in_pixel_block,
-            ({height_in_pixel_block_query}) AS height_in_pixel_block,
-            ({sparse_pixel_block_query}) AS sparse_pixel_block
-          ))
-        ))
-        WHERE {location_column} = 0;
-    """

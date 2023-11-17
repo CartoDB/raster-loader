@@ -474,7 +474,6 @@ def test_rasterio_to_bigquery_with_one_chunk_size(*args, **kwargs):
 
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
 def test_rasterio_to_bigquery_invalid_input_crs(*args, **kwargs):
-
     import rasterio
 
     client = mocks.bigquery_client()
