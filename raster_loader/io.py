@@ -897,6 +897,11 @@ def rasterio_to_bigquery(
                         future.result()
                     except Exception as e:
                         errors.append(e)
+                    try:
+                        jobs.remove(future)
+                    except ValueError:
+                        # job already removed because failed
+                        pass
 
                 for records in batched(records_gen, chunk_size):
                     job = records_to_bigquery(
