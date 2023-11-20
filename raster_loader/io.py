@@ -278,14 +278,17 @@ def rasterio_windows_to_records(
             "The input raster must be a GoogleMapsCompatible raster.\n"
             "You can make your raster compatible "
             "by converting it using the following command:\n"
-            "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible"
-            "-co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO"
+            "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible "
+            "-co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO "
             "-co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif"
         )
         raise ValueError(msg)
 
     resolution = raster_info["GEO"]["MaxZoom"]
     metadata["resolution"] = resolution
+    metadata["minresolution"] = resolution
+    metadata["maxresolution"] = resolution
+    metadata["nodata"] = raster_info["Profile"]["Nodata"]
 
     """Requires rasterio."""
     if not _has_rasterio:  # pragma: no cover
@@ -775,16 +778,16 @@ def rasterio_to_bigquery(
                 if len(errors):
                     raise Exception(errors)
 
-                print("Writing metadata to BigQuery...")
-                write_metadata(
-                    metadata,
-                    append_records,
-                    project_id,
-                    dataset_id,
-                    table_id,
-                    client=client,
-                )
                 pbar.update(1)
+        print("Writing metadata to BigQuery...")
+        write_metadata(
+            metadata,
+            append_records,
+            project_id,
+            dataset_id,
+            table_id,
+            client=client,
+        )
 
     except KeyboardInterrupt:
         delete_table = ask_yes_no_question(
@@ -816,6 +819,24 @@ def rasterio_to_bigquery(
     return True
 
 
+def get_metadata(project_id, dataset_id, table_id, client=None):
+    """Requires bigquery."""
+    if not _has_bigquery:  # pragma: no cover
+        import_error_bigquery()
+
+    if client is None:
+        client = bigquery.Client(project=project_id)
+    table_ref = f"{project_id}.{dataset_id}.{table_id}"
+    query = f"""
+        SELECT metadata
+        FROM `{table_ref}`
+        WHERE block = 0
+    """
+    job = client.query(query)
+    result = job.result()
+    return json.loads(next(result)["metadata"])
+
+
 def write_metadata(
     metadata,
     append_records,
@@ -825,24 +846,33 @@ def write_metadata(
     client=None,
 ):
     if append_records:
-        table_ref = f"{project_id}.{dataset_id}.{table_id}"
-        query = f"""
-            UPDATE `{table_ref}`
-            SET metadata = (
-                SELECT TO_JSON_STRING(
-                    PARSE_JSON(
-                        {sql_quote(json.dumps(metadata))}
-                    )
-                )
-            ) WHERE block = 0
-        """
-
         """Requires bigquery."""
         if not _has_bigquery:  # pragma: no cover
             import_error_bigquery()
 
         if client is None:
             client = bigquery.Client(project=project_id)
+
+        old_metadata = get_metadata(project_id, dataset_id, table_id, client=client)
+        metadata["bounds"] = (
+            min(old_metadata["bounds"][0], metadata["bounds"][0]),
+            min(old_metadata["bounds"][1], metadata["bounds"][1]),
+            max(old_metadata["bounds"][2], metadata["bounds"][2]),
+            max(old_metadata["bounds"][3], metadata["bounds"][3]),
+        )
+
+        table_ref = f"{project_id}.{dataset_id}.{table_id}"
+        query = f"""
+            UPDATE `{table_ref}`
+            SET metadata = (
+                SELECT TO_JSON_STRING(
+                    PARSE_JSON(
+                        {sql_quote(json.dumps(metadata))},
+                        wide_number_mode=>'round'
+                    )
+                )
+            ) WHERE block = 0
+        """
 
         job = client.query(query)
         job.result()

@@ -1,6 +1,7 @@
 import math
 import os
 import sys
+import json
 from unittest.mock import patch
 import pyproj
 
@@ -90,7 +91,8 @@ def test_rasterio_to_bigquery_with_raster_default_band_name():
 
     # get expected data from fixture numpy array
     expected_ndarray = np.load(
-        os.path.join(fixtures_dir, "expected_default_column.npy"), allow_pickle=True
+        os.path.join(fixtures_dir, "expected_default_column.npy"),
+        allow_pickle=True,
     )
     expected_dataframe = pd.DataFrame(
         expected_ndarray, columns=["block", "metadata", "band_1"]
@@ -113,6 +115,60 @@ def test_rasterio_to_bigquery_with_raster_default_band_name():
     ) == sorted(
         list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
     )
+
+
+@pytest.mark.integration_test
+def test_rasterio_to_bigquery_appending_rows():
+    from raster_loader.io import rasterio_to_bigquery
+    from raster_loader.io import bigquery_to_records
+
+    check_integration_config()
+
+    table_name = "test_mosaic_append_rows"
+
+    rasterio_to_bigquery(
+        os.path.join(fixtures_dir, "mosaic_cog_1_1.tif"),
+        table_name,
+        BQ_DATASET_ID,
+        BQ_PROJECT_ID,
+        overwrite=True,
+    )
+
+    result = bigquery_to_records(
+        table_id=table_name, project_id=BQ_PROJECT_ID, dataset_id=BQ_DATASET_ID
+    )
+
+    metadata = json.loads([x for x in list(result.metadata) if x][0])
+
+    assert metadata["bounds"] == [
+        11.249999999997055,
+        40.979898069622585,
+        22.49999999999707,
+        48.92249926376037,
+    ]
+
+    rasterio_to_bigquery(
+        os.path.join(fixtures_dir, "mosaic_cog_1_2.tif"),
+        table_name,
+        BQ_DATASET_ID,
+        BQ_PROJECT_ID,
+        append=True,
+    )
+
+    result = bigquery_to_records(
+        table_id=table_name, project_id=BQ_PROJECT_ID, dataset_id=BQ_DATASET_ID
+    )
+
+    metadata = json.loads([x for x in list(result.metadata) if x][0])
+
+    assert metadata["bounds"] == [
+        11.249999999997055,
+        40.979898069622585,
+        33.74999999999708,
+        48.92249926376037,
+    ]
+
+    assert len(result) == 3
 
 
 @pytest.mark.integration_test
@@ -143,7 +199,8 @@ def test_rasterio_to_bigquery_with_raster_custom_band_column():
 
     # get expected data from fixture numpy array
     expected_ndarray = np.load(
-        os.path.join(fixtures_dir, "expected_custom_column.npy"), allow_pickle=True
+        os.path.join(fixtures_dir, "expected_custom_column.npy"),
+        allow_pickle=True,
     )
     expected_dataframe = pd.DataFrame(
         expected_ndarray, columns=["block", "metadata", "customband"]
@@ -369,6 +426,7 @@ def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
 @patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
+@patch("raster_loader.io.get_metadata", return_value={"bounds": [0, 0, 0, 0]})
 def test_rasterio_to_bigquery_table_is_not_empty_append(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
@@ -492,6 +550,7 @@ def test_rasterio_to_bigquery_invalid_raster(*args, **kwargs):
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
 @patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
+@patch("raster_loader.io.get_metadata", return_value={"bounds": [0, 0, 0, 0]})
 def test_rasterio_to_bigquery_valid_raster(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
