@@ -70,35 +70,6 @@ def coord_range(start_x, start_y, end_x, end_y, num_subdivisions):
     ]
 
 
-MIN_SUBDIVISIONS_PER_DEGREE = 0.3
-
-
-def line_coords(start_x, start_y, end_x, end_y, num_subdivisions, whole_earth):
-    if not whole_earth and math.fabs(end_x - start_x) > 180.0:
-        end_x = math.fmod(end_x + 360.0, 360.0)
-        start_x = math.fmod(start_x + 360.0, 360.0)
-
-    x_length = math.fabs(end_x - start_x)
-    y_length = math.fabs(end_y - start_y)
-
-    near_meridian = x_length <= 1e-13
-    near_parallel = y_length < 1.0
-
-    if near_parallel:
-        scale = math.cos(0.5 * math.pi / 180.0 * (start_y + end_y))
-        x_length *= scale
-        num_subdivisions = math.ceil(num_subdivisions * scale)
-        num_subdivisions = max(
-            num_subdivisions, math.ceil(x_length * MIN_SUBDIVISIONS_PER_DEGREE)
-        )
-
-    if near_meridian:
-        # No need to subdivide meridians, since they're geodesics
-        num_subdivisions = 1
-
-    return coord_range(start_x, start_y, end_x, end_y, num_subdivisions)
-
-
 def norm_lon(x):
     return x - 360.0 if x > 180.0 else x + 360.0 if x <= -180.0 else x
 
@@ -107,10 +78,8 @@ def norm_coords(coords):
     return [[norm_lon(point[0]), point[1]] for point in coords]
 
 
-def polygon_geography(rings, format, normalize_coords, pseudo_planar=False):
-    if pseudo_planar:
-        rings = [[pseudoplanar(p[0], p[1]) for p in coords] for coords in rings]
-    elif normalize_coords:
+def polygon_geography(rings, format, normalize_coords):
+    if normalize_coords:
         rings = [norm_coords(coords) for coords in rings]
 
     if format == "wkt":
@@ -142,29 +111,7 @@ def polygon_geojson(rings):
     return json.dumps({"type": "Polygon", "coordinates": rings})
 
 
-def section_point(x, y):
-    if x == 180.0:
-        x = -180.0
-    return [x, y]
-
-
-def section_geog(lat_N, lat_S, num_subdivisions, pseudo_planar, format):
-    lat_S, lat_N = min(lat_N, lat_S), max(lat_N, lat_S)
-    num_subdivisions = max(num_subdivisions, 4)
-    ring1 = [
-        section_point(*p)
-        for p in coord_range(-180.0, lat_S, 180.0, lat_S, num_subdivisions)
-    ]
-    ring2 = [
-        section_point(*p)
-        for p in coord_range(180.0, lat_N, -180.0, lat_N, num_subdivisions)
-    ]
-    if lat_N < 0:
-        ring1, ring2 = ring2, ring1
-    return polygon_geography([ring1, ring2], format, False, pseudo_planar)
-
-
-def coords_to_geography(coords, format, whole_earth, pseudo_planar):
+def coords_to_geography(coords, format, whole_earth):
     # remove too-close coordinates cause they cause errors
     # in BigQuery's ST_GEOGFROMGEOJSON
     def are_too_close(point1, point2):
@@ -185,21 +132,14 @@ def coords_to_geography(coords, format, whole_earth, pseudo_planar):
     if coords[0] != coords[-1]:
         # replace the last point; never mind, it must be very close
         coords[-1] = coords[0]
-    return polygon_geography([coords], format, not whole_earth, pseudo_planar)
+    return polygon_geography([coords], format, not whole_earth)
 
 
-def pseudoplanar(x, y):
-    return [x / 32768.0, y / 32768.0]
+def band_field_name(custom_name: str, band: int) -> str:
+    return custom_name or "band_" + str(band)
 
 
-def band_field_name(band: int, custom_name: str = None) -> str:
-    if custom_name and custom_name.lower() != "none":
-        return custom_name
-    else:
-        return "band_" + str(band)
-
-
-def array_to_quadbin_record(
+def array_to_record(
     arr: np.ndarray,
     value_field: str,
     transformer: pyproj.Transformer,
@@ -218,7 +158,7 @@ def array_to_quadbin_record(
         *(geotransform * (col_off + width * 0.5, row_off + height * 0.5))
     )
 
-    block_quadbin = quadbin.point_to_cell(x, y, resolution)
+    block = quadbin.point_to_cell(x, y, resolution)
 
     if should_swap[arr.dtype.byteorder]:
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
@@ -226,7 +166,7 @@ def array_to_quadbin_record(
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
     record = {
-        "block": block_quadbin,
+        "block": block,
         "metadata": None,
         value_field: arr_bytes,
     }
@@ -256,17 +196,6 @@ def import_error_rasterio():  # pragma: no cover
     raise ImportError(msg)
 
 
-def import_error_rio_cogeo():  # pragma: no cover
-    msg = (
-        "Cloud Optimized GeoTIFF (COG) plugin for Rasterio is not installed.\n"
-        "Please install rio-cogeo to use this function.\n"
-        "See https://cogeotiff.github.io/rio-cogeo/\n"
-        "for installation instructions.\n"
-        "Alternatively, run `pip install rio-cogeo` to install from pypi."
-    )
-    raise ImportError(msg)
-
-
 def import_error_quadbin():  # pragma: no cover
     msg = (
         "Quadbin is not installed.\n"
@@ -292,7 +221,7 @@ def table_columns(bands: List[str]) -> List[Tuple[str, str, str]]:
     return columns
 
 
-def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
+def raster_bounds(raster_dataset, transformer, format):
     raster_dataset.transform,
     min_x = 0
     min_y = 0
@@ -323,7 +252,7 @@ def raster_bounds(raster_dataset, transformer, pseudo_planar, format):
         math.fabs(lon_NW - lon_NE) >= 360.0 and math.fabs(lon_SW - lon_SE) >= 360
     )
 
-    return coords_to_geography(coords, format, whole_earth, pseudo_planar)
+    return coords_to_geography(coords, format, whole_earth)
 
 
 def rasterio_windows_to_records(
@@ -331,19 +260,17 @@ def rasterio_windows_to_records(
     create_table: Callable,
     bands_info: List[Tuple[int, str]],
     metadata: dict,
-    input_crs: str = None,
-    pseudo_planar: bool = False,
 ) -> Iterable:
     invalid_names = [
         name for _, name in bands_info if name and name.lower() in ["block", "metadata"]
     ]
     if invalid_names:
-        raise ValueError(f"Invalid band column names: {', '.join(invalid_names)}")
+        raise ValueError(f"Invalid band names: {', '.join(invalid_names)}")
 
     """Open a raster file with rio-cogeo."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
 
-    """Check if raster is quadbin compatible."""
+    """Check if raster is compatible."""
     if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
         "Tiling Scheme", {}
     ).get("NAME"):
@@ -351,10 +278,9 @@ def rasterio_windows_to_records(
             "The input raster must be a GoogleMapsCompatible raster.\n"
             "You can make your raster compatible "
             "by converting it using the following command:\n"
-            "gdalwarp your_raster.tif -of COG "
-            "-co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE "
-            "-co OVERVIEWS=NONE -co ADD_ALPHA=NO -co RESAMPLING=NEAREST "
-            "<input_raster>.tif <output_raster>.tif"
+            "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible"
+            "-co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO"
+            "-co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif"
         )
         raise ValueError(msg)
 
@@ -369,30 +295,16 @@ def rasterio_windows_to_records(
     with rasterio.open(file_path) as raster_dataset:
         raster_crs = raster_dataset.crs.to_string()
 
-        if input_crs is None:
-            input_crs = raster_crs
-        elif input_crs != raster_crs:
-            msg = "Input CRS conflicts with input raster metadata."
-            err = rasterio.errors.CRSError(msg)
-            raise err
-
-        if not input_crs:  # pragma: no cover
-            msg = "Unable to find valid input_crs."
-            err = rasterio.errors.CRSError(msg)
-            raise err
-
         transformer = pyproj.Transformer.from_crs(
-            input_crs, "EPSG:4326", always_xy=True
+            raster_crs, "EPSG:4326", always_xy=True
         )
 
         bands_metadata = []
-        for band, band_column_name in bands_info:
-            band_type = raster_band_type(raster_dataset, band)
-            band_name = band_field_name(band, band_column_name)
+        for band, band_name in bands_info:
             meta = {
                 "band": band,
-                "type": band_type,
-                "band_name": band_name,
+                "type": raster_band_type(raster_dataset, band),
+                "band_name": band_field_name(band_name, band),
             }
             bands_metadata.append(meta)
 
@@ -401,34 +313,37 @@ def rasterio_windows_to_records(
         create_table(columns, clustering)
 
         # compute whole bounds for metadata
-        bounds_geog = raster_bounds(raster_dataset, transformer, pseudo_planar, "wkt")
+        bounds_geog = raster_bounds(raster_dataset, transformer, "wkt")
         bounds_polygon = shapely.Polygon(shapely.wkt.loads(bounds_geog))
+        bounds_coords = list(bounds_polygon.bounds)
         center_coords = list(*bounds_polygon.centroid.coords)
         center_coords.append(resolution)
-
+        width = raster_info["Profile"]["Width"]
+        height = raster_info["Profile"]["Height"]
         # assuming all windows have the same dimensions
         a_window = next(raster_dataset.block_windows())
+        block_width = a_window[1].width
+        block_height = a_window[1].height
 
         metadata["bands"] = [
             {"type": e["type"], "band_name": e["band_name"]} for e in bands_metadata
         ]
-        metadata["bounds"] = list(bounds_polygon.bounds)
+        metadata["bounds"] = bounds_coords
         metadata["center"] = center_coords
-        metadata["width"] = raster_info["Profile"]["Width"]
-        metadata["height"] = raster_info["Profile"]["Height"]
-        metadata["block_width"] = a_window[1].width
-        metadata["block_height"] = a_window[1].height
-        metadata["num_blocks"] = 0
-        metadata["num_pixels"] = 0
+        metadata["width"] = width
+        metadata["height"] = height
+        metadata["block_width"] = block_width
+        metadata["block_height"] = block_height
+        metadata["num_blocks"] = int(width * height / block_width / block_height)
+        metadata["num_pixels"] = width * height
 
         for _, window in raster_dataset.block_windows():
             record = {}
             for band_metadata in bands_metadata:
                 band = band_metadata["band"]
                 band_name = band_metadata["band_name"]
-                band_type = band_metadata["type"]
 
-                newrecord = array_to_quadbin_record(
+                newrecord = array_to_record(
                     raster_dataset.read(band, window=window),
                     band_name,
                     transformer,
@@ -438,12 +353,9 @@ def rasterio_windows_to_records(
                     window.col_off,
                 )
 
-                # add the new columns generated by array_to_quadbin_record
+                # add the new columns generated by array_to_record
                 # but leaving unchanged the index e.g. the block column
                 record.update(newrecord)
-
-            metadata["num_blocks"] += 1
-            metadata["num_pixels"] += window.width * window.height
 
             yield record
 
@@ -719,54 +631,6 @@ def check_if_bigquery_table_is_empty(
     return table.num_rows == 0
 
 
-def run_bigquery_query(
-    query: str,
-    project_id: str,
-    client=None,
-) -> bool:
-    """Run a BigQuery query
-
-    Parameters
-    ----------
-    query : str
-        Query to be run (standard SQL)
-    project_id : str
-        Project where the query is ran.
-    client : google.cloud.bigquery.client.Client, optional
-        BigQuery client, by default None
-
-    Returns
-    -------
-    bool
-        True if the query ran successfully.
-
-    """
-
-    """Requires bigquery."""
-    if not _has_bigquery:  # pragma: no cover
-        import_error_bigquery()
-
-    if client is None:
-        client = bigquery.Client(project=project_id)
-
-    job = client.query(query)
-    return job.result()
-
-
-def raster_orientation(raster_dataset):
-    raster_crs = raster_dataset.crs.to_string()
-    transformer = pyproj.Transformer.from_crs(raster_crs, "EPSG:4326", always_xy=True)
-    x0, y0 = transformer.transform(*(raster_dataset.transform * (0, 0)))
-    x1, y1 = transformer.transform(*(raster_dataset.transform * (0, 1)))
-    x2, y2 = transformer.transform(*(raster_dataset.transform * (1, 0)))
-    b11 = x1 - x0
-    b12 = y1 - y0
-    b21 = x2 - x0
-    b22 = y2 - y0
-    d = b11 * b22 - b12 * b21
-    return -1 if d < 0 else 1
-
-
 def rasterio_to_bigquery(
     file_path: str,
     table_id: str,
@@ -774,11 +638,9 @@ def rasterio_to_bigquery(
     project_id: str,
     bands_info: List[Tuple[int, str]] = [(1, None)],
     chunk_size: int = None,
-    input_crs: int = None,
     client=None,
     overwrite: bool = False,
     append: bool = False,
-    pseudo_planar: bool = False,
 ) -> bool:
     """Write a rasterio-compatible raster file to a BigQuery table.
     Compatible file formats include TIFF and GeoTIFF. See
@@ -806,14 +668,10 @@ def rasterio_to_bigquery(
     chunk_size : int, optional
         Number of records to write to BigQuery at a time, the default (None)
         writes all records in a single batch.
-    input_crs : int, optional
-        Input CRS, by default None
     client : [bigquery.Client()], optional
         BigQuery client, by default None
     overwrite : bool, optional
         Overwrite the table if it already contains data, by default False
-    pseudo_planar : bool, optional
-        Use pseudo-planar BigQuery geographies (coordinates are scaled down by 1/32768)
 
     Returns
     -------
@@ -824,9 +682,6 @@ def rasterio_to_bigquery(
     """Requires bigquery."""
     if not _has_bigquery:  # pragma: no cover
         import_error_bigquery()
-
-    if isinstance(input_crs, int):
-        input_crs = "EPSG:{}".format(input_crs)
 
     """Write a raster file to a BigQuery table."""
     print("Loading raster file to BigQuery...")
@@ -869,8 +724,6 @@ def rasterio_to_bigquery(
             table_creator,
             bands_info,
             metadata,
-            input_crs,
-            pseudo_planar,
         )
 
         total_blocks = get_number_of_blocks(file_path)
@@ -885,20 +738,19 @@ def rasterio_to_bigquery(
 
             jobs = []
             errors = []
-            total_blocks += 1  # add one for the metadata record
             print(f"Writing {total_blocks} blocks to BigQuery...")
             with tqdm(total=total_blocks) as pbar:
                 if total_blocks < chunk_size:
                     chunk_size = total_blocks
 
-                def done_callback(future, chunk_size=None):
-                    pbar.update(chunk_size or 0)
+                def done_callback(job):
+                    pbar.update(job.num_records or 0)
                     try:
-                        future.result()
+                        job.result()
                     except Exception as e:
                         errors.append(e)
                     try:
-                        jobs.remove(future)
+                        jobs.remove(job)
                     except ValueError:
                         # job already removed because failed
                         pass
@@ -907,22 +759,23 @@ def rasterio_to_bigquery(
                     job = records_to_bigquery(
                         records, table_id, dataset_id, project_id, client=client
                     )
-                    job.add_done_callback(
-                        partial(lambda job: done_callback(job, chunk_size=len(records)))
-                    )
+                    job.num_records = len(records)
+
+                    job.add_done_callback(partial(lambda job: done_callback(job)))
                     jobs.append(job)
 
-                    # do no continue to schedule jobs if there are errors
+                    # do not continue to schedule jobs if there are errors
                     if len(errors):
                         raise Exception(errors)
 
                 # wait for end of jobs or any error
                 while len(jobs) > 0 and len(errors) == 0:
-                    time.sleep(0.1)
+                    time.sleep(1)
+
                 if len(errors):
                     raise Exception(errors)
 
-                pbar.set_postfix_str("Uploading metadata")
+                print("Writing metadata to BigQuery...")
                 write_metadata(
                     metadata,
                     append_records,

@@ -41,13 +41,13 @@ def check_integration_config():
         )
 
 
-def test_array_to_quadbin_record():
+def test_array_to_record():
     arr = np.linspace(0, 100, 160 * 340).reshape(160, 340)
     transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:4326", always_xy=True)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-    record = io.array_to_quadbin_record(
+    record = io.array_to_record(
         arr,
-        "band_1_float64",
+        "band_1",
         transformer,
         geotransform,
         resolution=4,
@@ -61,18 +61,18 @@ def test_array_to_quadbin_record():
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
     assert record["block"] == 5209556461146865663
-    assert record["band_1_float64"] == arr_bytes
+    assert record["band_1"] == arr_bytes
     assert record["metadata"] is None
 
 
 @pytest.mark.integration_test
-def test_rasterio_to_bigquery_with_quadbin_raster_default_band_name():
+def test_rasterio_to_bigquery_with_raster_default_band_name():
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import bigquery_to_records
 
     check_integration_config()
 
-    table_name = "test_mosaic_quadbin_1"
+    table_name = "test_mosaic_1"
 
     rasterio_to_bigquery(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
@@ -116,16 +116,15 @@ def test_rasterio_to_bigquery_with_quadbin_raster_default_band_name():
 
 
 @pytest.mark.integration_test
-def test_rasterio_to_bigquery_with_quadbin_raster_custom_band_column():
+def test_rasterio_to_bigquery_with_raster_custom_band_column():
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import bigquery_to_records
 
     check_integration_config()
 
-    table_name = "test_mosaic_quadbin_custom_band_column_1"
+    table_name = "test_mosaic_custom_band_column_1"
 
     rasterio_to_bigquery(
-        # os.path.join(fixtures_dir, "quadbin_raster.tif"),
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         table_name,
         BQ_DATASET_ID,
@@ -170,13 +169,13 @@ def test_rasterio_to_bigquery_with_quadbin_raster_custom_band_column():
 
 
 @pytest.mark.integration_test
-def test_rasterio_to_bigquery_with_quadbin_raster_multiple_default():
+def test_rasterio_to_bigquery_with_raster_multiple_default():
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import bigquery_to_records
 
     check_integration_config()
 
-    table_name = "test_mosaic_quadbin_default_band_column_1"
+    table_name = "test_mosaic_default_band_column_1"
 
     rasterio_to_bigquery(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
@@ -230,13 +229,13 @@ def test_rasterio_to_bigquery_with_quadbin_raster_multiple_default():
 
 
 @pytest.mark.integration_test
-def test_rasterio_to_bigquery_with_quadbin_raster_multiple_custom():
+def test_rasterio_to_bigquery_with_raster_multiple_custom():
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import bigquery_to_records
 
     check_integration_config()
 
-    table_name = "test_mosaic_quadbin_custom_band_column_1"
+    table_name = "test_mosaic_custom_band_column_1"
 
     rasterio_to_bigquery(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
@@ -296,7 +295,7 @@ def test_rasterio_to_bigquery_with_quadbin_raster_multiple_custom():
 def test_rasterio_to_bigquery_wrong_band_name_metadata(*args, **kwargs):
     from raster_loader.io import rasterio_to_bigquery
 
-    table_name = "test_mosaic_quadbin_custom_band_column_1"
+    table_name = "test_mosaic_custom_band_column_1"
     client = mocks.bigquery_client()
 
     with pytest.raises(IOError):
@@ -315,7 +314,7 @@ def test_rasterio_to_bigquery_wrong_band_name_metadata(*args, **kwargs):
 def test_rasterio_to_bigquery_wrong_band_name_block(*args, **kwargs):
     from raster_loader.io import rasterio_to_bigquery
 
-    table_name = "test_mosaic_quadbin_custom_band_column_1"
+    table_name = "test_mosaic_custom_band_column_1"
     client = mocks.bigquery_client()
 
     with pytest.raises(IOError):
@@ -351,7 +350,6 @@ def test_rasterio_to_bigquery(*args, **kwargs):
 @patch("raster_loader.io.rasterio_windows_to_records", return_value={})
 @patch("raster_loader.io.get_number_of_blocks", return_value=1)
 @patch("raster_loader.io.write_metadata", return_value=None)
-@patch("raster_loader.io.run_bigquery_query", return_value=None)
 def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
@@ -472,31 +470,11 @@ def test_rasterio_to_bigquery_with_one_chunk_size(*args, **kwargs):
     assert success
 
 
-@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
-def test_rasterio_to_bigquery_invalid_input_crs(*args, **kwargs):
-    import rasterio
-
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
-
-    # test that invalid input crs raises an error
-    invalid_crs = 8675309
-    with pytest.raises(rasterio.errors.CRSError):
-        io.rasterio_to_bigquery(
-            test_file,
-            project_id="test",
-            dataset_id="test",
-            table_id="test",
-            client=client,
-            input_crs=invalid_crs,
-        )
-
-
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
 @patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
-def test_rasterio_to_bigquery_invalid_quadbin_raster(*args, **kwargs):
+def test_rasterio_to_bigquery_invalid_raster(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
 
@@ -514,9 +492,9 @@ def test_rasterio_to_bigquery_invalid_quadbin_raster(*args, **kwargs):
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
 @patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
-def test_rasterio_to_bigquery_valid_quadbbin_raster(*args, **kwargs):
+def test_rasterio_to_bigquery_valid_raster(*args, **kwargs):
     client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "quadbin_raster.tif")
+    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
 
     success = io.rasterio_to_bigquery(
         test_file,

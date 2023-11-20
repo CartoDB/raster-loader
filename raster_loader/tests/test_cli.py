@@ -30,8 +30,6 @@ def test_bigquery_upload(*args, **kwargs):
             "table",
             "--chunk_size",
             1,
-            "--input_crs",
-            "4326",
             "--band",
             1,
             "--test",
@@ -58,8 +56,6 @@ def test_bigquery_upload_multiple_bands(*args, **kwargs):
             "table",
             "--chunk_size",
             1,
-            "--input_crs",
-            "4326",
             "--band",
             1,
             "--band",
@@ -89,11 +85,9 @@ def test_bigquery_fail_upload_multiple_bands_misaligned_with_band_names(
             "table",
             "--chunk_size",
             1,
-            "--input_crs",
-            "4326",
             "--band",
             1,
-            "--band_column_name",
+            "--band_name",
             "band_1",
             "--band",
             2,
@@ -103,7 +97,7 @@ def test_bigquery_fail_upload_multiple_bands_misaligned_with_band_names(
     assert result.exit_code == 1
     assert (
         str(result.exception)
-        == "The number of bands must equal the number of band column names."
+        == "The number of bands must equal the number of band names."
     )
 
 
@@ -125,13 +119,11 @@ def test_bigquery_upload_multiple_bands_aligned_with_band_names(*args, **kwargs)
             "table",
             "--chunk_size",
             1,
-            "--input_crs",
-            "4326",
             "--band",
             1,
-            "--band_column_name",
+            "--band_name",
             "band_1",
-            "--band_column_name",
+            "--band_name",
             "band_2",
             "--band",
             2,
@@ -157,8 +149,6 @@ def test_bigquery_upload_no_table_name(*args, **kwargs):
             "dataset",
             "--chunk_size",
             1,
-            "--input_crs",
-            "4326",
             "--band",
             1,
             "--test",

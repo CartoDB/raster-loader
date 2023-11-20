@@ -32,18 +32,15 @@ def bigquery(args=None):
     multiple=True,
 )
 @click.option(
-    "--band_column_name",
+    "--band_name",
     help="Column name(s) used to store band (Default: band_<band_num>). "
-    "Could repeat --band_column_name to specify multiple bands column names. "
+    "Could repeat --band_name to specify multiple bands column names. "
     "List of columns names HAVE to pair --band list with the same order.",
     default=[None],
     multiple=True,
 )
 @click.option(
-    "--chunk_size", help="The number of blocks to upload in each chunk.", default=600
-)
-@click.option(
-    "--input_crs", help="The EPSG code of the input raster's CRS.", default=None
+    "--chunk_size", help="The number of blocks to upload in each chunk.", default=500
 )
 @click.option(
     "--overwrite",
@@ -64,9 +61,8 @@ def upload(
     dataset,
     table,
     band,
-    band_column_name,
+    band_name,
     chunk_size,
-    input_crs,
     overwrite=False,
     append=False,
     test=False,
@@ -79,18 +75,16 @@ def upload(
     from raster_loader.io import print_band_information
     from raster_loader.io import get_block_dims
 
-    # check that band and band_column_name are the same length
-    # if band_column_name provided
-    if band_column_name != (None,):
-        if len(band) != len(band_column_name):
-            raise ValueError(
-                "The number of bands must equal the number of band column names."
-            )
+    # check that band and band_name are the same length
+    # if band_name provided
+    if band_name != (None,):
+        if len(band) != len(band_name):
+            raise ValueError("The number of bands must equal the number of band names.")
     else:
-        band_column_name = [None] * len(band)
+        band_name = [None] * len(band)
 
-    # pair band and band_column_name in a list of tuple
-    bands_info = list(zip(band, band_column_name))
+    # pair band and band_name in a list of tuple
+    bands_info = list(zip(band, band_name))
 
     # create default table name if not provided
     if table is None:
@@ -115,14 +109,13 @@ def upload(
     click.echo("File Size: {} MB".format(file_size_mb))
     print_band_information(file_path)
     click.echo("Source Band: {}".format(band))
-    click.echo("Band column name: {}".format(band_column_name))
+    click.echo("Band Name: {}".format(band_name))
     click.echo("Number of Blocks: {}".format(num_blocks))
     click.echo("Block Dims: {}".format(get_block_dims(file_path)))
     click.echo("Project: {}".format(project))
     click.echo("Dataset: {}".format(dataset))
     click.echo("Table: {}".format(table))
     click.echo("Number of Records Per BigQuery Append: {}".format(chunk_size))
-    click.echo("Input CRS: {}".format(input_crs))
 
     click.echo("Uploading Raster to BigQuery")
 
@@ -133,7 +126,6 @@ def upload(
         project,
         bands_info,
         chunk_size,
-        input_crs,
         client=client,
         overwrite=overwrite,
         append=append,
