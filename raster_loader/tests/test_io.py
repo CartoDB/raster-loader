@@ -405,6 +405,7 @@ def test_rasterio_to_bigquery(*args, **kwargs):
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
 @patch("raster_loader.io.rasterio_windows_to_records", return_value={})
+@patch("raster_loader.io.rasterio_metadata", return_value={})
 @patch("raster_loader.io.get_number_of_blocks", return_value=1)
 @patch("raster_loader.io.write_metadata", return_value=None)
 def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
@@ -426,7 +427,16 @@ def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
 @patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
-@patch("raster_loader.io.get_metadata", return_value={"bounds": [0, 0, 0, 0]})
+@patch(
+    "raster_loader.io.get_metadata",
+    return_value={
+        "bounds": [0, 0, 0, 0],
+        "resolution": 5,
+        "nodata": None,
+        "block_width": 256,
+        "block_height": 256,
+    },
+)
 def test_rasterio_to_bigquery_table_is_not_empty_append(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
@@ -550,12 +560,23 @@ def test_rasterio_to_bigquery_invalid_raster(*args, **kwargs):
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
 @patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
-@patch("raster_loader.io.get_metadata", return_value={"bounds": [0, 0, 0, 0]})
+@patch(
+    "raster_loader.io.get_metadata",
+    return_value={
+        "bounds": [0, 0, 0, 0],
+        "resolution": 5,
+        "nodata": None,
+        "block_width": 256,
+        "block_height": 256,
+    },
+)
 def test_rasterio_to_bigquery_valid_raster(*args, **kwargs):
+    from raster_loader.io import rasterio_to_bigquery
+
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
 
-    success = io.rasterio_to_bigquery(
+    success = rasterio_to_bigquery(
         test_file,
         project_id="test",
         dataset_id="test",
@@ -563,3 +584,28 @@ def test_rasterio_to_bigquery_valid_raster(*args, **kwargs):
         client=client,
     )
     assert success
+
+
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
+@patch("raster_loader.io.delete_bigquery_table", return_value=None)
+@patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
+@patch("raster_loader.io.ask_yes_no_question", return_value=True)
+@patch(
+    "raster_loader.io.get_metadata",
+    return_value={"bounds": [0, 0, 0, 0], "resolution": 1},
+)
+def test_append_with_different_resolution(*args, **kwargs):
+    from raster_loader.io import rasterio_to_bigquery
+
+    client = mocks.bigquery_client()
+
+    with pytest.raises(OSError):
+        rasterio_to_bigquery(
+            os.path.join(fixtures_dir, "mosaic_cog.tif"),
+            project_id="test",
+            dataset_id="test",
+            table_id="test",
+            overwrite=False,
+            append=True,
+            client=client,
+        )

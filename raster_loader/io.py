@@ -255,19 +255,15 @@ def raster_bounds(raster_dataset, transformer, format):
     return coords_to_geography(coords, format, whole_earth)
 
 
-def rasterio_windows_to_records(
+def rasterio_metadata(
     file_path: str,
-    create_table: Callable,
     bands_info: List[Tuple[int, str]],
-    metadata: dict,
-) -> Iterable:
-    invalid_names = [
-        name for _, name in bands_info if name and name.lower() in ["block", "metadata"]
-    ]
-    if invalid_names:
-        raise ValueError(f"Invalid band names: {', '.join(invalid_names)}")
+):
+    """Requires rasterio."""
+    if not _has_rasterio:  # pragma: no cover
+        import_error_rasterio()
 
-    """Open a raster file with rio-cogeo."""
+    """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
 
     """Check if raster is compatible."""
@@ -284,17 +280,13 @@ def rasterio_windows_to_records(
         )
         raise ValueError(msg)
 
+    metadata = {}
     resolution = raster_info["GEO"]["MaxZoom"]
     metadata["resolution"] = resolution
     metadata["minresolution"] = resolution
     metadata["maxresolution"] = resolution
     metadata["nodata"] = raster_info["Profile"]["Nodata"]
 
-    """Requires rasterio."""
-    if not _has_rasterio:  # pragma: no cover
-        import_error_rasterio()
-
-    """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
         raster_crs = raster_dataset.crs.to_string()
 
@@ -310,10 +302,6 @@ def rasterio_windows_to_records(
                 "band_name": band_field_name(band_name, band),
             }
             bands_metadata.append(meta)
-
-        columns = table_columns([e["band_name"] for e in bands_metadata])
-        clustering = ["block"]
-        create_table(columns, clustering)
 
         # compute whole bounds for metadata
         bounds_geog = raster_bounds(raster_dataset, transformer, "wkt")
@@ -340,15 +328,63 @@ def rasterio_windows_to_records(
         metadata["num_blocks"] = int(width * height / block_width / block_height)
         metadata["num_pixels"] = width * height
 
+    return metadata
+
+
+def rasterio_windows_to_records(
+    file_path: str,
+    create_table: Callable,
+    bands_info: List[Tuple[int, str]],
+) -> Iterable:
+    invalid_names = [
+        name for _, name in bands_info if name and name.lower() in ["block", "metadata"]
+    ]
+    if invalid_names:
+        raise ValueError(f"Invalid band names: {', '.join(invalid_names)}")
+
+    """Open a raster file with rio-cogeo."""
+    raster_info = rio_cogeo.cog_info(file_path).dict()
+
+    """Check if raster is compatible."""
+    if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
+        "Tiling Scheme", {}
+    ).get("NAME"):
+        msg = (
+            "The input raster must be a GoogleMapsCompatible raster.\n"
+            "You can make your raster compatible "
+            "by converting it using the following command:\n"
+            "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible "
+            "-co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO "
+            "-co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif"
+        )
+        raise ValueError(msg)
+
+    resolution = raster_info["GEO"]["MaxZoom"]
+
+    """Requires rasterio."""
+    if not _has_rasterio:  # pragma: no cover
+        import_error_rasterio()
+
+    """Open a raster file with rasterio."""
+    with rasterio.open(file_path) as raster_dataset:
+        raster_crs = raster_dataset.crs.to_string()
+
+        transformer = pyproj.Transformer.from_crs(
+            raster_crs, "EPSG:4326", always_xy=True
+        )
+
+        columns = table_columns(
+            [band_field_name(band_name, band) for band, band_name in bands_info]
+        )
+        clustering = ["block"]
+        create_table(columns, clustering)
+
         for _, window in raster_dataset.block_windows():
             record = {}
-            for band_metadata in bands_metadata:
-                band = band_metadata["band"]
-                band_name = band_metadata["band_name"]
-
+            for band, band_name in bands_info:
                 newrecord = array_to_record(
                     raster_dataset.read(band, window=window),
-                    band_name,
+                    band_field_name(band_name, band),
                     transformer,
                     raster_dataset.transform,
                     resolution,
@@ -720,14 +756,18 @@ def rasterio_to_bigquery(
                     project_id, dataset_id, table_id, columns, clustering, client
                 )
 
-        metadata = {}
+        metadata = rasterio_metadata(file_path, bands_info)
 
         records_gen = rasterio_windows_to_records(
             file_path,
             table_creator,
             bands_info,
-            metadata,
         )
+
+        if append_records:
+            old_metadata = get_metadata(project_id, dataset_id, table_id, client)
+            check_metadata_is_compatible(metadata, old_metadata)
+            update_metadata(metadata, old_metadata)
 
         total_blocks = get_number_of_blocks(file_path)
         if chunk_size is None:
@@ -819,6 +859,41 @@ def rasterio_to_bigquery(
     return True
 
 
+def check_metadata_is_compatible(metadata, old_metadata):
+    if metadata["resolution"] != old_metadata["resolution"]:
+        raise ValueError(
+            "Cannot append records to a table with a different resolution "
+            f"({metadata['resolution']} != {old_metadata['resolution']})."
+        )
+    if metadata["nodata"] != old_metadata["nodata"]:
+        raise ValueError(
+            "Cannot append records to a table with a different nodata"
+            f"({metadata['nodata']} != {old_metadata['nodata']})."
+        )
+
+    if (
+        metadata["block_width"] != old_metadata["block_width"]
+        or metadata["block_height"] != old_metadata["block_height"]
+    ):
+        raise ValueError(
+            "Cannot append records to a table with a different block width/height."
+        )
+
+
+def update_metadata(metadata, old_metadata):
+    metadata["bounds"] = (
+        min(old_metadata["bounds"][0], metadata["bounds"][0]),
+        min(old_metadata["bounds"][1], metadata["bounds"][1]),
+        max(old_metadata["bounds"][2], metadata["bounds"][2]),
+        max(old_metadata["bounds"][3], metadata["bounds"][3]),
+    )
+    metadata["center"] = (
+        (metadata["bounds"][0] + metadata["bounds"][2]) / 2,
+        (metadata["bounds"][1] + metadata["bounds"][3]) / 2,
+        metadata["resolution"],
+    )
+
+
 def get_metadata(project_id, dataset_id, table_id, client=None):
     """Requires bigquery."""
     if not _has_bigquery:  # pragma: no cover
@@ -852,14 +927,6 @@ def write_metadata(
 
         if client is None:
             client = bigquery.Client(project=project_id)
-
-        old_metadata = get_metadata(project_id, dataset_id, table_id, client=client)
-        metadata["bounds"] = (
-            min(old_metadata["bounds"][0], metadata["bounds"][0]),
-            min(old_metadata["bounds"][1], metadata["bounds"][1]),
-            max(old_metadata["bounds"][2], metadata["bounds"][2]),
-            max(old_metadata["bounds"][3], metadata["bounds"][3]),
-        )
 
         table_ref = f"{project_id}.{dataset_id}.{table_id}"
         query = f"""
