@@ -140,12 +140,26 @@ def test_rasterio_to_bigquery_appending_rows():
 
     metadata = json.loads([x for x in list(result.metadata) if x][0])
 
-    assert metadata["bounds"] == [
-        11.249999999997055,
-        40.979898069622585,
-        22.49999999999707,
-        48.92249926376037,
-    ]
+    assert metadata == {
+        "resolution": 5,
+        "minresolution": 5,
+        "maxresolution": 5,
+        "nodata": None,
+        "bands": [{"type": "uint8", "band_name": "band_1"}],
+        "bounds": [
+            11.249999999997055,
+            40.979898069622585,
+            22.49999999999707,
+            48.92249926376037,
+        ],
+        "center": [16.874999999997062, 44.951198666691475, 5],
+        "width": 256,
+        "height": 256,
+        "block_width": 256,
+        "block_height": 256,
+        "num_blocks": 1,
+        "num_pixels": 65536,
+    }
 
     rasterio_to_bigquery(
         os.path.join(fixtures_dir, "mosaic_cog_1_2.tif"),
@@ -161,12 +175,26 @@ def test_rasterio_to_bigquery_appending_rows():
 
     metadata = json.loads([x for x in list(result.metadata) if x][0])
 
-    assert metadata["bounds"] == [
-        11.249999999997055,
-        40.979898069622585,
-        33.74999999999708,
-        48.92249926376037,
-    ]
+    assert metadata == {
+        "bands": [{"band_name": "band_1", "type": "uint8"}],
+        "block_height": 256,
+        "block_width": 256,
+        "bounds": [
+            11.249999999997055,
+            40.979898069622585,
+            33.74999999999708,
+            48.92249926376037,
+        ],
+        "center": [22.499999999997065, 44.95119866669148, 5],
+        "height": None,
+        "maxresolution": 5,
+        "minresolution": 5,
+        "nodata": None,
+        "num_blocks": 2,
+        "num_pixels": 131072,
+        "resolution": 5,
+        "width": None,
+    }
 
     assert len(result) == 3
 
@@ -435,6 +463,9 @@ def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
         "nodata": None,
         "block_width": 256,
         "block_height": 256,
+        "bands": [{"type": "uint8", "band_name": "band_1"}],
+        "num_blocks": 1,
+        "num_pixels": 1,
     },
 )
 def test_rasterio_to_bigquery_table_is_not_empty_append(*args, **kwargs):
@@ -568,6 +599,9 @@ def test_rasterio_to_bigquery_invalid_raster(*args, **kwargs):
         "nodata": None,
         "block_width": 256,
         "block_height": 256,
+        "bands": [{"type": "uint8", "band_name": "band_1"}],
+        "num_blocks": 1,
+        "num_pixels": 1,
     },
 )
 def test_rasterio_to_bigquery_valid_raster(*args, **kwargs):

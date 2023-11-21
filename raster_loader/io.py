@@ -878,6 +878,11 @@ def check_metadata_is_compatible(metadata, old_metadata):
         raise ValueError(
             "Cannot append records to a table with a different block width/height."
         )
+    if metadata["bands"] != old_metadata["bands"]:
+        raise ValueError(
+            "Cannot append records to a table with different bands."
+            f"({metadata['bands']} != {old_metadata['bands']})."
+        )
 
 
 def update_metadata(metadata, old_metadata):
@@ -892,6 +897,10 @@ def update_metadata(metadata, old_metadata):
         (metadata["bounds"][1] + metadata["bounds"][3]) / 2,
         metadata["resolution"],
     )
+    metadata["num_blocks"] += old_metadata["num_blocks"]
+    metadata["num_pixels"] += old_metadata["num_pixels"]
+    metadata["width"] = None
+    metadata["height"] = None
 
 
 def get_metadata(project_id, dataset_id, table_id, client=None):
