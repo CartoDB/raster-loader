@@ -186,14 +186,14 @@ def test_rasterio_to_bigquery_appending_rows():
             48.92249926376037,
         ],
         "center": [22.499999999997065, 44.95119866669148, 5],
-        "height": None,
+        "height": 256,
         "maxresolution": 5,
         "minresolution": 5,
         "nodata": None,
         "num_blocks": 2,
         "num_pixels": 131072,
         "resolution": 5,
-        "width": None,
+        "width": 512,
     }
 
     assert len(result) == 3
