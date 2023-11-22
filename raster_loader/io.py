@@ -41,9 +41,12 @@ except ImportError:  # pragma: no cover
 else:
     _has_bigquery = True
 
-from raster_loader.utils import ask_yes_no_question, batched
-from raster_loader.geo import (
-    raster_bounds,
+from raster_loader.utils import ask_yes_no_question, batched, sql_quote
+from raster_loader.geo import raster_bounds
+from raster_loader.errors import (
+    import_error_bigquery,
+    import_error_rasterio,
+    import_error_quadbin,
 )
 
 should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
@@ -86,39 +89,6 @@ def array_to_record(
     }
 
     return record
-
-
-def import_error_bigquery():  # pragma: no cover
-    msg = (
-        "Google Cloud BigQuery is not installed.\n"
-        "Please install Google Cloud BigQuery to use this function.\n"
-        "See https://googleapis.dev/python/bigquery/latest/index.html\n"
-        "for installation instructions.\n"
-        "OR, run `pip install google-cloud-bigquery` to install from pypi."
-    )
-    raise ImportError(msg)
-
-
-def import_error_rasterio():  # pragma: no cover
-    msg = (
-        "Rasterio is not installed.\n"
-        "Please install rasterio to use this function.\n"
-        "See https://rasterio.readthedocs.io/en/latest/installation.html\n"
-        "for installation instructions.\n"
-        "Alternatively, run `pip install rasterio` to install from pypi."
-    )
-    raise ImportError(msg)
-
-
-def import_error_quadbin():  # pragma: no cover
-    msg = (
-        "Quadbin is not installed.\n"
-        "Please install quadbin to use this function.\n"
-        "See https://github.com/CartoDB/quadbin-py\n"
-        "for installation instructions.\n"
-        "Alternatively, run `pip install quadbin` to install from pypi."
-    )
-    raise ImportError(msg)
 
 
 def raster_band_type(raster_dataset: rasterio.io.DatasetReader, band: int) -> str:
@@ -367,13 +337,6 @@ def create_bigquery_table(
     client.create_table(table)
 
     return True
-
-
-def sql_quote(value: any) -> str:
-    if isinstance(value, str):
-        value = value.replace("\\", "\\\\")
-        return f"'''{value}'''"
-    return str(value)
 
 
 def insert_in_bigquery_table(
@@ -740,6 +703,21 @@ def rasterio_to_bigquery(
 
 
 def check_metadata_is_compatible(metadata, old_metadata):
+    """Check that the metadata of a raster file is compatible with the metadata of a
+    BigQuery table.
+
+    Parameters
+    ----------
+    metadata : dict
+        Metadata of the raster file.
+    old_metadata : dict
+        Metadata of the BigQuery table.
+
+    Raises
+    ------
+    ValueError
+        If the metadata is not compatible.
+    """
     if metadata["resolution"] != old_metadata["resolution"]:
         raise ValueError(
             "Cannot append records to a table with a different resolution "
@@ -766,6 +744,17 @@ def check_metadata_is_compatible(metadata, old_metadata):
 
 
 def update_metadata(metadata, old_metadata):
+    """Update a metadata object, combining it with another existing metadata object
+
+    Parameters
+    ----------
+    metadata : dict
+        Metadata to update (taken from a raster file to import).
+        This dictionary will be modified in place.
+    old_metadata : dict
+        Metadata to combine with (taken from an existing BigQuery table).
+    """
+
     metadata["bounds"] = (
         min(old_metadata["bounds"][0], metadata["bounds"][0]),
         min(old_metadata["bounds"][1], metadata["bounds"][1]),
@@ -790,6 +779,25 @@ def update_metadata(metadata, old_metadata):
 
 
 def get_metadata(project_id, dataset_id, table_id, client=None):
+    """Get the metadata of the raster contained in a BigQuery table.
+
+    Parameters
+    ----------
+    project_id : str
+        BigQuery project name.
+    dataset_id : str
+        BigQuery dataset name.
+    table_id : str
+        BigQuery table name.
+    client : google.cloud.bigquery.client.Client
+        The BigQuery client.
+
+    Returns
+    -------
+    dict
+        The metadata of the table.
+    """
+
     """Requires bigquery."""
     if not _has_bigquery:  # pragma: no cover
         import_error_bigquery()
@@ -815,14 +823,35 @@ def write_metadata(
     table_id,
     client=None,
 ):
+    """Write the metadata of a raster file to a BigQuery table.
+
+    Parameters
+    ----------
+    metadata : dict
+        The metadata of the raster file.
+    append_records : bool
+        Whether the table already contains records.
+    project_id : str
+        BigQuery project name.
+    dataset_id : str
+        BigQuery dataset name.
+    table_id : str
+        BigQuery table name.
+    client : google.cloud.bigquery.client.Client
+        The BigQuery client.
+
+    Returns
+    -------
+    bool
+        True if the metadata was written.
+    """
+    """Requires bigquery."""
+    if not _has_bigquery:  # pragma: no cover
+        import_error_bigquery()
+
+    if client is None:
+        client = bigquery.Client(project=project_id)
     if append_records:
-        """Requires bigquery."""
-        if not _has_bigquery:  # pragma: no cover
-            import_error_bigquery()
-
-        if client is None:
-            client = bigquery.Client(project=project_id)
-
         table_ref = f"{project_id}.{dataset_id}.{table_id}"
         query = f"""
             UPDATE `{table_ref}`
