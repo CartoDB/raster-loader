@@ -164,5 +164,4 @@ def describe(project, dataset, table, limit):
     print(f"Number of columns: {len(df.columns)}")
     print(f"Column names: {df.columns}")
     print(f"Column types: {df.dtypes}")
-    print(f"Column descriptions: {df.describe()}")
     print(f"Column head: {df.head()}")
