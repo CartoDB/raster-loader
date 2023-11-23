@@ -95,10 +95,8 @@ def test_bigquery_fail_upload_multiple_bands_misaligned_with_band_names(
         ],
     )
     assert result.exit_code == 1
-    assert (
-        str(result.exception)
-        == "The number of bands must equal the number of band names."
-    )
+
+    assert "The number of bands must equal the number of band names." in result.output
 
 
 @patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
