@@ -29,3 +29,19 @@ def import_error_quadbin():  # pragma: no cover
         "Alternatively, run `pip install quadbin` to install from pypi."
     )
     raise ImportError(msg)
+
+
+class IncompatibleRasterException(Exception):
+    def __init__(self):
+        self.message = (
+            "The input raster must be a GoogleMapsCompatible raster.\n"
+            "You can make your raster compatible "
+            "by converting it using the following command:\n"
+            "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible "
+            "-co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO "
+            "-co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif"
+        )
+
+
+def error_not_google_compatible():  # pragma: no cover
+    raise IncompatibleRasterException()

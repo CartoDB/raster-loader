@@ -47,6 +47,8 @@ from raster_loader.errors import (
     import_error_bigquery,
     import_error_rasterio,
     import_error_quadbin,
+    IncompatibleRasterException,
+    error_not_google_compatible,
 )
 
 should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
@@ -120,15 +122,7 @@ def rasterio_metadata(
     if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
         "Tiling Scheme", {}
     ).get("NAME"):
-        msg = (
-            "The input raster must be a GoogleMapsCompatible raster.\n"
-            "You can make your raster compatible "
-            "by converting it using the following command:\n"
-            "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible "
-            "-co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO "
-            "-co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif"
-        )
-        raise ValueError(msg)
+        error_not_google_compatible()
 
     metadata = {}
     resolution = raster_info["GEO"]["MaxZoom"]
@@ -199,15 +193,7 @@ def rasterio_windows_to_records(
     if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
         "Tiling Scheme", {}
     ).get("NAME"):
-        msg = (
-            "The input raster must be a GoogleMapsCompatible raster.\n"
-            "You can make your raster compatible "
-            "by converting it using the following command:\n"
-            "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible "
-            "-co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO "
-            "-co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif"
-        )
-        raise ValueError(msg)
+        error_not_google_compatible()
 
     resolution = raster_info["GEO"]["MaxZoom"]
 
@@ -671,6 +657,9 @@ def rasterio_to_bigquery(
             table_id,
             client=client,
         )
+
+    except IncompatibleRasterException as e:
+        raise IOError("Error uploading to BigQuery: {}".format(e.message))
 
     except KeyboardInterrupt:
         delete_table = ask_yes_no_question(

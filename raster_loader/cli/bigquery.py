@@ -2,6 +2,7 @@ import os
 import uuid
 
 import click
+from functools import wraps, partial
 
 try:
     import google.cloud.bigquery
@@ -9,6 +10,20 @@ except ImportError:  # pragma: no cover
     _has_bigquery = False
 else:
     _has_bigquery = True
+
+
+def catch_exception(func=None, *, handle=Exception):
+    if not func:
+        return partial(catch_exception, handle=handle)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except handle as e:
+            raise click.ClickException(e)
+
+    return wrapper
 
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
@@ -55,6 +70,7 @@ def bigquery(args=None):
     is_flag=True,
 )
 @click.option("--test", help="Use Mock BigQuery Client", default=False, is_flag=True)
+@catch_exception()
 def upload(
     file_path,
     project,
@@ -67,7 +83,6 @@ def upload(
     append=False,
     test=False,
 ):
-
     from raster_loader.tests.mocks import bigquery_client
     from raster_loader.io import import_error_bigquery
     from raster_loader.io import rasterio_to_bigquery
@@ -141,7 +156,6 @@ def upload(
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(project, dataset, table, limit):
-
     from raster_loader.io import bigquery_to_records
 
     df = bigquery_to_records(table, dataset, project, limit)
