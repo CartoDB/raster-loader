@@ -55,7 +55,7 @@ def bigquery(args=None):
     multiple=True,
 )
 @click.option(
-    "--chunk_size", help="The number of blocks to upload in each chunk.", default=500
+    "--chunk_size", help="The number of blocks to upload in each chunk.", default=1000
 )
 @click.option(
     "--overwrite",
