@@ -145,7 +145,7 @@ def test_rasterio_to_bigquery_appending_rows():
         "minresolution": 5,
         "maxresolution": 5,
         "nodata": None,
-        "bands": [{"type": "uint8", "band_name": "band_1"}],
+        "bands": [{"type": "uint8", "name": "band_1"}],
         "bounds": [
             11.249999999997055,
             40.979898069622585,
@@ -176,7 +176,7 @@ def test_rasterio_to_bigquery_appending_rows():
     metadata = json.loads([x for x in list(result.metadata) if x][0])
 
     assert metadata == {
-        "bands": [{"band_name": "band_1", "type": "uint8"}],
+        "bands": [{"name": "band_1", "type": "uint8"}],
         "block_height": 256,
         "block_width": 256,
         "bounds": [
@@ -463,7 +463,7 @@ def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
         "nodata": None,
         "block_width": 256,
         "block_height": 256,
-        "bands": [{"type": "uint8", "band_name": "band_1"}],
+        "bands": [{"type": "uint8", "name": "band_1"}],
         "num_blocks": 1,
         "num_pixels": 1,
     },
@@ -599,7 +599,7 @@ def test_rasterio_to_bigquery_invalid_raster(*args, **kwargs):
         "nodata": None,
         "block_width": 256,
         "block_height": 256,
-        "bands": [{"type": "uint8", "band_name": "band_1"}],
+        "bands": [{"type": "uint8", "name": "band_1"}],
         "num_blocks": 1,
         "num_pixels": 1,
     },

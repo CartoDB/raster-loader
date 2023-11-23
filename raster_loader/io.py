@@ -161,7 +161,7 @@ def rasterio_metadata(
         block_height = a_window[1].height
 
         metadata["bands"] = [
-            {"type": e["type"], "band_name": e["band_name"]} for e in bands_metadata
+            {"type": e["type"], "name": e["band_name"]} for e in bands_metadata
         ]
         metadata["bounds"] = bounds_coords
         metadata["center"] = center_coords
