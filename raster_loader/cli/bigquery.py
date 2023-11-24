@@ -2,6 +2,7 @@ import os
 import uuid
 
 import click
+from functools import wraps, partial
 
 try:
     import google.cloud.bigquery
@@ -9,6 +10,20 @@ except ImportError:  # pragma: no cover
     _has_bigquery = False
 else:
     _has_bigquery = True
+
+
+def catch_exception(func=None, *, handle=Exception):
+    if not func:
+        return partial(catch_exception, handle=handle)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except handle as e:
+            raise click.ClickException(e)
+
+    return wrapper
 
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
@@ -24,12 +39,23 @@ def bigquery(args=None):
 @click.option("--project", help="The name of the Google Cloud project.", required=True)
 @click.option("--dataset", help="The name of the dataset.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
-@click.option("--band", help="Band within raster to upload.", default=1)
 @click.option(
-    "--chunk_size", help="The number of blocks to upload in each chunk.", default=100
+    "--band",
+    help="Band(s) within raster to upload. "
+    "Could repeat --band to specify multiple bands.",
+    default=[1],
+    multiple=True,
 )
 @click.option(
-    "--input_crs", help="The EPSG code of the input raster's CRS.", default=None
+    "--band_name",
+    help="Column name(s) used to store band (Default: band_<band_num>). "
+    "Could repeat --band_name to specify multiple bands column names. "
+    "List of columns names HAVE to pair --band list with the same order.",
+    default=[None],
+    multiple=True,
+)
+@click.option(
+    "--chunk_size", help="The number of blocks to upload in each chunk.", default=1000
 )
 @click.option(
     "--overwrite",
@@ -43,36 +69,37 @@ def bigquery(args=None):
     default=False,
     is_flag=True,
 )
-@click.option(
-    "--output_quadbin",
-    help=(
-        "Upload the raster to the BigQuery table in a quadbin format "
-        "(input raster must be a GoogleMapsCompatible raster)."
-    ),
-    default=False,
-    is_flag=True,
-)
 @click.option("--test", help="Use Mock BigQuery Client", default=False, is_flag=True)
+@catch_exception()
 def upload(
     file_path,
     project,
     dataset,
     table,
     band,
+    band_name,
     chunk_size,
-    input_crs,
     overwrite=False,
     append=False,
-    output_quadbin=False,
     test=False,
 ):
-
     from raster_loader.tests.mocks import bigquery_client
     from raster_loader.io import import_error_bigquery
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import get_number_of_blocks
     from raster_loader.io import print_band_information
     from raster_loader.io import get_block_dims
+
+    # check that band and band_name are the same length
+    # if band_name provided
+    if band_name != (None,):
+        if len(band) != len(band_name):
+            raise ValueError("The number of bands must equal the number of band names.")
+    else:
+        band_name = [None] * len(band)
+
+    # pair band and band_name in a list of tuple
+    bands_info = list(zip(band, band_name))
 
     # create default table name if not provided
     if table is None:
@@ -97,13 +124,13 @@ def upload(
     click.echo("File Size: {} MB".format(file_size_mb))
     print_band_information(file_path)
     click.echo("Source Band: {}".format(band))
+    click.echo("Band Name: {}".format(band_name))
     click.echo("Number of Blocks: {}".format(num_blocks))
     click.echo("Block Dims: {}".format(get_block_dims(file_path)))
     click.echo("Project: {}".format(project))
     click.echo("Dataset: {}".format(dataset))
     click.echo("Table: {}".format(table))
     click.echo("Number of Records Per BigQuery Append: {}".format(chunk_size))
-    click.echo("Input CRS: {}".format(input_crs))
 
     click.echo("Uploading Raster to BigQuery")
 
@@ -112,13 +139,11 @@ def upload(
         table,
         dataset,
         project,
-        band,
+        bands_info,
         chunk_size,
-        input_crs,
         client=client,
         overwrite=overwrite,
         append=append,
-        output_quadbin=output_quadbin,
     )
 
     click.echo("Raster file uploaded to Google BigQuery")
@@ -131,7 +156,6 @@ def upload(
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(project, dataset, table, limit):
-
     from raster_loader.io import bigquery_to_records
 
     df = bigquery_to_records(table, dataset, project, limit)
@@ -140,5 +164,4 @@ def describe(project, dataset, table, limit):
     print(f"Number of columns: {len(df.columns)}")
     print(f"Column names: {df.columns}")
     print(f"Column types: {df.dtypes}")
-    print(f"Column descriptions: {df.describe()}")
     print(f"Column head: {df.head()}")

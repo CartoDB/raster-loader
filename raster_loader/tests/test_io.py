@@ -1,11 +1,13 @@
-import json
+import math
 import os
 import sys
+import json
 from unittest.mock import patch
 import pyproj
 
 from affine import Affine
 import numpy as np
+import pandas as pd
 import pytest
 
 from raster_loader import io
@@ -41,108 +43,12 @@ def check_integration_config():
 
 
 def test_array_to_record():
-    arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
-    crs = "EPSG:4326"
-    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
-    geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-    band = 1
-    nodata = -1
-    value_field = "band_1_float64"
-    dtype_str = "float64"
-    record = io.array_to_record(
-        arr, nodata, band, value_field, dtype_str, transformer, geotransform, crs=crs
-    )
-
-    if should_swap[arr.dtype.byteorder]:
-        arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
-    else:
-        arr_bytes = np.ascontiguousarray(arr).tobytes()
-
-    assert record["lat_NW"] == 90.0
-    assert record["lon_NW"] == -180.0
-    assert record["lat_NE"] == 90.0
-    assert record["lon_NE"] == 180.0
-    assert record["lat_SE"] == -90.0
-    assert record["lon_SE"] == 180.0
-    assert record["lat_SW"] == -90.0
-    assert record["lon_SW"] == -180.0
-    assert record["block_height"] == 180
-    assert record["block_width"] == 360
-    assert record["band_1_float64"] == arr_bytes
-
-    expected_attrs = {
-        "band": band,
-        "value_field": "band_1_float64",
-        "dtype": "float64",
-        "nodata": nodata,
-        "crs": crs,
-        "gdal_transform": list(geotransform.to_gdal()),
-        "row_off": 0,
-        "col_off": 0,
-    }
-
-    for key, value in expected_attrs.items():
-        assert json.loads(record["attrs"])[key] == value
-
-
-def test_array_to_record_offset():
     arr = np.linspace(0, 100, 160 * 340).reshape(160, 340)
     transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:4326", always_xy=True)
     geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-
     record = io.array_to_record(
         arr,
-        -1,
-        1,
-        "band_1_float64",
-        "float64",
-        transformer,
-        geotransform,
-        row_off=20,
-        col_off=20,
-    )
-
-    if should_swap[arr.dtype.byteorder]:
-        arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
-    else:
-        arr_bytes = np.ascontiguousarray(arr).tobytes()
-
-    assert record["lat_NW"] == 70.0
-    assert record["lon_NW"] == -160.0
-    assert record["lat_NE"] == 70.0
-    assert record["lon_NE"] == 180.0
-    assert record["lat_SE"] == -90.0
-    assert record["lon_SE"] == 180.0
-    assert record["lat_SW"] == -90.0
-    assert record["lon_SW"] == -160.0
-    assert record["block_height"] == 160
-    assert record["block_width"] == 340
-    assert record["band_1_float64"] == arr_bytes
-
-    expected_attrs = {
-        "band": 1,
-        "value_field": "band_1_float64",
-        "dtype": "float64",
-        "crs": "EPSG:4326",
-        "gdal_transform": list(geotransform.to_gdal()),
-        "row_off": 20,
-        "col_off": 20,
-    }
-
-    for key, value in expected_attrs.items():
-        assert json.loads(record["attrs"])[key] == value
-
-
-def test_array_to_quadbin_record():
-    arr = np.linspace(0, 100, 160 * 340).reshape(160, 340)
-    transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:4326", always_xy=True)
-    geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-    record = io.array_to_quadbin_record(
-        arr,
-        -1,
-        1,
-        "band_1_float64",
-        "float64",
+        "band_1",
         transformer,
         geotransform,
         resolution=4,
@@ -155,141 +61,13 @@ def test_array_to_quadbin_record():
     else:
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
-    assert record["quadbin"] == 5209556461146865663
-    assert record["block_height"] == 160
-    assert record["block_width"] == 340
-    assert record["band_1_float64"] == arr_bytes
-
-    expected_attrs = {
-        "band": 1,
-        "value_field": "band_1_float64",
-        "dtype": "float64",
-        "nodata": -1,
-        "crs": "EPSG:4326",
-        "gdal_transform": list(geotransform.to_gdal()),
-        "row_off": 20,
-        "col_off": 20,
-    }
-
-    for key, value in expected_attrs.items():
-        assert json.loads(record["attrs"])[key] == value
-
-
-def test_record_to_array():
-    arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
-    crs = "EPSG:4326"
-    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
-    geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-    crs = "EPSG:4326"
-    band = 1
-    nodata = 1
-    value_field = "band_1_float64"
-    dtype_str = "float64"
-    record = io.array_to_record(
-        arr, nodata, band, value_field, dtype_str, transformer, geotransform, crs=crs
-    )
-    arr2 = io.record_to_array(record)
-    assert np.allclose(arr, arr2)
-    assert arr.dtype.name == arr2.dtype.name
-    assert arr.shape == arr2.shape
-
-
-def test_record_to_array_invalid_dtype():
-    arr = np.linspace(0, 100, 180 * 360).reshape(180, 360)
-    crs = "EPSG:4326"
-    transformer = pyproj.Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
-    geotransform = Affine.from_gdal(-180.0, 1.0, 0.0, 90.0, 0.0, -1.0)
-    band = 1
-    nodata = 1
-    value_field = "band_1_dtype"
-    dtype_str = "dtype"
-    record = io.array_to_record(
-        arr, nodata, band, value_field, dtype_str, transformer, geotransform, crs=crs
-    )
-
-    with pytest.raises(TypeError):
-        io.record_to_array(record, "band_1_dtype")
-
-
-def test_rasterio_to_record():
-    import rasterio
-    import os
-
-    test_file = os.path.join(fixtures_dir, "mosaic.tif")
-    band = 1
-    value_field = "band_1_uint8"
-    dtype_str = "uint8"
-    transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:4326", always_xy=True)
-
-    with rasterio.open(test_file) as src:
-        record = io.array_to_record(
-            src.read(band),
-            src.nodata,
-            band,
-            value_field,
-            dtype_str,
-            transformer,
-            src.transform,
-            crs=src.crs.to_string(),
-        )
-
-    assert isinstance(record, dict)
-
-    expected_attrs = {
-        "band": 1,
-        "value_field": "band_1_uint8",
-        "dtype": "uint8",
-        "crs": "EPSG:4326",
-        "gdal_transform": list(src.transform.to_gdal()),
-        "row_off": 0,
-        "col_off": 0,
-    }
-
-    for key, value in expected_attrs.items():
-        assert json.loads(record["attrs"])[key] == value
-
-
-def test_rasterio_to_record_with_nodata():
-    import rasterio
-    import os
-
-    test_file = os.path.join(fixtures_dir, "fuji.tif")
-    band = 1
-    value_field = "band_1_uint8"
-    dtype_str = "uint8"
-    transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:4326", always_xy=True)
-
-    with rasterio.open(test_file) as src:
-        record = io.array_to_record(
-            src.read(band),
-            src.nodata,
-            band,
-            value_field,
-            dtype_str,
-            transformer,
-            src.transform,
-            crs=src.crs.to_string(),
-        )
-
-    assert isinstance(record, dict)
-
-    expected_attrs = {
-        "band": 1,
-        "value_field": "band_1_uint8",
-        "dtype": "uint8",
-        "nodata": -32767,
-        "crs": "EPSG:8692",
-        "gdal_transform": list(src.transform.to_gdal()),
-        "row_off": 0,
-        "col_off": 0,
-    }
-
-    for key, value in expected_attrs.items():
-        assert json.loads(record["attrs"])[key] == value
+    assert record["block"] == 5209556461146865663
+    assert record["band_1"] == arr_bytes
+    assert record["metadata"] is None
 
 
 @pytest.mark.integration_test
-def test_rasterio_to_bigquery_with_generic_raster():
+def test_rasterio_to_bigquery_with_raster_default_band_name():
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import bigquery_to_records
 
@@ -298,12 +76,11 @@ def test_rasterio_to_bigquery_with_generic_raster():
     table_name = "test_mosaic_1"
 
     rasterio_to_bigquery(
-        os.path.join(fixtures_dir, "mosaic.tif"),
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
         table_name,
         BQ_DATASET_ID,
         BQ_PROJECT_ID,
         overwrite=True,
-        output_quadbin=False,
     )
 
     result = bigquery_to_records(
@@ -312,44 +89,186 @@ def test_rasterio_to_bigquery_with_generic_raster():
         dataset_id=BQ_DATASET_ID,
     )
 
-    expected_columns = [
-        "lon_NW",
-        "lat_NW",
-        "lon_NE",
-        "lat_NE",
-        "lon_SE",
-        "lat_SE",
-        "lon_SW",
-        "lat_SW",
-        "geog",
-        "block_height",
-        "block_width",
-        "attrs",
-        "band_1_uint8",
-    ]
+    # get expected data from fixture numpy array
+    expected_ndarray = np.load(
+        os.path.join(fixtures_dir, "expected_default_column.npy"),
+        allow_pickle=True,
+    )
+    expected_dataframe = pd.DataFrame(
+        expected_ndarray, columns=["block", "metadata", "band_1"]
+    )
+    expected_dataframe = expected_dataframe.sort_values("block")
 
-    assert sorted(list(result.columns)) == sorted(expected_columns)
-
-    # TODO: select metadata row and check metadata contents
-    # TODO: select some block row and check contents
+    assert sorted(result.columns) == sorted(expected_dataframe.columns)
+    assert sorted(
+        list(result.block), key=lambda x: x if x is not None else -math.inf
+    ) == sorted(
+        list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
+    )
+    assert sorted(
+        list(result.metadata), key=lambda x: x if x is not None else ""
+    ) == sorted(
+        list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
+    )
+    assert sorted(
+        list(result.band_1), key=lambda x: x if x is not None else b""
+    ) == sorted(
+        list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
+    )
 
 
 @pytest.mark.integration_test
-def test_rasterio_to_bigquery_with_quadbin_raster():
+def test_rasterio_to_bigquery_appending_rows():
     from raster_loader.io import rasterio_to_bigquery
     from raster_loader.io import bigquery_to_records
 
     check_integration_config()
 
-    table_name = "test_mosaic_quadbin_1"
+    table_name = "test_mosaic_append_rows"
 
     rasterio_to_bigquery(
-        os.path.join(fixtures_dir, "quadbin_raster.tif"),
+        os.path.join(fixtures_dir, "mosaic_cog_1_1.tif"),
         table_name,
         BQ_DATASET_ID,
         BQ_PROJECT_ID,
         overwrite=True,
-        output_quadbin=True,
+    )
+
+    result = bigquery_to_records(
+        table_id=table_name, project_id=BQ_PROJECT_ID, dataset_id=BQ_DATASET_ID
+    )
+
+    metadata = json.loads([x for x in list(result.metadata) if x][0])
+
+    assert metadata == {
+        "resolution": 5,
+        "minresolution": 5,
+        "maxresolution": 5,
+        "nodata": None,
+        "bands": [{"type": "uint8", "name": "band_1"}],
+        "bounds": [
+            11.249999999997055,
+            40.979898069622585,
+            22.49999999999707,
+            48.92249926376037,
+        ],
+        "center": [16.874999999997062, 44.951198666691475, 5],
+        "width": 256,
+        "height": 256,
+        "block_width": 256,
+        "block_height": 256,
+        "num_blocks": 1,
+        "num_pixels": 65536,
+    }
+
+    rasterio_to_bigquery(
+        os.path.join(fixtures_dir, "mosaic_cog_1_2.tif"),
+        table_name,
+        BQ_DATASET_ID,
+        BQ_PROJECT_ID,
+        append=True,
+    )
+
+    result = bigquery_to_records(
+        table_id=table_name, project_id=BQ_PROJECT_ID, dataset_id=BQ_DATASET_ID
+    )
+
+    metadata = json.loads([x for x in list(result.metadata) if x][0])
+
+    assert metadata == {
+        "bands": [{"name": "band_1", "type": "uint8"}],
+        "block_height": 256,
+        "block_width": 256,
+        "bounds": [
+            11.249999999997055,
+            40.979898069622585,
+            33.74999999999708,
+            48.92249926376037,
+        ],
+        "center": [22.499999999997065, 44.95119866669148, 5],
+        "height": 256,
+        "maxresolution": 5,
+        "minresolution": 5,
+        "nodata": None,
+        "num_blocks": 2,
+        "num_pixels": 131072,
+        "resolution": 5,
+        "width": 512,
+    }
+
+    assert len(result) == 3
+
+
+@pytest.mark.integration_test
+def test_rasterio_to_bigquery_with_raster_custom_band_column():
+    from raster_loader.io import rasterio_to_bigquery
+    from raster_loader.io import bigquery_to_records
+
+    check_integration_config()
+
+    table_name = "test_mosaic_custom_band_column_1"
+
+    rasterio_to_bigquery(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        table_name,
+        BQ_DATASET_ID,
+        BQ_PROJECT_ID,
+        overwrite=True,
+        bands_info=[(1, "customband")],
+    )
+
+    result = bigquery_to_records(
+        table_id=table_name,
+        project_id=BQ_PROJECT_ID,
+        dataset_id=BQ_DATASET_ID,
+    )
+    # sort value because return query can vary the order of rows
+    result = result.sort_values("block")
+
+    # get expected data from fixture numpy array
+    expected_ndarray = np.load(
+        os.path.join(fixtures_dir, "expected_custom_column.npy"),
+        allow_pickle=True,
+    )
+    expected_dataframe = pd.DataFrame(
+        expected_ndarray, columns=["block", "metadata", "customband"]
+    )
+    expected_dataframe = expected_dataframe.sort_values("block")
+
+    assert sorted(result.columns) == sorted(expected_dataframe.columns)
+    assert sorted(
+        list(result.block), key=lambda x: x if x is not None else -math.inf
+    ) == sorted(
+        list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
+    )
+    assert sorted(
+        list(result.metadata), key=lambda x: x if x is not None else ""
+    ) == sorted(
+        list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
+    )
+    assert sorted(
+        list(result.customband), key=lambda x: x if x is not None else b""
+    ) == sorted(
+        list(expected_dataframe.customband), key=lambda x: x if x is not None else b""
+    )
+
+
+@pytest.mark.integration_test
+def test_rasterio_to_bigquery_with_raster_multiple_default():
+    from raster_loader.io import rasterio_to_bigquery
+    from raster_loader.io import bigquery_to_records
+
+    check_integration_config()
+
+    table_name = "test_mosaic_default_band_column_1"
+
+    rasterio_to_bigquery(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        table_name,
+        BQ_DATASET_ID,
+        BQ_PROJECT_ID,
+        overwrite=True,
+        bands_info=[(1, None), (2, None)],
     )
 
     result = bigquery_to_records(
@@ -358,33 +277,165 @@ def test_rasterio_to_bigquery_with_quadbin_raster():
         dataset_id=BQ_DATASET_ID,
     )
 
-    expected_columns = [
-        "quadbin",
-        "block_height",
-        "block_width",
-        "attrs",
-        "band_1_uint8",
-    ]
+    # sort value because return query can vary the order of rows
+    result = result.sort_values("block")
 
-    assert sorted(list(result.columns)) == sorted(expected_columns)
+    # get expected data from fixture numpy array
+    expected_ndarray = np.load(
+        os.path.join(fixtures_dir, "expected_default_multiple_column.npy"),
+        allow_pickle=True,
+    )
+    expected_dataframe = pd.DataFrame(
+        expected_ndarray, columns=["block", "metadata", "band_1", "band_2"]
+    )
+    expected_dataframe = expected_dataframe.sort_values("block")
 
-    # TODO: select metadata row and check metadata contents
-    # TODO: select some block row and check contents
+    assert sorted(result.columns) == sorted(expected_dataframe.columns)
+    assert sorted(
+        list(result.block), key=lambda x: x if x is not None else -math.inf
+    ) == sorted(
+        list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
+    )
+    assert sorted(
+        list(result.metadata), key=lambda x: x if x is not None else ""
+    ) == sorted(
+        list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
+    )
+    assert sorted(
+        list(result.band_1), key=lambda x: x if x is not None else b""
+    ) == sorted(
+        list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
+    )
+    assert sorted(
+        list(result.band_2), key=lambda x: x if x is not None else b""
+    ) == sorted(
+        list(expected_dataframe.band_2), key=lambda x: x if x is not None else b""
+    )
+
+
+@pytest.mark.integration_test
+def test_rasterio_to_bigquery_with_raster_multiple_custom():
+    from raster_loader.io import rasterio_to_bigquery
+    from raster_loader.io import bigquery_to_records
+
+    check_integration_config()
+
+    table_name = "test_mosaic_custom_band_column_1"
+
+    rasterio_to_bigquery(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        table_name,
+        BQ_DATASET_ID,
+        BQ_PROJECT_ID,
+        overwrite=True,
+        bands_info=[(1, "custom_band_1"), (2, "custom_band_2")],
+    )
+
+    result = bigquery_to_records(
+        table_id=table_name,
+        project_id=BQ_PROJECT_ID,
+        dataset_id=BQ_DATASET_ID,
+    )
+
+    # sort value because return query can vary the order of rows
+    result = result.sort_values("block")
+
+    # get expected data from fixture numpy array
+    expected_ndarray = np.load(
+        os.path.join(fixtures_dir, "expected_custom_multiple_column.npy"),
+        allow_pickle=True,
+    )
+    expected_dataframe = pd.DataFrame(
+        expected_ndarray,
+        columns=["block", "metadata", "custom_band_1", "custom_band_2"],
+    )
+    expected_dataframe = expected_dataframe.sort_values("block")
+
+    assert sorted(result.columns) == sorted(expected_dataframe.columns)
+    assert sorted(
+        list(result.block), key=lambda x: x if x is not None else -math.inf
+    ) == sorted(
+        list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
+    )
+    assert sorted(
+        list(result.metadata), key=lambda x: x if x is not None else ""
+    ) == sorted(
+        list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
+    )
+    assert sorted(
+        list(result.custom_band_1), key=lambda x: x if x is not None else b""
+    ) == sorted(
+        list(expected_dataframe.custom_band_1),
+        key=lambda x: x if x is not None else b"",
+    )
+    assert sorted(
+        list(result.custom_band_2), key=lambda x: x if x is not None else b""
+    ) == sorted(
+        list(expected_dataframe.custom_band_2),
+        key=lambda x: x if x is not None else b"",
+    )
+
+
+@patch("raster_loader.io.ask_yes_no_question", return_value=False)
+def test_rasterio_to_bigquery_wrong_band_name_metadata(*args, **kwargs):
+    from raster_loader.io import rasterio_to_bigquery
+
+    table_name = "test_mosaic_custom_band_column_1"
+    client = mocks.bigquery_client()
+
+    with pytest.raises(IOError):
+        rasterio_to_bigquery(
+            os.path.join(fixtures_dir, "mosaic_cog.tif"),
+            table_name,
+            BQ_DATASET_ID,
+            BQ_PROJECT_ID,
+            overwrite=True,
+            client=client,
+            bands_info=[(1, "metadata"), (2, "custom_band_2")],
+        )
+
+
+@patch("raster_loader.io.ask_yes_no_question", return_value=False)
+def test_rasterio_to_bigquery_wrong_band_name_block(*args, **kwargs):
+    from raster_loader.io import rasterio_to_bigquery
+
+    table_name = "test_mosaic_custom_band_column_1"
+    client = mocks.bigquery_client()
+
+    with pytest.raises(IOError):
+        rasterio_to_bigquery(
+            os.path.join(fixtures_dir, "mosaic_cog.tif"),
+            table_name,
+            BQ_DATASET_ID,
+            BQ_PROJECT_ID,
+            overwrite=True,
+            client=client,
+            bands_info=[(1, "block"), (2, "custom_band_2")],
+        )
 
 
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
+@patch("raster_loader.io.ask_yes_no_question", return_value=False)
 def test_rasterio_to_bigquery(*args, **kwargs):
     client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
 
     success = io.rasterio_to_bigquery(
-        test_file, project_id="test", dataset_id="test", table_id="test", client=client
+        test_file,
+        project_id="test",
+        dataset_id="test",
+        table_id="test",
+        client=client,
     )
     assert success
 
 
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
+@patch("raster_loader.io.rasterio_windows_to_records", return_value={})
+@patch("raster_loader.io.rasterio_metadata", return_value={})
+@patch("raster_loader.io.get_number_of_blocks", return_value=1)
+@patch("raster_loader.io.write_metadata", return_value=None)
 def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
@@ -404,9 +455,22 @@ def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
 @patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
+@patch(
+    "raster_loader.io.get_metadata",
+    return_value={
+        "bounds": [0, 0, 0, 0],
+        "resolution": 5,
+        "nodata": None,
+        "block_width": 256,
+        "block_height": 256,
+        "bands": [{"type": "uint8", "name": "band_1"}],
+        "num_blocks": 1,
+        "num_pixels": 1,
+    },
+)
 def test_rasterio_to_bigquery_table_is_not_empty_append(*args, **kwargs):
     client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
 
     success = io.rasterio_to_bigquery(
         test_file,
@@ -460,7 +524,7 @@ def test_rasterio_to_bigquery_uploading_error(*args, **kwargs):
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
 def test_rasterio_to_bigquery_keyboard_interrupt(*args, **kwargs):
     client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
 
     with pytest.raises(KeyboardInterrupt):
         io.rasterio_to_bigquery(
@@ -476,7 +540,7 @@ def test_rasterio_to_bigquery_keyboard_interrupt(*args, **kwargs):
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
 def test_rasterio_to_bigquery_with_chunk_size(*args, **kwargs):
     client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
 
     success = io.rasterio_to_bigquery(
         test_file,
@@ -492,7 +556,7 @@ def test_rasterio_to_bigquery_with_chunk_size(*args, **kwargs):
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
 def test_rasterio_to_bigquery_with_one_chunk_size(*args, **kwargs):
     client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
 
     success = io.rasterio_to_bigquery(
         test_file,
@@ -505,32 +569,11 @@ def test_rasterio_to_bigquery_with_one_chunk_size(*args, **kwargs):
     assert success
 
 
-@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=False)
-def test_rasterio_to_bigquery_invalid_input_crs(*args, **kwargs):
-
-    import rasterio
-
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic.tif")
-
-    # test that invalid input crs raises an error
-    invalid_crs = 8675309
-    with pytest.raises(rasterio.errors.CRSError):
-        io.rasterio_to_bigquery(
-            test_file,
-            project_id="test",
-            dataset_id="test",
-            table_id="test",
-            client=client,
-            input_crs=invalid_crs,
-        )
-
-
 @patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
 @patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
-def test_rasterio_to_bigquery_invalid_quadbin_raster(*args, **kwargs):
+def test_rasterio_to_bigquery_invalid_raster(*args, **kwargs):
     client = mocks.bigquery_client()
     test_file = os.path.join(fixtures_dir, "mosaic.tif")
 
@@ -541,7 +584,6 @@ def test_rasterio_to_bigquery_invalid_quadbin_raster(*args, **kwargs):
             dataset_id="test",
             table_id="test",
             client=client,
-            output_quadbin=True,
         )
 
 
@@ -549,16 +591,55 @@ def test_rasterio_to_bigquery_invalid_quadbin_raster(*args, **kwargs):
 @patch("raster_loader.io.delete_bigquery_table", return_value=None)
 @patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
-def test_rasterio_to_bigquery_valid_quadbbin_raster(*args, **kwargs):
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "quadbin_raster.tif")
+@patch(
+    "raster_loader.io.get_metadata",
+    return_value={
+        "bounds": [0, 0, 0, 0],
+        "resolution": 5,
+        "nodata": None,
+        "block_width": 256,
+        "block_height": 256,
+        "bands": [{"type": "uint8", "name": "band_1"}],
+        "num_blocks": 1,
+        "num_pixels": 1,
+    },
+)
+def test_rasterio_to_bigquery_valid_raster(*args, **kwargs):
+    from raster_loader.io import rasterio_to_bigquery
 
-    success = io.rasterio_to_bigquery(
+    client = mocks.bigquery_client()
+    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
+
+    success = rasterio_to_bigquery(
         test_file,
         project_id="test",
         dataset_id="test",
         table_id="test",
         client=client,
-        output_quadbin=True,
     )
     assert success
+
+
+@patch("raster_loader.io.check_if_bigquery_table_exists", return_value=True)
+@patch("raster_loader.io.delete_bigquery_table", return_value=None)
+@patch("raster_loader.io.check_if_bigquery_table_is_empty", return_value=False)
+@patch("raster_loader.io.ask_yes_no_question", return_value=True)
+@patch(
+    "raster_loader.io.get_metadata",
+    return_value={"bounds": [0, 0, 0, 0], "resolution": 1},
+)
+def test_append_with_different_resolution(*args, **kwargs):
+    from raster_loader.io import rasterio_to_bigquery
+
+    client = mocks.bigquery_client()
+
+    with pytest.raises(OSError):
+        rasterio_to_bigquery(
+            os.path.join(fixtures_dir, "mosaic_cog.tif"),
+            project_id="test",
+            dataset_id="test",
+            table_id="test",
+            overwrite=False,
+            append=True,
+            client=client,
+        )

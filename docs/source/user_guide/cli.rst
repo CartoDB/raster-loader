@@ -27,6 +27,13 @@ BigQuery:
 #. A `GCP project`_
 #. A `BigQuery dataset`_
 
+The input raster must be a ``GoogleMapsCompatible`` raster. You can make your raster compatible
+by converting it with the following GDAL command:
+
+.. code-block:: bash
+
+   gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO -co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif
+
 You have the option to also set up a `BigQuery table`_ and use this table to upload
 your data to. In case you do not specify a table name, Raster Loader will automatically
 generate a table name for you and create that table.
@@ -51,17 +58,86 @@ project named ``my-gcp-project``, a dataset named ``my-bigquery-dataset``, and a
 named ``my-bigquery-table``. If the table already contains data, this data will be
 overwritten because the ``--overwrite`` flag is set.
 
-You can also use the ``--output_quadbin`` flag to upload the raster to the BigQuery
-table in a quadbin format. To use this option, the input raster must be a
-``GoogleMapsCompatible`` raster. You can make your raster compatible by converting it with
-the following command with GDAL:
+If no band is specified, the first band of the raster will be uploaded. If the
+``--band`` flag is set, the specified band will be uploaded. For example, the following
+command uploads the second band of the raster:
 
 .. code-block:: bash
 
-   gdalwarp your_raster.tif -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE your_compatible_raster.tif
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --band 2
+
+Band names can be specified with the ``--band_name`` flag. For example, the following
+command uploads the ``red`` band of the raster:
+
+.. code-block:: bash
+
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --band 2 \
+     --band_name red
+
+If the raster contains multiple bands, you can upload multiple bands at once by
+specifying a list of bands. For example, the following command uploads the first and
+second bands of the raster:
+
+.. code-block:: bash
+
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --band 1 \
+     --band 2
+
+Or, with band names:
+
+.. code-block:: bash
+
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --band 1 \
+     --band 2 \
+     --band_name red \
+     --band_name green
 
 .. seealso::
    See the :ref:`cli_details` for a full list of options.
+
+For large raster files, you can use the ``--chunk_size`` flag to specify the number of
+rows to upload at once, and preventing BigQuery from showing you an exception like the following,
+due to excessive operations in the destination table:
+
+```
+Exceeded rate limits: too many table update operations for this table. For more information, see https://cloud.google.com/bigquery/troubleshooting-errors
+```
+
+The default chunk size is 1000 rows.
+
+For example, the following command uploads the raster in chunks
+of 2000 rows:
+
+.. code-block:: bash
+
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --chunk_size 1000
+
+
 
 Inspecting a raster file on BigQuery
 ------------------------------------

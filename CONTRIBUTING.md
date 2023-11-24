@@ -97,7 +97,7 @@ Raster Loader uses [pytest](https://docs.pytest.org/en/stable/) for testing. You
 run the tests with the following command:
 
 ```bash
-make tests
+make test
 ```
 
 This runs all tests in the `tests` directory. You can also run all tests with the
