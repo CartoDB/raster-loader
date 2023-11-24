@@ -115,6 +115,30 @@ Or, with band names:
 .. seealso::
    See the :ref:`cli_details` for a full list of options.
 
+For large raster files, you can use the ``--chunk_size`` flag to specify the number of
+rows to upload at once, and preventing BigQuery from showing you an exception like the following,
+due to excessive operations in the destination table:
+
+```
+Exceeded rate limits: too many table update operations for this table. For more information, see https://cloud.google.com/bigquery/troubleshooting-errors
+```
+
+The default chunk size is 1000 rows.
+
+For example, the following command uploads the raster in chunks
+of 2000 rows:
+
+.. code-block:: bash
+
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --chunk_size 1000
+
+
+
 Inspecting a raster file on BigQuery
 ------------------------------------
 
