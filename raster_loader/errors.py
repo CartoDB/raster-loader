@@ -20,6 +20,17 @@ def import_error_rasterio():  # pragma: no cover
     raise ImportError(msg)
 
 
+def import_error_rio_cogeo():  # pragma: no cover
+    msg = (
+        "Rasterio is not installed.\n"
+        "Please install rio_cogeo to use this function.\n"
+        "See https://cogeotiff.github.io/rio-cogeo/\n"
+        "for installation instructions.\n"
+        "Alternatively, run `pip install rio-cogeo` to install from pypi."
+    )
+    raise ImportError(msg)
+
+
 def import_error_quadbin():  # pragma: no cover
     msg = (
         "Quadbin is not installed.\n"

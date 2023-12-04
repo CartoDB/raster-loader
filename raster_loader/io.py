@@ -1,17 +1,18 @@
-import time
-from functools import partial
-import json
 import sys
+import math
+import time
+import json
+import pyproj
+import shapely
+import numpy as np
+import pandas as pd
+
 from typing import Iterable
 from typing import Callable
 from typing import List
 from typing import Tuple
-
 from affine import Affine
-import numpy as np
-import pandas as pd
-import pyproj
-import shapely
+from functools import partial
 
 try:
     import rio_cogeo
@@ -45,6 +46,7 @@ from raster_loader.utils import ask_yes_no_question, batched, sql_quote
 from raster_loader.geo import raster_bounds
 from raster_loader.errors import (
     import_error_bigquery,
+    import_error_rio_cogeo,
     import_error_rasterio,
     import_error_quadbin,
     IncompatibleRasterException,
@@ -111,6 +113,10 @@ def rasterio_metadata(
     file_path: str,
     bands_info: List[Tuple[int, str]],
 ):
+    """Requires rio_cogeo."""
+    if not _has_rio_cogeo:  # pragma: no cover
+        import_error_rio_cogeo()
+
     """Requires rasterio."""
     if not _has_rasterio:  # pragma: no cover
         import_error_rasterio()
@@ -125,8 +131,10 @@ def rasterio_metadata(
         error_not_google_compatible()
 
     metadata = {}
+    width = raster_info["Profile"]["Width"]
+    height = raster_info["Profile"]["Height"]
     resolution = raster_info["GEO"]["MaxZoom"]
-    metadata["resolution"] = resolution
+    metadata["block_resolution"] = resolution
     metadata["minresolution"] = resolution
     metadata["maxresolution"] = resolution
     metadata["nodata"] = raster_info["Profile"]["Nodata"]
@@ -153,8 +161,6 @@ def rasterio_metadata(
         bounds_coords = list(bounds_polygon.bounds)
         center_coords = list(*bounds_polygon.centroid.coords)
         center_coords.append(resolution)
-        width = raster_info["Profile"]["Width"]
-        height = raster_info["Profile"]["Height"]
         # assuming all windows have the same dimensions
         a_window = next(raster_dataset.block_windows())
         block_width = a_window[1].width
@@ -171,6 +177,9 @@ def rasterio_metadata(
         metadata["block_height"] = block_height
         metadata["num_blocks"] = int(width * height / block_width / block_height)
         metadata["num_pixels"] = width * height
+        metadata["pixel_resolution"] = resolution + math.log(
+            block_width * block_height, 4
+        )
 
     return metadata
 
@@ -707,10 +716,10 @@ def check_metadata_is_compatible(metadata, old_metadata):
     ValueError
         If the metadata is not compatible.
     """
-    if metadata["resolution"] != old_metadata["resolution"]:
+    if metadata["block_resolution"] != old_metadata["block_resolution"]:
         raise ValueError(
-            "Cannot append records to a table with a different resolution "
-            f"({metadata['resolution']} != {old_metadata['resolution']})."
+            "Cannot append records to a table with a different block_resolution "
+            f"({metadata['block_resolution']} != {old_metadata['block_resolution']})."
         )
     if metadata["nodata"] != old_metadata["nodata"]:
         raise ValueError(
@@ -753,15 +762,15 @@ def update_metadata(metadata, old_metadata):
     metadata["center"] = (
         (metadata["bounds"][0] + metadata["bounds"][2]) / 2,
         (metadata["bounds"][1] + metadata["bounds"][3]) / 2,
-        metadata["resolution"],
+        metadata["block_resolution"],
     )
     metadata["num_blocks"] += old_metadata["num_blocks"]
     metadata["num_pixels"] += old_metadata["num_pixels"]
     w, s, _ = quadbin.utils.point_to_tile(
-        metadata["bounds"][0], metadata["bounds"][1], metadata["resolution"]
+        metadata["bounds"][0], metadata["bounds"][1], metadata["block_resolution"]
     )
     e, n, _ = quadbin.utils.point_to_tile(
-        metadata["bounds"][2], metadata["bounds"][3], metadata["resolution"]
+        metadata["bounds"][2], metadata["bounds"][3], metadata["block_resolution"]
     )
     metadata["height"] = (s - n) * metadata["block_height"]
     metadata["width"] = (e - w) * metadata["block_width"]
