@@ -141,7 +141,7 @@ def test_rasterio_to_bigquery_appending_rows():
     metadata = json.loads([x for x in list(result.metadata) if x][0])
 
     assert metadata == {
-        "resolution": 5,
+        "block_resolution": 5,
         "minresolution": 5,
         "maxresolution": 5,
         "nodata": None,
@@ -192,7 +192,7 @@ def test_rasterio_to_bigquery_appending_rows():
         "nodata": None,
         "num_blocks": 2,
         "num_pixels": 131072,
-        "resolution": 5,
+        "block_resolution": 5,
         "width": 512,
     }
 
@@ -459,7 +459,7 @@ def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
     "raster_loader.io.get_metadata",
     return_value={
         "bounds": [0, 0, 0, 0],
-        "resolution": 5,
+        "block_resolution": 5,
         "nodata": None,
         "block_width": 256,
         "block_height": 256,
@@ -595,7 +595,7 @@ def test_rasterio_to_bigquery_invalid_raster(*args, **kwargs):
     "raster_loader.io.get_metadata",
     return_value={
         "bounds": [0, 0, 0, 0],
-        "resolution": 5,
+        "block_resolution": 5,
         "nodata": None,
         "block_width": 256,
         "block_height": 256,
@@ -626,7 +626,7 @@ def test_rasterio_to_bigquery_valid_raster(*args, **kwargs):
 @patch("raster_loader.io.ask_yes_no_question", return_value=True)
 @patch(
     "raster_loader.io.get_metadata",
-    return_value={"bounds": [0, 0, 0, 0], "resolution": 1},
+    return_value={"bounds": [0, 0, 0, 0], "block_resolution": 1},
 )
 def test_append_with_different_resolution(*args, **kwargs):
     from raster_loader.io import rasterio_to_bigquery
