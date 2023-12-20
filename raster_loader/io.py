@@ -166,6 +166,14 @@ def rasterio_metadata(
         block_width = a_window[1].width
         block_height = a_window[1].height
 
+        pixel_resolution = int(resolution + math.log(block_width * block_height, 4))
+        if pixel_resolution > 26:
+            raise ValueError(
+                "Input raster pixel resolution exceeds "
+                "the max supported resolution of 26.\n"
+                "Please resample the raster to a lower resolution."
+            )
+
         metadata["bands"] = [
             {"type": e["type"], "name": e["band_name"]} for e in bands_metadata
         ]
@@ -177,9 +185,7 @@ def rasterio_metadata(
         metadata["block_height"] = block_height
         metadata["num_blocks"] = int(width * height / block_width / block_height)
         metadata["num_pixels"] = width * height
-        metadata["pixel_resolution"] = int(
-            resolution + math.log(block_width * block_height, 4)
-        )
+        metadata["pixel_resolution"] = pixel_resolution
 
     return metadata
 
