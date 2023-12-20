@@ -177,8 +177,8 @@ def rasterio_metadata(
         metadata["block_height"] = block_height
         metadata["num_blocks"] = int(width * height / block_width / block_height)
         metadata["num_pixels"] = width * height
-        metadata["pixel_resolution"] = resolution + math.log(
-            block_width * block_height, 4
+        metadata["pixel_resolution"] = int(
+            resolution + math.log(block_width * block_height, 4)
         )
 
     return metadata
