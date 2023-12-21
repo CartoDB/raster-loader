@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2023-12-21
+  
+### Enhancements
+- Update raster-loader to generate new Raster and Metadata table format (#116)
+- Add pixel_resolution, rename block_resolution (#123)
+
+### Bug Fixes
+- fix: metadata field pixel_resolution as an integer and not allow zooms over 26 (#124, #125)
+
 ## [0.3.3] - 2023-10-30
 
 ### Bug Fixes
@@ -13,7 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.2] - 2023-09-15
 
 ### Enhancements
-
 - Add append option to skip check (#114)
 
 ## [0.3.1] - 2023-04-21
@@ -58,7 +66,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2023-01-05
 
 ### Added
-
 - raster_loader module
   - rasterio_to_bigquery function
   - bigquery_to_records function
