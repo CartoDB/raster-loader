@@ -7,12 +7,12 @@ import pandas as pd
 from raster_loader.cli import main
 
 
-here = os.path.dirname(os.path.abspath(__file__))
+here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 fixtures = os.path.join(here, "fixtures")
 tiff = os.path.join(fixtures, "mosaic_cog.tif")
 
 
-@patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
+@patch("raster_loader.io.bigquery.rasterio_to_table", return_value=None)
 def test_bigquery_upload(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -38,7 +38,7 @@ def test_bigquery_upload(*args, **kwargs):
     assert result.exit_code == 0
 
 
-@patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
+@patch("raster_loader.io.bigquery.rasterio_to_table", return_value=None)
 def test_bigquery_upload_multiple_bands(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -99,7 +99,7 @@ def test_bigquery_fail_upload_multiple_bands_misaligned_with_band_names(
     assert "The number of bands must equal the number of band names." in result.output
 
 
-@patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
+@patch("raster_loader.io.bigquery.rasterio_to_table", return_value=None)
 def test_bigquery_upload_multiple_bands_aligned_with_band_names(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -131,7 +131,7 @@ def test_bigquery_upload_multiple_bands_aligned_with_band_names(*args, **kwargs)
     assert result.exit_code == 0
 
 
-@patch("raster_loader.io.rasterio_to_bigquery", return_value=None)
+@patch("raster_loader.io.bigquery.rasterio_to_table", return_value=None)
 def test_bigquery_upload_no_table_name(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -156,7 +156,7 @@ def test_bigquery_upload_no_table_name(*args, **kwargs):
 
 
 @patch(
-    "raster_loader.io.bigquery_to_records",
+    "raster_loader.io.bigquery.table_to_records",
     return_value=pd.DataFrame.from_dict({"col_1": [1, 2], "col_2": ["a", "b"]}),
 )
 def test_bigquery_describe(mocker):

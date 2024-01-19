@@ -5,11 +5,13 @@ import click
 from functools import wraps, partial
 
 try:
-    import google.cloud.bigquery
+    import snowflake.connector as connector
 except ImportError:  # pragma: no cover
-    _has_bigquery = False
+    _has_snowflake = False
 else:
-    _has_bigquery = True
+    _has_snowflake = True
+
+from raster_loader.errors import import_error_snowflake
 
 
 def catch_exception(func=None, *, handle=Exception):
@@ -27,17 +29,20 @@ def catch_exception(func=None, *, handle=Exception):
 
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
-def bigquery(args=None):
+def snowflake(args=None):
     """
-    Manage Google BigQuery resources.
+    Manage Snowflake resources.
     """
     pass
 
 
-@bigquery.command(help="Upload a raster file to Google BigQuery.")
+@snowflake.command(help="Upload a raster file to Snowflake.")
+@click.option("--account", help="The Swnoflake account.", required=True)
+@click.option("--username", help="The username.", required=True)
+@click.option("--password", help="The password.", required=True)
 @click.option("--file_path", help="The path to the raster file.", required=True)
-@click.option("--project", help="The name of the Google Cloud project.", required=True)
-@click.option("--dataset", help="The name of the dataset.", required=True)
+@click.option("--database", help="The name of the database.", required=True)
+@click.option("--schema", help="The name of the schema.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
 @click.option(
     "--band",
@@ -69,12 +74,15 @@ def bigquery(args=None):
     default=False,
     is_flag=True,
 )
-@click.option("--test", help="Use Mock BigQuery Client", default=False, is_flag=True)
+@click.option("--test", help="Use Mock Snowflake Client", default=False, is_flag=True)
 @catch_exception()
 def upload(
+    account,
+    username,
+    password,
     file_path,
-    project,
-    dataset,
+    database,
+    schema,
     table,
     band,
     band_name,
@@ -83,9 +91,8 @@ def upload(
     append=False,
     test=False,
 ):
-    from raster_loader.tests.mocks import bigquery_client
-    from raster_loader.errors import import_error_bigquery
-    from raster_loader.io.bigquery import rasterio_to_table
+    from raster_loader.tests.mocks import snowflake_client
+    from raster_loader.io.snowflake import rasterio_to_table
     from raster_loader.io.common import (
         get_number_of_blocks,
         print_band_information,
@@ -108,20 +115,20 @@ def upload(
         table = os.path.basename(file_path).split(".")[0]
         table = "_".join([table, "band", str(band), str(uuid.uuid4())])
 
-    # swap out BigQuery client for testing purposes
+    # swap out Snowflake client for testing purposes
     if test:
-        client = bigquery_client()
+        client = snowflake_client()
     else:  # pragma: no cover
-        """Requires bigquery."""
-        if not _has_bigquery:  # pragma: no cover
-            import_error_bigquery()
-        client = google.cloud.bigquery.Client(project=project)
+        """Requires snowflake."""
+        if not _has_snowflake:  # pragma: no cover
+            import_error_snowflake()
+        client = connector.connect(user=username, password=password, account=account)
 
     # introspect raster file
     num_blocks = get_number_of_blocks(file_path)
     file_size_mb = os.path.getsize(file_path) / 1024 / 1024
 
-    click.echo("Preparing to upload raster file to BigQuery...")
+    click.echo("Preparing to upload raster file to Snowflake...")
     click.echo("File Path: {}".format(file_path))
     click.echo("File Size: {} MB".format(file_size_mb))
     print_band_information(file_path)
@@ -129,39 +136,51 @@ def upload(
     click.echo("Band Name: {}".format(band_name))
     click.echo("Number of Blocks: {}".format(num_blocks))
     click.echo("Block Dims: {}".format(get_block_dims(file_path)))
-    click.echo("Project: {}".format(project))
-    click.echo("Dataset: {}".format(dataset))
+    click.echo("Database: {}".format(database))
+    click.echo("Schema: {}".format(schema))
     click.echo("Table: {}".format(table))
-    click.echo("Number of Records Per BigQuery Append: {}".format(chunk_size))
+    click.echo("Number of Records Per Snowflake Append: {}".format(chunk_size))
 
-    click.echo("Uploading Raster to BigQuery")
+    click.echo("Uploading Raster to Snowflake")
 
     rasterio_to_table(
         file_path,
+        database,
+        schema,
         table,
-        dataset,
-        project,
+        client,
         bands_info,
         chunk_size,
-        client=client,
-        overwrite=overwrite,
-        append=append,
+        overwrite,
+        append,
     )
 
-    click.echo("Raster file uploaded to Google BigQuery")
+    click.echo("Raster file uploaded to Snowflake")
     return 0
 
 
-@bigquery.command(help="Load and describe a table from BigQuery")
-@click.option("--project", help="The name of the Google Cloud project.", required=True)
-@click.option("--dataset", help="The name of the dataset.", required=True)
-@click.option("--table", help="The name of the table.", required=True)
+@snowflake.command(help="Load and describe a table from Snowflake")
+@click.option("--account", help="The Swnoflake account.", required=True)
+@click.option("--username", help="The username.", required=True)
+@click.option("--password", help="The password.", required=True)
+@click.option("--database", help="The name of the database.", required=True)
+@click.option("--schema", help="The name of the schema.", required=True)
+@click.option("--table", help="The name of the table.", default=None)
 @click.option("--limit", help="Limit number of rows returned", default=10)
-def describe(project, dataset, table, limit):
-    from raster_loader.io.bigquery import table_to_records
+@click.option("--test", help="Use Mock Snowflake Client", default=False, is_flag=True)
+def describe(account, username, password, database, schema, table, limit, test):
+    from raster_loader.io.snowflake import table_to_records
+    from raster_loader.tests.mocks import snowflake_client
 
-    df = table_to_records(table, dataset, project, limit)
-    print(f"Table: {project}.{dataset}.{table}")
+    if test:
+        client = snowflake_client()
+    else:
+        if not _has_snowflake:  # pragma: no cover
+            import_error_snowflake()
+        client = connector.connect(user=username, password=password, account=account)
+
+    df = table_to_records(database, schema, table, client, limit)
+    print(f"Table: {database}.{schema}.{table}")
     print(f"Number of rows: {len(df)}")
     print(f"Number of columns: {len(df.columns)}")
     print(f"Column names: {df.columns}")
