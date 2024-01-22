@@ -13,6 +13,7 @@ tiff = os.path.join(fixtures, "mosaic_cog.tif")
 
 
 @patch("raster_loader.cli.bigquery.BigQuery.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
 def test_bigquery_upload(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -38,6 +39,7 @@ def test_bigquery_upload(*args, **kwargs):
 
 
 @patch("raster_loader.cli.bigquery.BigQuery.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
 def test_bigquery_upload_multiple_bands(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -64,6 +66,7 @@ def test_bigquery_upload_multiple_bands(*args, **kwargs):
     assert result.exit_code == 0
 
 
+@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
 def test_bigquery_fail_upload_multiple_bands_misaligned_with_band_names(
     *args, **kwargs
 ):
@@ -97,6 +100,7 @@ def test_bigquery_fail_upload_multiple_bands_misaligned_with_band_names(
 
 
 @patch("raster_loader.cli.bigquery.BigQuery.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
 def test_bigquery_upload_multiple_bands_aligned_with_band_names(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
