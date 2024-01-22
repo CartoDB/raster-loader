@@ -7,7 +7,7 @@ Raster Loader is available on PyPI_ and can be installed with pip_:
 
 .. code-block:: bash
 
-   pip install raster-loader
+   pip install raster-loader[all]
 
 To install from source:
 
@@ -15,12 +15,21 @@ To install from source:
 
    git clone https://github.com/cartodb/raster-loader
    cd raster-loader
-   pip install .
+   pip install .[all]
 
 .. tip::
 
    In most cases, it is recommended to install Raster Loader in a virtual environment.
    Use venv_ to create and manage your virtual environment.
+
+The above will install the dependencies required to work with both Snowflake and
+BigQuery. In case you only want to work with one of them, you can install the
+dependencies for each of them separately:
+
+.. code-block:: bash
+
+   pip install raster-loader[snowflake]
+   pip install raster-loader[bigquery]
 
 After installing the Raster Loader package, you will have access to the
 :ref:`carto CLI <cli>`. To make sure the installation was successful, run the
