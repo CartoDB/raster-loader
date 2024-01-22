@@ -160,7 +160,7 @@ def test_bigquery_upload_no_table_name(*args, **kwargs):
     return_value=pd.DataFrame.from_dict({"col_1": [1, 2], "col_2": ["a", "b"]}),
 )
 @patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
-def test_bigquery_describe(mocker):
+def test_bigquery_describe(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
         main,
