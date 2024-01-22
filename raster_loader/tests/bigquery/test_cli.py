@@ -132,6 +132,7 @@ def test_bigquery_upload_multiple_bands_aligned_with_band_names(*args, **kwargs)
 
 
 @patch("raster_loader.cli.bigquery.BigQuery.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
 def test_bigquery_upload_no_table_name(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -158,6 +159,7 @@ def test_bigquery_upload_no_table_name(*args, **kwargs):
     "raster_loader.io.bigquery.BigQuery.get_records",
     return_value=pd.DataFrame.from_dict({"col_1": [1, 2], "col_2": ["a", "b"]}),
 )
+@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
 def test_bigquery_describe(mocker):
     runner = CliRunner()
     result = runner.invoke(
