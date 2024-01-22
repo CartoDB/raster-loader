@@ -12,6 +12,7 @@ import pytest
 
 from raster_loader import io
 from raster_loader.tests import mocks
+from raster_loader.io.bigquery import BigQuery
 
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -69,26 +70,20 @@ def test_array_to_record():
 
 @pytest.mark.integration_test
 def test_rasterio_to_bigquery_with_raster_default_band_name():
-    from raster_loader.io.bigquery import rasterio_to_table
-    from raster_loader.io.bigquery import table_to_records
-
     check_integration_config()
 
     table_name = "test_mosaic_1"
+    fqn = f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}"
 
-    rasterio_to_table(
+    connector = BigQuery(BQ_PROJECT_ID)
+
+    connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
-        table_name,
-        BQ_DATASET_ID,
-        BQ_PROJECT_ID,
+        fqn,
         overwrite=True,
     )
 
-    result = table_to_records(
-        table_id=table_name,
-        project_id=BQ_PROJECT_ID,
-        dataset_id=BQ_DATASET_ID,
-    )
+    result = connector.get_records(fqn, 20)
 
     expected_dataframe = pd.read_pickle(
         os.path.join(fixtures_dir, "expected_default_column.pkl")
@@ -115,24 +110,21 @@ def test_rasterio_to_bigquery_with_raster_default_band_name():
 
 @pytest.mark.integration_test
 def test_rasterio_to_bigquery_appending_rows():
-    from raster_loader.io.bigquery import rasterio_to_table
-    from raster_loader.io.bigquery import table_to_records
-
     check_integration_config()
 
     table_name = "test_mosaic_append_rows"
 
-    rasterio_to_table(
+    fqn = f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}"
+
+    connector = BigQuery(BQ_PROJECT_ID)
+
+    connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog_1_1.tif"),
-        table_name,
-        BQ_DATASET_ID,
-        BQ_PROJECT_ID,
+        fqn,
         overwrite=True,
     )
 
-    result = table_to_records(
-        table_id=table_name, project_id=BQ_PROJECT_ID, dataset_id=BQ_DATASET_ID
-    )
+    result = connector.get_records(fqn, 20)
 
     metadata = json.loads([x for x in list(result.metadata) if x][0])
 
@@ -158,17 +150,13 @@ def test_rasterio_to_bigquery_appending_rows():
         "num_pixels": 65536,
     }
 
-    rasterio_to_table(
+    connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog_1_2.tif"),
-        table_name,
-        BQ_DATASET_ID,
-        BQ_PROJECT_ID,
+        fqn,
         append=True,
     )
 
-    result = table_to_records(
-        table_id=table_name, project_id=BQ_PROJECT_ID, dataset_id=BQ_DATASET_ID
-    )
+    result = connector.get_records(fqn, 20)
 
     metadata = json.loads([x for x in list(result.metadata) if x][0])
 
@@ -199,27 +187,23 @@ def test_rasterio_to_bigquery_appending_rows():
 
 @pytest.mark.integration_test
 def test_rasterio_to_bigquery_with_raster_custom_band_column():
-    from raster_loader.io.bigquery import rasterio_to_table
-    from raster_loader.io.bigquery import table_to_records
-
     check_integration_config()
 
     table_name = "test_mosaic_custom_band_column_1"
 
-    rasterio_to_table(
+    fqn = f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}"
+
+    connector = BigQuery(BQ_PROJECT_ID)
+
+    connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
-        table_name,
-        BQ_DATASET_ID,
-        BQ_PROJECT_ID,
+        fqn,
         overwrite=True,
         bands_info=[(1, "customband")],
     )
 
-    result = table_to_records(
-        table_id=table_name,
-        project_id=BQ_PROJECT_ID,
-        dataset_id=BQ_DATASET_ID,
-    )
+    result = connector.get_records(fqn, 20)
+
     # sort value because return query can vary the order of rows
     result = result.sort_values("block")
 
@@ -248,27 +232,22 @@ def test_rasterio_to_bigquery_with_raster_custom_band_column():
 
 @pytest.mark.integration_test
 def test_rasterio_to_bigquery_with_raster_multiple_default():
-    from raster_loader.io.bigquery import rasterio_to_table
-    from raster_loader.io.bigquery import table_to_records
-
     check_integration_config()
 
     table_name = "test_mosaic_multiple_default_bands"
 
-    rasterio_to_table(
+    fqn = f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}"
+
+    connector = BigQuery(BQ_PROJECT_ID)
+
+    connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
-        table_name,
-        BQ_DATASET_ID,
-        BQ_PROJECT_ID,
+        fqn,
         overwrite=True,
         bands_info=[(1, None), (2, None)],
     )
 
-    result = table_to_records(
-        table_id=table_name,
-        project_id=BQ_PROJECT_ID,
-        dataset_id=BQ_DATASET_ID,
-    )
+    result = connector.get_records(fqn, 20)
 
     # sort value because return query can vary the order of rows
     result = result.sort_values("block")
@@ -303,27 +282,22 @@ def test_rasterio_to_bigquery_with_raster_multiple_default():
 
 @pytest.mark.integration_test
 def test_rasterio_to_bigquery_with_raster_multiple_custom():
-    from raster_loader.io.bigquery import rasterio_to_table
-    from raster_loader.io.bigquery import table_to_records
-
     check_integration_config()
 
     table_name = "test_mosaic_multiple_custom_bands"
 
-    rasterio_to_table(
+    fqn = f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}"
+
+    connector = BigQuery(BQ_PROJECT_ID)
+
+    connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
-        table_name,
-        BQ_DATASET_ID,
-        BQ_PROJECT_ID,
+        fqn,
         overwrite=True,
         bands_info=[(1, "custom_band_1"), (2, "custom_band_2")],
     )
 
-    result = table_to_records(
-        table_id=table_name,
-        project_id=BQ_PROJECT_ID,
-        dataset_id=BQ_DATASET_ID,
-    )
+    result = connector.get_records(fqn, 20)
 
     # sort value because return query can vary the order of rows
     result = result.sort_values("block")
@@ -359,86 +333,71 @@ def test_rasterio_to_bigquery_with_raster_multiple_custom():
 
 
 @patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=False)
-def test_rasterio_to_bigquery_wrong_band_name_metadata(*args, **kwargs):
-    from raster_loader.io.bigquery import rasterio_to_table
-
+def test_rasterio_to_table_wrong_band_name_metadata(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    client = mocks.bigquery_client()
+    connector = mocks.MockBigQuery()
 
     with pytest.raises(IOError):
-        rasterio_to_table(
+        connector.upload_raster(
             os.path.join(fixtures_dir, "mosaic_cog.tif"),
-            table_name,
-            BQ_DATASET_ID,
-            BQ_PROJECT_ID,
+            f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
             overwrite=True,
-            client=client,
             bands_info=[(1, "metadata"), (2, "custom_band_2")],
         )
 
 
 @patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=False)
-def test_rasterio_to_bigquery_wrong_band_name_block(*args, **kwargs):
-    from raster_loader.io.bigquery import rasterio_to_table
-
+def test_rasterio_to_table_wrong_band_name_block(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    client = mocks.bigquery_client()
+    connector = mocks.MockBigQuery()
 
     with pytest.raises(IOError):
-        rasterio_to_table(
+        connector.upload_raster(
             os.path.join(fixtures_dir, "mosaic_cog.tif"),
-            table_name,
-            BQ_DATASET_ID,
-            BQ_PROJECT_ID,
+            f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
             overwrite=True,
-            client=client,
             bands_info=[(1, "block"), (2, "custom_band_2")],
         )
 
 
-@patch("raster_loader.io.bigquery.check_if_table_exists", return_value=False)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_exists", return_value=False)
 @patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=False)
 def test_rasterio_to_table(*args, **kwargs):
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
+    table_name = "test_mosaic_custom_band_column_1"
+    connector = mocks.MockBigQuery()
 
-    success = io.bigquery.rasterio_to_table(
-        test_file,
-        project_id="test",
-        dataset_id="test",
-        table_id="test",
-        client=client,
+    success = connector.upload_raster(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
     )
     assert success
 
 
-@patch("raster_loader.io.bigquery.check_if_table_exists", return_value=True)
-@patch("raster_loader.io.bigquery.delete_table", return_value=None)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_exists", return_value=True)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_is_empty", return_value=True)
+@patch("raster_loader.io.bigquery.BigQuery.delete_table", return_value=None)
 @patch("raster_loader.io.common.rasterio_windows_to_records", return_value={})
 @patch("raster_loader.io.common.rasterio_metadata", return_value={})
 @patch("raster_loader.io.common.get_number_of_blocks", return_value=1)
-@patch("raster_loader.io.bigquery.write_metadata", return_value=None)
-def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
+@patch("raster_loader.io.bigquery.BigQuery.write_metadata", return_value=None)
+def test_rasterio_to_table_overwrite(*args, **kwargs):
+    table_name = "test_mosaic_custom_band_column_1"
+    connector = mocks.MockBigQuery()
 
-    success = io.bigquery.rasterio_to_table(
-        test_file,
-        project_id="test",
-        dataset_id="test",
-        table_id="test",
-        client=client,
+    success = connector.upload_raster(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
         overwrite=True,
     )
     assert success
 
 
-@patch("raster_loader.io.bigquery.check_if_table_exists", return_value=True)
-@patch("raster_loader.io.bigquery.delete_table", return_value=None)
-@patch("raster_loader.io.bigquery.check_if_table_is_empty", return_value=False)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_exists", return_value=True)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_is_empty", return_value=False)
+@patch("raster_loader.io.bigquery.BigQuery.delete_table", return_value=None)
 @patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=True)
 @patch(
-    "raster_loader.io.bigquery.get_metadata",
+    "raster_loader.io.bigquery.BigQuery.get_metadata",
     return_value={
         "bounds": [0, 0, 0, 0],
         "block_resolution": 5,
@@ -450,131 +409,110 @@ def test_rasterio_to_bigquery_overwrite(*args, **kwargs):
         "num_pixels": 1,
     },
 )
-def test_rasterio_to_bigquery_table_is_not_empty_append(*args, **kwargs):
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
+def test_rasterio_to_table_is_not_empty_append(*args, **kwargs):
+    table_name = "test_mosaic_custom_band_column_1"
+    connector = mocks.MockBigQuery()
 
-    success = io.bigquery.rasterio_to_table(
-        test_file,
-        project_id="test",
-        dataset_id="test",
-        table_id="test",
-        client=client,
+    success = connector.upload_raster(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
     )
     assert success
 
 
-@patch("raster_loader.io.bigquery.check_if_table_exists", return_value=True)
-@patch("raster_loader.io.bigquery.delete_table", return_value=None)
-@patch("raster_loader.io.bigquery.check_if_table_is_empty", return_value=False)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_exists", return_value=True)
+@patch("raster_loader.io.bigquery.BigQuery.delete_table", return_value=None)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_is_empty", return_value=False)
 @patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=False)
-def test_rasterio_to_bigquery_table_is_not_empty_dont_append(*args, **kwargs):
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+def test_rasterio_to_table_is_not_empty_dont_append(*args, **kwargs):
+    table_name = "test_mosaic_custom_band_column_1"
+    connector = mocks.MockBigQuery()
 
     with pytest.raises(SystemExit):
-        io.bigquery.rasterio_to_table(
-            test_file,
-            project_id="test",
-            dataset_id="test",
-            table_id="test",
-            client=client,
+        connector.upload_raster(
+            os.path.join(fixtures_dir, "mosaic.tif"),
+            f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
         )
 
 
-@patch("raster_loader.io.bigquery.records_to_bigquery", side_effect=Exception())
-@patch("raster_loader.io.bigquery.delete_table", return_value=True)
+@patch("raster_loader.io.bigquery.BigQuery.upload_records", side_effect=Exception())
+@patch("raster_loader.io.bigquery.BigQuery.delete_table", return_value=True)
 @patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=True)
-def test_rasterio_to_bigquery_uploading_error(*args, **kwargs):
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+def test_rasterio_to_table_uploading_error(*args, **kwargs):
+    table_name = "test_mosaic_custom_band_column_1"
+    connector = mocks.MockBigQuery()
 
     with pytest.raises(IOError):
-        io.bigquery.rasterio_to_table(
-            test_file,
-            project_id="test",
-            dataset_id="test",
-            table_id="test",
-            client=client,
-            chunk_size=100,
+        connector.upload_raster(
+            os.path.join(fixtures_dir, "mosaic.tif"),
+            f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
         )
 
 
-@patch("raster_loader.io.bigquery.records_to_bigquery", side_effect=KeyboardInterrupt())
-@patch("raster_loader.io.bigquery.delete_table", return_value=True)
+@patch(
+    "raster_loader.io.bigquery.BigQuery.upload_records", side_effect=KeyboardInterrupt()
+)
+@patch("raster_loader.io.bigquery.BigQuery.delete_table", return_value=True)
 @patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=True)
-@patch("raster_loader.io.bigquery.check_if_table_exists", return_value=False)
-def test_rasterio_to_bigquery_keyboard_interrupt(*args, **kwargs):
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_exists", return_value=False)
+def test_rasterio_to_table_keyboard_interrupt(*args, **kwargs):
+    table_name = "test_mosaic_custom_band_column_1"
+    connector = mocks.MockBigQuery()
 
     with pytest.raises(KeyboardInterrupt):
-        io.bigquery.rasterio_to_table(
-            test_file,
-            project_id="test",
-            dataset_id="test",
-            table_id="test",
-            client=client,
-            chunk_size=100,
+        connector.upload_raster(
+            os.path.join(fixtures_dir, "mosaic_cog.tif"),
+            f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
         )
 
 
-@patch("raster_loader.io.bigquery.check_if_table_exists", return_value=False)
-def test_rasterio_to_bigquery_with_chunk_size(*args, **kwargs):
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_exists", return_value=False)
+def test_rasterio_to_table_with_chunk_size(*args, **kwargs):
+    table_name = "test_mosaic_custom_band_column_1"
+    connector = mocks.MockBigQuery()
 
-    success = io.bigquery.rasterio_to_table(
-        test_file,
-        project_id="test",
-        dataset_id="test",
-        table_id="test",
-        client=client,
-        chunk_size=100,
+    success = connector.upload_raster(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
+        chunk_size=1000,
     )
+
     assert success
 
 
-@patch("raster_loader.io.bigquery.check_if_table_exists", return_value=False)
-def test_rasterio_to_bigquery_with_one_chunk_size(*args, **kwargs):
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_exists", return_value=False)
+def test_rasterio_to_table_with_one_chunk_size(*args, **kwargs):
+    table_name = "test_mosaic_custom_band_column_1"
+    connector = mocks.MockBigQuery()
 
-    success = io.bigquery.rasterio_to_table(
-        test_file,
-        project_id="test",
-        dataset_id="test",
-        table_id="test",
-        client=client,
+    success = connector.upload_raster(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
         chunk_size=1,
     )
+
     assert success
 
 
-@patch("raster_loader.io.bigquery.check_if_table_exists", return_value=True)
-@patch("raster_loader.io.bigquery.delete_table", return_value=None)
-@patch("raster_loader.io.bigquery.check_if_table_is_empty", return_value=False)
-@patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=True)
-def test_rasterio_to_bigquery_invalid_raster(*args, **kwargs):
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic.tif")
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_exists", return_value=False)
+def test_rasterio_to_table_invalid_raster(*args, **kwargs):
+    table_name = "test_mosaic_custom_band_column_1"
+    connector = mocks.MockBigQuery()
 
     with pytest.raises(OSError):
-        io.bigquery.rasterio_to_table(
-            test_file,
-            project_id="test",
-            dataset_id="test",
-            table_id="test",
-            client=client,
+        connector.upload_raster(
+            os.path.join(fixtures_dir, "mosaic.tif"),
+            f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
+            chunk_size=1000,
         )
 
 
-@patch("raster_loader.io.bigquery.check_if_table_exists", return_value=True)
-@patch("raster_loader.io.bigquery.delete_table", return_value=None)
-@patch("raster_loader.io.bigquery.check_if_table_is_empty", return_value=False)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_exists", return_value=True)
+@patch("raster_loader.io.bigquery.BigQuery.delete_table", return_value=None)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_is_empty", return_value=False)
 @patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=True)
 @patch(
-    "raster_loader.io.bigquery.get_metadata",
+    "raster_loader.io.bigquery.BigQuery.get_metadata",
     return_value={
         "bounds": [0, 0, 0, 0],
         "block_resolution": 5,
@@ -587,41 +525,28 @@ def test_rasterio_to_bigquery_invalid_raster(*args, **kwargs):
     },
 )
 def test_rasterio_to_bigquery_valid_raster(*args, **kwargs):
-    from raster_loader.io.bigquery import rasterio_to_table
-
-    client = mocks.bigquery_client()
-    test_file = os.path.join(fixtures_dir, "mosaic_cog.tif")
-
-    success = rasterio_to_table(
-        test_file,
-        project_id="test",
-        dataset_id="test",
-        table_id="test",
-        client=client,
+    table_name = "test_mosaic_valid_raster".upper()
+    connector = mocks.MockBigQuery()
+    success = connector.upload_raster(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
     )
     assert success
 
 
-@patch("raster_loader.io.bigquery.check_if_table_exists", return_value=True)
-@patch("raster_loader.io.bigquery.delete_table", return_value=None)
-@patch("raster_loader.io.bigquery.check_if_table_is_empty", return_value=False)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_exists", return_value=True)
+@patch("raster_loader.io.bigquery.BigQuery.delete_table", return_value=None)
+@patch("raster_loader.io.bigquery.BigQuery.check_if_table_is_empty", return_value=False)
 @patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=True)
 @patch(
-    "raster_loader.io.bigquery.get_metadata",
+    "raster_loader.io.bigquery.BigQuery.get_metadata",
     return_value={"bounds": [0, 0, 0, 0], "block_resolution": 1},
 )
 def test_append_with_different_resolution(*args, **kwargs):
-    from raster_loader.io.bigquery import rasterio_to_table
-
-    client = mocks.bigquery_client()
-
+    table_name = "test_different_resolution"
+    connector = mocks.MockBigQuery()
     with pytest.raises(OSError):
-        rasterio_to_table(
+        connector.upload_raster(
             os.path.join(fixtures_dir, "mosaic_cog.tif"),
-            project_id="test",
-            dataset_id="test",
-            table_id="test",
-            overwrite=False,
-            append=True,
-            client=client,
+            f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
         )

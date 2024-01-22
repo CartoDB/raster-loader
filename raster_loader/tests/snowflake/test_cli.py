@@ -12,7 +12,8 @@ fixtures = os.path.join(here, "fixtures")
 tiff = os.path.join(fixtures, "mosaic_cog.tif")
 
 
-@patch("raster_loader.io.snowflake.rasterio_to_table", return_value=None)
+@patch("raster_loader.io.snowflake.Snowflake.upload_raster", return_value=None)
+@patch("raster_loader.io.snowflake.Snowflake.__init__", return_value=None)
 def test_snowflake_upload(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -38,13 +39,13 @@ def test_snowflake_upload(*args, **kwargs):
             1,
             "--band",
             1,
-            "--test",
         ],
     )
     assert result.exit_code == 0
 
 
-@patch("raster_loader.io.snowflake.rasterio_to_table", return_value=None)
+@patch("raster_loader.io.snowflake.Snowflake.upload_raster", return_value=None)
+@patch("raster_loader.io.snowflake.Snowflake.__init__", return_value=None)
 def test_bigquery_upload_multiple_bands(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -72,7 +73,6 @@ def test_bigquery_upload_multiple_bands(*args, **kwargs):
             1,
             "--band",
             2,
-            "--test",
         ],
     )
     assert result.exit_code == 0
@@ -109,7 +109,6 @@ def test_snowflake_fail_upload_multiple_bands_misaligned_with_band_names(
             "band_1",
             "--band",
             2,
-            "--test",
         ],
     )
     assert result.exit_code == 1
@@ -117,7 +116,8 @@ def test_snowflake_fail_upload_multiple_bands_misaligned_with_band_names(
     assert "The number of bands must equal the number of band names." in result.output
 
 
-@patch("raster_loader.io.snowflake.rasterio_to_table", return_value=None)
+@patch("raster_loader.io.snowflake.Snowflake.upload_raster", return_value=None)
+@patch("raster_loader.io.snowflake.Snowflake.__init__", return_value=None)
 def test_snowflake_upload_multiple_bands_aligned_with_band_names(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -149,13 +149,13 @@ def test_snowflake_upload_multiple_bands_aligned_with_band_names(*args, **kwargs
             "band_2",
             "--band",
             2,
-            "--test",
         ],
     )
     assert result.exit_code == 0
 
 
-@patch("raster_loader.io.snowflake.rasterio_to_table", return_value=None)
+@patch("raster_loader.io.snowflake.Snowflake.upload_raster", return_value=None)
+@patch("raster_loader.io.snowflake.Snowflake.__init__", return_value=None)
 def test_snowflake_upload_no_table_name(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -181,17 +181,17 @@ def test_snowflake_upload_no_table_name(*args, **kwargs):
             1,
             "--band",
             1,
-            "--test",
         ],
     )
     assert result.exit_code == 0
 
 
 @patch(
-    "raster_loader.io.snowflake.table_to_records",
+    "raster_loader.io.snowflake.Snowflake.get_records",
     return_value=pd.DataFrame.from_dict({"col_1": [1, 2], "col_2": ["a", "b"]}),
 )
-def test_snowflake_describe(mocker):
+@patch("raster_loader.io.snowflake.Snowflake.__init__", return_value=None)
+def test_snowflake_describe(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
         main,
@@ -210,7 +210,6 @@ def test_snowflake_describe(mocker):
             "username",
             "--password",
             "password",
-            "--test",
         ],
     )
     assert result.exit_code == 0

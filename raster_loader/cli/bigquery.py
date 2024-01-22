@@ -4,12 +4,7 @@ import uuid
 import click
 from functools import wraps, partial
 
-try:
-    import google.cloud.bigquery
-except ImportError:  # pragma: no cover
-    _has_bigquery = False
-else:
-    _has_bigquery = True
+from raster_loader.io.bigquery import BigQuery
 
 
 def catch_exception(func=None, *, handle=Exception):
@@ -69,7 +64,6 @@ def bigquery(args=None):
     default=False,
     is_flag=True,
 )
-@click.option("--test", help="Use Mock BigQuery Client", default=False, is_flag=True)
 @catch_exception()
 def upload(
     file_path,
@@ -81,11 +75,7 @@ def upload(
     chunk_size,
     overwrite=False,
     append=False,
-    test=False,
 ):
-    from raster_loader.tests.mocks import bigquery_client
-    from raster_loader.errors import import_error_bigquery
-    from raster_loader.io.bigquery import rasterio_to_table
     from raster_loader.io.common import (
         get_number_of_blocks,
         print_band_information,
@@ -108,14 +98,7 @@ def upload(
         table = os.path.basename(file_path).split(".")[0]
         table = "_".join([table, "band", str(band), str(uuid.uuid4())])
 
-    # swap out BigQuery client for testing purposes
-    if test:
-        client = bigquery_client()
-    else:  # pragma: no cover
-        """Requires bigquery."""
-        if not _has_bigquery:  # pragma: no cover
-            import_error_bigquery()
-        client = google.cloud.bigquery.Client(project=project)
+    connector = BigQuery(project)
 
     # introspect raster file
     num_blocks = get_number_of_blocks(file_path)
@@ -136,14 +119,12 @@ def upload(
 
     click.echo("Uploading Raster to BigQuery")
 
-    rasterio_to_table(
+    fqn = f"{project}.{dataset}.{table}"
+    connector.upload_raster(
         file_path,
-        table,
-        dataset,
-        project,
+        fqn,
         bands_info,
         chunk_size,
-        client=client,
         overwrite=overwrite,
         append=append,
     )
@@ -158,10 +139,11 @@ def upload(
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(project, dataset, table, limit):
-    from raster_loader.io.bigquery import table_to_records
+    connector = BigQuery(project)
 
-    df = table_to_records(table, dataset, project, limit)
-    print(f"Table: {project}.{dataset}.{table}")
+    fqn = f"{project}.{dataset}.{table}"
+    df = connector.get_records(fqn, limit)
+    print(f"Table: {fqn}")
     print(f"Number of rows: {len(df)}")
     print(f"Number of columns: {len(df.columns)}")
     print(f"Column names: {df.columns}")

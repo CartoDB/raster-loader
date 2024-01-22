@@ -4,14 +4,7 @@ import uuid
 import click
 from functools import wraps, partial
 
-try:
-    import snowflake.connector as connector
-except ImportError:  # pragma: no cover
-    _has_snowflake = False
-else:
-    _has_snowflake = True
-
-from raster_loader.errors import import_error_snowflake
+from raster_loader.io.snowflake import Snowflake
 
 
 def catch_exception(func=None, *, handle=Exception):
@@ -74,7 +67,6 @@ def snowflake(args=None):
     default=False,
     is_flag=True,
 )
-@click.option("--test", help="Use Mock Snowflake Client", default=False, is_flag=True)
 @catch_exception()
 def upload(
     account,
@@ -89,10 +81,7 @@ def upload(
     chunk_size,
     overwrite=False,
     append=False,
-    test=False,
 ):
-    from raster_loader.tests.mocks import snowflake_client
-    from raster_loader.io.snowflake import rasterio_to_table
     from raster_loader.io.common import (
         get_number_of_blocks,
         print_band_information,
@@ -115,14 +104,7 @@ def upload(
         table = os.path.basename(file_path).split(".")[0]
         table = "_".join([table, "band", str(band), str(uuid.uuid4())])
 
-    # swap out Snowflake client for testing purposes
-    if test:
-        client = snowflake_client()
-    else:  # pragma: no cover
-        """Requires snowflake."""
-        if not _has_snowflake:  # pragma: no cover
-            import_error_snowflake()
-        client = connector.connect(user=username, password=password, account=account)
+    connector = Snowflake(username=username, password=password, account=account)
 
     # introspect raster file
     num_blocks = get_number_of_blocks(file_path)
@@ -143,16 +125,14 @@ def upload(
 
     click.echo("Uploading Raster to Snowflake")
 
-    rasterio_to_table(
+    fqn = f"{database}.{schema}.{table}"
+    connector.upload_raster(
         file_path,
-        database,
-        schema,
-        table,
-        client,
+        fqn,
         bands_info,
         chunk_size,
-        overwrite,
-        append,
+        overwrite=overwrite,
+        append=append,
     )
 
     click.echo("Raster file uploaded to Snowflake")
@@ -167,20 +147,11 @@ def upload(
 @click.option("--schema", help="The name of the schema.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
 @click.option("--limit", help="Limit number of rows returned", default=10)
-@click.option("--test", help="Use Mock Snowflake Client", default=False, is_flag=True)
-def describe(account, username, password, database, schema, table, limit, test):
-    from raster_loader.io.snowflake import table_to_records
-    from raster_loader.tests.mocks import snowflake_client
-
-    if test:
-        client = snowflake_client()
-    else:
-        if not _has_snowflake:  # pragma: no cover
-            import_error_snowflake()
-        client = connector.connect(user=username, password=password, account=account)
-
-    df = table_to_records(database, schema, table, client, limit)
-    print(f"Table: {database}.{schema}.{table}")
+def describe(account, username, password, database, schema, table, limit):
+    fqn = f"{database}.{schema}.{table}"
+    connector = Snowflake(username=username, password=password, account=account)
+    df = connector.get_records(fqn, limit)
+    print(f"Table: {fqn}")
     print(f"Number of rows: {len(df)}")
     print(f"Number of columns: {len(df.columns)}")
     print(f"Column names: {df.columns}")

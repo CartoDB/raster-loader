@@ -152,8 +152,6 @@ def rasterio_metadata(
 
 def rasterio_windows_to_records(
     file_path: str,
-    create_table: Callable,
-    table_columns: Callable,
     band_rename_function: Callable,
     bands_info: List[Tuple[int, str]],
 ) -> Iterable:
@@ -181,15 +179,6 @@ def rasterio_windows_to_records(
         transformer = pyproj.Transformer.from_crs(
             raster_crs, "EPSG:4326", always_xy=True
         )
-
-        columns = table_columns(
-            [
-                band_field_name(band_name, band, band_rename_function)
-                for band, band_name in bands_info
-            ]
-        )
-        clustering = [band_rename_function("block")]
-        create_table(columns, clustering)
 
         for _, window in raster_dataset.block_windows():
             record = {}
