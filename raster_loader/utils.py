@@ -25,17 +25,3 @@ def batched(iterable, n):
     it = iter(iterable)
     while batch := tuple(islice(it, n)):  # noqa
         yield batch
-
-
-def bigquery_sql_quote(value: any) -> str:
-    if isinstance(value, str):
-        value = value.replace("\\", "\\\\")
-        return f"'''{value}'''"
-    return str(value)
-
-
-def snowflake_sql_quote(value: any) -> str:
-    if isinstance(value, str):
-        value = value.replace("\\", "\\\\")
-        return f"'{value}'"
-    return str(value)

@@ -9,7 +9,7 @@ from raster_loader.errors import (
     import_error_snowflake,
 )
 
-from raster_loader.utils import ask_yes_no_question, batched, snowflake_sql_quote
+from raster_loader.utils import ask_yes_no_question, batched
 
 from raster_loader.io.common import (
     rasterio_metadata,
@@ -55,7 +55,7 @@ class Snowflake(DataWarehouse):
                 SET metadata = (
                     SELECT TO_JSON(
                         PARSE_JSON(
-                            {snowflake_sql_quote(json.dumps(metadata))}
+                            {self.quote(json.dumps(metadata))}
                         )
                     )
                 ) WHERE block = 0
