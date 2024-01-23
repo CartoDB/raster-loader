@@ -35,9 +35,9 @@ Using the Raster Loader with Snowflake
 Before you can upload a raster file, you need to have set up the following in
 Snowflake:
 
-#. A `Snowflake account`_
-#. A `Snowflake database`_
-#. A `Snowflake schema`_
+#. A Snowflake account
+#. A Snowflake database
+#. A Snowflake schema
 
 To use the snowflake utilities, use the ``carto snowflake`` command. This command has
 several subcommands, which are described below.
