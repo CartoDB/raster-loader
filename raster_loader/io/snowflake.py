@@ -30,7 +30,7 @@ else:
 
 
 class Snowflake(DataWarehouse):
-    def __init__(self, username, password, account):
+    def __init__(self, username, password, account, database, schema):
         if not _has_snowflake:
             import_error_snowflake()
 
@@ -38,6 +38,8 @@ class Snowflake(DataWarehouse):
             user=username,
             password=password,
             account=account,
+            database=database.upper(),
+            schema=schema.upper(),
         )
 
     def band_rename_function(self, band_name: str):
@@ -165,6 +167,8 @@ class Snowflake(DataWarehouse):
         bands_info = bands_info or [(1, None)]
 
         append_records = False
+
+        fqn = fqn.upper()
 
         try:
             if (

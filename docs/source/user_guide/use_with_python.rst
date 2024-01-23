@@ -24,13 +24,13 @@ For Snowflake:
 
 .. code-block:: python
 
-    connection = Snowflake(``my-user``, ``my-password``, ``my-account``)
+    connection = Snowflake('my-user', 'my-password', 'my-account', 'my-database', 'my-schema')
 
 For BigQuery:
 
 .. code-block:: python
 
-    connection = BigQuery(``my-project``)
+    connection = BigQuery('my-project')
 
 .. note::
 

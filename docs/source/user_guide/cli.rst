@@ -91,7 +91,7 @@ The same operation, performed with Snowflake, would be:
      --schema my-snowflake-schema \
      --table my-snowflake-table \
      --account my-snowflake-account \
-     --user my-snowflake-user \
+     --username my-snowflake-user \
      --password my-snowflake-password \
      --overwrite
 

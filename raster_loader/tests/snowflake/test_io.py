@@ -49,7 +49,7 @@ def test_rasterio_to_snowflake_with_raster_default_band_name():
     table_name = "test_mosaic_1".upper()
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
-    connector = Snowflake(SF_USERNAME, SF_PASSWORD, SF_ACCOUNT)
+    connector = Snowflake(SF_USERNAME, SF_PASSWORD, SF_ACCOUNT, SF_DATABASE, SF_SCHEMA)
 
     connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
@@ -91,7 +91,7 @@ def test_rasterio_to_snowflake_appending_rows():
     table_name = "test_mosaic_append_rows".upper()
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
-    connector = Snowflake(SF_USERNAME, SF_PASSWORD, SF_ACCOUNT)
+    connector = Snowflake(SF_USERNAME, SF_PASSWORD, SF_ACCOUNT, SF_DATABASE, SF_SCHEMA)
 
     connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog_1_1.tif"),
@@ -167,7 +167,7 @@ def test_rasterio_to_snowflake_with_raster_custom_band_column():
     table_name = "test_mosaic_custom_band_column_1".upper()
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
-    connector = Snowflake(SF_USERNAME, SF_PASSWORD, SF_ACCOUNT)
+    connector = Snowflake(SF_USERNAME, SF_PASSWORD, SF_ACCOUNT, SF_DATABASE, SF_SCHEMA)
 
     connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
@@ -213,7 +213,7 @@ def test_rasterio_to_snowflake_with_raster_multiple_default():
     table_name = "test_mosaic_multiple_default_bands".upper()
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
-    connector = Snowflake(SF_USERNAME, SF_PASSWORD, SF_ACCOUNT)
+    connector = Snowflake(SF_USERNAME, SF_PASSWORD, SF_ACCOUNT, SF_DATABASE, SF_SCHEMA)
 
     connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
@@ -264,7 +264,7 @@ def test_rasterio_to_snowflake_with_raster_multiple_custom():
     table_name = "test_mosaic_multiple_custom_bands".upper()
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
-    connector = Snowflake(SF_USERNAME, SF_PASSWORD, SF_ACCOUNT)
+    connector = Snowflake(SF_USERNAME, SF_PASSWORD, SF_ACCOUNT, SF_DATABASE, SF_SCHEMA)
 
     connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),

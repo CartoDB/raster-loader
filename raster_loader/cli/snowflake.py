@@ -104,7 +104,13 @@ def upload(
         table = os.path.basename(file_path).split(".")[0]
         table = "_".join([table, "band", str(band), str(uuid.uuid4())])
 
-    connector = Snowflake(username=username, password=password, account=account)
+    connector = Snowflake(
+        username=username,
+        password=password,
+        account=account,
+        database=database,
+        schema=schema,
+    )
 
     # introspect raster file
     num_blocks = get_number_of_blocks(file_path)
@@ -149,7 +155,13 @@ def upload(
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(account, username, password, database, schema, table, limit):
     fqn = f"{database}.{schema}.{table}"
-    connector = Snowflake(username=username, password=password, account=account)
+    connector = Snowflake(
+        username=username,
+        password=password,
+        account=account,
+        database=database,
+        schema=schema,
+    )
     df = connector.get_records(fqn, limit)
     print(f"Table: {fqn}")
     print(f"Number of rows: {len(df)}")
