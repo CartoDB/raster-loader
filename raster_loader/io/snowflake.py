@@ -51,6 +51,7 @@ class Snowflake(DataWarehouse):
         append_records,
         fqn,
     ):
+        fqn = fqn.upper()
         if append_records:
             query = f"""
                 UPDATE {fqn}
@@ -87,7 +88,7 @@ class Snowflake(DataWarehouse):
     def get_metadata(self, fqn: str):
         query = f"""
             SELECT metadata
-            FROM {fqn}
+            FROM {fqn.upper()}
             WHERE block = 0
         """
         result = self.execute(query)
@@ -108,7 +109,7 @@ class Snowflake(DataWarehouse):
 
         data_df = pd.DataFrame(records_list)
 
-        database, schema, table = fqn.split(".")
+        database, schema, table = fqn.upper().split(".")
 
         return write_pandas(
             conn=self.client,
@@ -128,12 +129,12 @@ class Snowflake(DataWarehouse):
         return self.client.cursor().execute(sql).fetch_pandas_all()
 
     def check_if_table_exists(self, fqn: str):  # pragma: no cover
-        database, schema, table = fqn.split(".")
+        database, schema, table = fqn.upper().split(".")
         query = f"""
             SELECT *
             FROM {database}.INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_SCHEMA = '{schema.upper()}'
-            AND TABLE_NAME = '{table.upper()}';
+            WHERE TABLE_SCHEMA = '{schema}'
+            AND TABLE_NAME = '{table}';
             """
         res = self.execute(query)
 
