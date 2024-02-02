@@ -206,11 +206,15 @@ class Snowflake(DataWarehouse):
                 with tqdm(total=total_blocks) as pbar:
                     if total_blocks < chunk_size:
                         chunk_size = total_blocks
+                    isFirstBatch = True
                     for records in batched(records_gen, chunk_size):
-                        ret = self.upload_records(records, fqn, overwrite)
+                        ret = self.upload_records(
+                            records, fqn, overwrite and isFirstBatch
+                        )
                         pbar.update(chunk_size)
                         if not ret:
                             raise IOError("Error uploading to Snowflake.")
+                        isFirstBatch = False
                     pbar.update(1)
 
             print("Writing metadata to Snowflake...")

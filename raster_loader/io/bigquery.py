@@ -47,7 +47,7 @@ class BigQuery(DataWarehouse):
     def quote_name(self, name):
         return f"`{name}`"
 
-    def upload_records(self, records: Iterable, fqn, overwrite):
+    def upload_records(self, records: Iterable, fqn):
         records = list(records)
 
         data_df = pd.DataFrame(records)
@@ -57,7 +57,6 @@ class BigQuery(DataWarehouse):
                 bigquery.SchemaField("block", bigquery.enums.SqlTypeNames.INT64),
                 bigquery.SchemaField("metadata", bigquery.enums.SqlTypeNames.STRING),
             ],
-            write_disposition="WRITE_TRUNCATE" if overwrite else "WRITE_APPEND",
             clustering_fields=["block"],
         )
 
@@ -83,18 +82,19 @@ class BigQuery(DataWarehouse):
         append_records = False
 
         try:
-            if (
-                self.check_if_table_exists(fqn)
-                and not self.check_if_table_is_empty(fqn)
-                and not overwrite
+            if self.check_if_table_exists(fqn) and not self.check_if_table_is_empty(
+                fqn
             ):
-                append_records = append or ask_yes_no_question(
-                    f"Table {fqn} already exists "
-                    "and is not empty. Append records? [yes/no] "
-                )
+                if overwrite:
+                    self.delete_bigquery_table(fqn)
+                else:
+                    append_records = append or ask_yes_no_question(
+                        f"Table {fqn} already exists "
+                        "and is not empty. Append records? [yes/no] "
+                    )
 
-                if not append_records:
-                    exit()
+                    if not append_records:
+                        exit()
 
             metadata = rasterio_metadata(
                 file_path, bands_info, self.band_rename_function
@@ -113,7 +113,7 @@ class BigQuery(DataWarehouse):
 
             total_blocks = get_number_of_blocks(file_path)
             if chunk_size is None:
-                job = self.upload_records(records_gen, fqn, overwrite)
+                job = self.upload_records(records_gen, fqn)
                 # raise error if job went wrong (blocking call)
                 job.result()
             else:
@@ -139,7 +139,7 @@ class BigQuery(DataWarehouse):
                             pass
 
                     for records in batched(records_gen, chunk_size):
-                        job = self.upload_records(records, fqn, overwrite)
+                        job = self.upload_records(records, fqn)
                         job.num_records = len(records)
 
                         job.add_done_callback(partial(lambda job: done_callback(job)))
@@ -192,6 +192,13 @@ class BigQuery(DataWarehouse):
 
         print("Done.")
         return True
+
+    def delete_bigquery_table(self, fqn: str):
+        try:
+            self.client.delete_table(fqn, not_found_ok=True)
+            return True
+        except Exception:
+            return False
 
     def check_if_table_exists(self, fqn: str):
         try:
