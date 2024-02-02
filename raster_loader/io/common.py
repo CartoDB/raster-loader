@@ -98,7 +98,7 @@ def rasterio_metadata(
     metadata["minresolution"] = resolution
     metadata["maxresolution"] = resolution
     metadata["nodata"] = raster_info["Profile"]["Nodata"]
-    if math.isnan(metadata["nodata"]):
+    if metadata["nodata"] is not None and math.isnan(metadata["nodata"]):
         metadata["nodata"] = None
 
     with rasterio.open(file_path) as raster_dataset:
