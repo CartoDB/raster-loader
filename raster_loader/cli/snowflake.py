@@ -4,7 +4,7 @@ import uuid
 import click
 from functools import wraps, partial
 
-from raster_loader.io.bigquery import BigQueryConnection
+from raster_loader.io.snowflake import SnowflakeConnection
 
 
 def catch_exception(func=None, *, handle=Exception):
@@ -22,17 +22,20 @@ def catch_exception(func=None, *, handle=Exception):
 
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
-def bigquery(args=None):
+def snowflake(args=None):
     """
-    Manage Google BigQuery resources.
+    Manage Snowflake resources.
     """
     pass
 
 
-@bigquery.command(help="Upload a raster file to Google BigQuery.")
+@snowflake.command(help="Upload a raster file to Snowflake.")
+@click.option("--account", help="The Swnoflake account.", required=True)
+@click.option("--username", help="The username.", required=True)
+@click.option("--password", help="The password.", required=True)
 @click.option("--file_path", help="The path to the raster file.", required=True)
-@click.option("--project", help="The name of the Google Cloud project.", required=True)
-@click.option("--dataset", help="The name of the dataset.", required=True)
+@click.option("--database", help="The name of the database.", required=True)
+@click.option("--schema", help="The name of the schema.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
 @click.option(
     "--band",
@@ -66,9 +69,12 @@ def bigquery(args=None):
 )
 @catch_exception()
 def upload(
+    account,
+    username,
+    password,
     file_path,
-    project,
-    dataset,
+    database,
+    schema,
     table,
     band,
     band_name,
@@ -98,13 +104,19 @@ def upload(
         table = os.path.basename(file_path).split(".")[0]
         table = "_".join([table, "band", str(band), str(uuid.uuid4())])
 
-    connector = BigQueryConnection(project)
+    connector = SnowflakeConnection(
+        username=username,
+        password=password,
+        account=account,
+        database=database,
+        schema=schema,
+    )
 
     # introspect raster file
     num_blocks = get_number_of_blocks(file_path)
     file_size_mb = os.path.getsize(file_path) / 1024 / 1024
 
-    click.echo("Preparing to upload raster file to BigQuery...")
+    click.echo("Preparing to upload raster file to Snowflake...")
     click.echo("File Path: {}".format(file_path))
     click.echo("File Size: {} MB".format(file_size_mb))
     print_band_information(file_path)
@@ -112,14 +124,14 @@ def upload(
     click.echo("Band Name: {}".format(band_name))
     click.echo("Number of Blocks: {}".format(num_blocks))
     click.echo("Block Dims: {}".format(get_block_dims(file_path)))
-    click.echo("Project: {}".format(project))
-    click.echo("Dataset: {}".format(dataset))
+    click.echo("Database: {}".format(database))
+    click.echo("Schema: {}".format(schema))
     click.echo("Table: {}".format(table))
-    click.echo("Number of Records Per BigQuery Append: {}".format(chunk_size))
+    click.echo("Number of Records Per Snowflake Append: {}".format(chunk_size))
 
-    click.echo("Uploading Raster to BigQuery")
+    click.echo("Uploading Raster to Snowflake")
 
-    fqn = f"{project}.{dataset}.{table}"
+    fqn = f"{database}.{schema}.{table}"
     connector.upload_raster(
         file_path,
         fqn,
@@ -129,19 +141,27 @@ def upload(
         append=append,
     )
 
-    click.echo("Raster file uploaded to Google BigQuery")
+    click.echo("Raster file uploaded to Snowflake")
     return 0
 
 
-@bigquery.command(help="Load and describe a table from BigQuery")
-@click.option("--project", help="The name of the Google Cloud project.", required=True)
-@click.option("--dataset", help="The name of the dataset.", required=True)
-@click.option("--table", help="The name of the table.", required=True)
+@snowflake.command(help="Load and describe a table from Snowflake")
+@click.option("--account", help="The Swnoflake account.", required=True)
+@click.option("--username", help="The username.", required=True)
+@click.option("--password", help="The password.", required=True)
+@click.option("--database", help="The name of the database.", required=True)
+@click.option("--schema", help="The name of the schema.", required=True)
+@click.option("--table", help="The name of the table.", default=None)
 @click.option("--limit", help="Limit number of rows returned", default=10)
-def describe(project, dataset, table, limit):
-    connector = BigQueryConnection(project)
-
-    fqn = f"{project}.{dataset}.{table}"
+def describe(account, username, password, database, schema, table, limit):
+    fqn = f"{database}.{schema}.{table}"
+    connector = SnowflakeConnection(
+        username=username,
+        password=password,
+        account=account,
+        database=database,
+        schema=schema,
+    )
     df = connector.get_records(fqn, limit)
     print(f"Table: {fqn}")
     print(f"Number of rows: {len(df)}")

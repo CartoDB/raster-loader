@@ -3,18 +3,34 @@
 Usage with Python projects
 ==========================
 
-After installing Raster Loader, you can import the package into your Python project. For
-example:
+After installing Raster Loader, you can use it in your Python project.
+
+First, import the corresponding connection class from the ``raster_loader`` package.
+For Snowflake, use ``SnowflakeConnection``:
 
 .. code-block:: python
 
-   from raster_loader import rasterio_to_bigquery, bigquery_to_records
+   from raster_loader import SnowflakeConnection
 
-Uploading a raster file to BigQuery
------------------------------------
+For BigQuery, use ``BigQueryConnection``:
 
-Currently, Raster Loader allows you to upload a local raster file to an existing
-BigQuery table using the :func:`~raster_loader.rasterio_to_bigquery` function.
+.. code-block:: python
+
+   from raster_loader import BigQueryConnection
+
+Then, create a connection object with the appropriate parameters.
+
+For Snowflake:
+
+.. code-block:: python
+
+    connection = SnowflakeConnection('my-user', 'my-password', 'my-account', 'my-database', 'my-schema')
+
+For BigQuery:
+
+.. code-block:: python
+
+    connection = BigQueryConnection('my-project')
 
 .. note::
 
@@ -22,15 +38,19 @@ BigQuery table using the :func:`~raster_loader.rasterio_to_bigquery` function.
     environment variable to be set to the path of a JSON file containing your BigQuery
     credentials. See the `GCP documentation`_ for more information.
 
+Uploading a raster file to BigQuery
+-----------------------------------
+
+To upload a raster file, use the ``upload_raster`` function
+
+
 For example:
 
 .. code-block:: python
 
-    rasterio_to_bigquery(
+    connector.upload_raster(
         file_path = 'path/to/raster.tif',
-        project_id = 'my-project',
-        dataset_id = 'my_dataset',
-        table_id = 'my_table',
+        fqn = 'database.schema.tablename',
     )
 
 This function returns `True` if the upload was successful.
@@ -40,22 +60,20 @@ by converting it with the following GDAL command:
 
 .. code-block:: bash
 
-   gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO -co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif
+   gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO -co RESAMPLING=NEAREST -co BLOCKSIZE=512 <input_raster>.tif <output_raster>.tif
 
-Inspecting a raster file on BigQuery
-------------------------------------
+Inspecting a raster file
+------------------------
 
-You can also access and inspect a raster file located in a BigQuery table using the
-:func:`~raster_loader.bigquery_to_records` function.
+You can also access and inspect a raster file located in a BigQuery or Snowflake table using the
+:func:`get_records` function.
 
 For example:
 
 .. code-block:: python
 
-    records_df = bigquery_to_records(
-        project_id = 'my-project',
-        dataset_id = 'my_dataset',
-        table_id = 'my_table',
+    records = connector.get_records(
+        fqn = 'database.schema.tablename',
     )
 
 This function returns a DataFrame with some samples from the raster table on BigQuery

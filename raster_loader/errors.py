@@ -9,6 +9,17 @@ def import_error_bigquery():  # pragma: no cover
     raise ImportError(msg)
 
 
+def import_error_snowflake():  # pragma: no cover
+    msg = (
+        "Google Snowflake is not installed.\n"
+        "Please install Snowflake to use this function.\n"
+        "See https://docs.snowflake.com/en/developer-guide/python-connector\n"
+        "for installation instructions.\n"
+        "OR, run `pip install snowflake-connector-python` to install from pypi."
+    )
+    raise ImportError(msg)
+
+
 def import_error_rasterio():  # pragma: no cover
     msg = (
         "Rasterio is not installed.\n"
@@ -50,7 +61,8 @@ class IncompatibleRasterException(Exception):
             "by converting it using the following command:\n"
             "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible "
             "-co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO "
-            "-co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif"
+            "-co RESAMPLING=NEAREST -co BLOCKSIZE=512 "
+            "<input_raster>.tif <output_raster>.tif"
         )
 
 
