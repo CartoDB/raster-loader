@@ -61,7 +61,8 @@ class IncompatibleRasterException(Exception):
             "by converting it using the following command:\n"
             "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible "
             "-co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO "
-            "-co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif"
+            "-co RESAMPLING=NEAREST -co BLOCKSIZE=512 "
+            "<input_raster>.tif <output_raster>.tif"
         )
 
 

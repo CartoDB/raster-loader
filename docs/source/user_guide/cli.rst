@@ -52,7 +52,7 @@ by converting it with the following GDAL command:
 
 .. code-block:: bash
 
-   gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO -co RESAMPLING=NEAREST <input_raster>.tif <output_raster>.tif
+   gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE -co OVERVIEWS=NONE -co ADD_ALPHA=NO -co RESAMPLING=NEAREST -co BLOCKSIZE=512 <input_raster>.tif <output_raster>.tif
 
 You have the option to also set up a table in your provider and use this table to upload
 your data to. In case you do not specify a table name, Raster Loader will automatically
