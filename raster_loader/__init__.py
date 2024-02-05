@@ -1,14 +1,14 @@
 from raster_loader._version import __version__
 
 from raster_loader.io.bigquery import (
-    BigQuery,
+    BigQueryConnection,
 )
 from raster_loader.io.snowflake import (
-    Snowflake,
+    SnowflakeConnection,
 )
 
 __all__ = [
     "__version__",
-    "BigQuery",
-    "Snowflake",
+    "BigQueryConnection",
+    "SnowflakeConnection",
 ]

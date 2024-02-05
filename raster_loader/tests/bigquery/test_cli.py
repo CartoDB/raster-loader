@@ -12,8 +12,8 @@ fixtures = os.path.join(here, "fixtures")
 tiff = os.path.join(fixtures, "mosaic_cog.tif")
 
 
-@patch("raster_loader.cli.bigquery.BigQuery.upload_raster", return_value=None)
-@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
 def test_bigquery_upload(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -38,8 +38,8 @@ def test_bigquery_upload(*args, **kwargs):
     assert result.exit_code == 0
 
 
-@patch("raster_loader.cli.bigquery.BigQuery.upload_raster", return_value=None)
-@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
 def test_bigquery_upload_multiple_bands(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -66,7 +66,7 @@ def test_bigquery_upload_multiple_bands(*args, **kwargs):
     assert result.exit_code == 0
 
 
-@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
 def test_bigquery_fail_upload_multiple_bands_misaligned_with_band_names(
     *args, **kwargs
 ):
@@ -99,8 +99,8 @@ def test_bigquery_fail_upload_multiple_bands_misaligned_with_band_names(
     assert "The number of bands must equal the number of band names." in result.output
 
 
-@patch("raster_loader.cli.bigquery.BigQuery.upload_raster", return_value=None)
-@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
 def test_bigquery_upload_multiple_bands_aligned_with_band_names(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -131,8 +131,8 @@ def test_bigquery_upload_multiple_bands_aligned_with_band_names(*args, **kwargs)
     assert result.exit_code == 0
 
 
-@patch("raster_loader.cli.bigquery.BigQuery.upload_raster", return_value=None)
-@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
 def test_bigquery_upload_no_table_name(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -156,10 +156,10 @@ def test_bigquery_upload_no_table_name(*args, **kwargs):
 
 
 @patch(
-    "raster_loader.io.bigquery.BigQuery.get_records",
+    "raster_loader.io.bigquery.BigQueryConnection.get_records",
     return_value=pd.DataFrame.from_dict({"col_1": [1, 2], "col_2": ["a", "b"]}),
 )
-@patch("raster_loader.cli.bigquery.BigQuery.__init__", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
 def test_bigquery_describe(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(

@@ -4,7 +4,7 @@ import uuid
 import click
 from functools import wraps, partial
 
-from raster_loader.io.snowflake import Snowflake
+from raster_loader.io.snowflake import SnowflakeConnection
 
 
 def catch_exception(func=None, *, handle=Exception):
@@ -104,7 +104,7 @@ def upload(
         table = os.path.basename(file_path).split(".")[0]
         table = "_".join([table, "band", str(band), str(uuid.uuid4())])
 
-    connector = Snowflake(
+    connector = SnowflakeConnection(
         username=username,
         password=password,
         account=account,
@@ -155,7 +155,7 @@ def upload(
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(account, username, password, database, schema, table, limit):
     fqn = f"{database}.{schema}.{table}"
-    connector = Snowflake(
+    connector = SnowflakeConnection(
         username=username,
         password=password,
         account=account,

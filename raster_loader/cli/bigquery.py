@@ -4,7 +4,7 @@ import uuid
 import click
 from functools import wraps, partial
 
-from raster_loader.io.bigquery import BigQuery
+from raster_loader.io.bigquery import BigQueryConnection
 
 
 def catch_exception(func=None, *, handle=Exception):
@@ -98,7 +98,7 @@ def upload(
         table = os.path.basename(file_path).split(".")[0]
         table = "_".join([table, "band", str(band), str(uuid.uuid4())])
 
-    connector = BigQuery(project)
+    connector = BigQueryConnection(project)
 
     # introspect raster file
     num_blocks = get_number_of_blocks(file_path)
@@ -139,7 +139,7 @@ def upload(
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(project, dataset, table, limit):
-    connector = BigQuery(project)
+    connector = BigQueryConnection(project)
 
     fqn = f"{project}.{dataset}.{table}"
     df = connector.get_records(fqn, limit)

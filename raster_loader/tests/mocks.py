@@ -1,8 +1,8 @@
 from threading import Timer
 from functools import partial
 
-from raster_loader.io.bigquery import BigQuery
-from raster_loader.io.snowflake import Snowflake
+from raster_loader.io.bigquery import BigQueryConnection
+from raster_loader.io.snowflake import SnowflakeConnection
 
 
 def bigquery_client(load_error=False):
@@ -39,7 +39,7 @@ def bigquery_client(load_error=False):
     return BigQueryClient(load_error=load_error)
 
 
-class MockBigQuery(BigQuery):
+class MockBigQueryConnection(BigQueryConnection):
     def __init__(self, *args, **kwargs):
         self.client = bigquery_client()
 
@@ -70,6 +70,6 @@ def snowflake_client(load_error=False):
     return SnowflakeClient(load_error=load_error)
 
 
-class MockSnowflake(Snowflake):
+class MockSnowflakeConnection(SnowflakeConnection):
     def __init__(self, *args, **kwargs):
         self.client = snowflake_client()

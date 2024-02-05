@@ -3,7 +3,7 @@ import pandas as pd
 from typing import List
 
 
-class DataWarehouse:
+class DataWarehouseConnection:
     def __init__(self, *args, **kwargs):
         pass
 

@@ -23,10 +23,10 @@ except ImportError:  # pragma: no cover
 else:
     _has_bigquery = True
 
-from raster_loader.io.datawarehouse import DataWarehouse
+from raster_loader.io.datawarehouse import DataWarehouseConnection
 
 
-class BigQuery(DataWarehouse):
+class BigQueryConnection(DataWarehouseConnection):
     def __init__(self, project):
         if not _has_bigquery:  # pragma: no cover
             import_error_bigquery()

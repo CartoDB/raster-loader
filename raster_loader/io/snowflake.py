@@ -18,7 +18,7 @@ from raster_loader.io.common import (
     check_metadata_is_compatible,
     update_metadata,
 )
-from raster_loader.io.datawarehouse import DataWarehouse
+from raster_loader.io.datawarehouse import DataWarehouseConnection
 
 try:
     from snowflake.connector.pandas_tools import write_pandas
@@ -29,7 +29,7 @@ else:
     _has_snowflake = True
 
 
-class Snowflake(DataWarehouse):
+class SnowflakeConnection(DataWarehouseConnection):
     def __init__(self, username, password, account, database, schema):
         if not _has_snowflake:
             import_error_snowflake()

@@ -6,17 +6,17 @@ Usage with Python projects
 After installing Raster Loader, you can use it in your Python project.
 
 First, import the corresponding connection class from the ``raster_loader`` package.
-For Snowflake, use ``Snowflake``:
+For Snowflake, use ``SnowflakeConnection``:
 
 .. code-block:: python
 
-   from raster_loader import Snowflake
+   from raster_loader import SnowflakeConnection
 
-For BigQuery, use ``BigQuery``:
+For BigQuery, use ``BigQueryConnection``:
 
 .. code-block:: python
 
-   from raster_loader import BigQuery
+   from raster_loader import BigQueryConnection
 
 Then, create a connection object with the appropriate parameters.
 
@@ -24,13 +24,13 @@ For Snowflake:
 
 .. code-block:: python
 
-    connection = Snowflake('my-user', 'my-password', 'my-account', 'my-database', 'my-schema')
+    connection = SnowflakeConnection('my-user', 'my-password', 'my-account', 'my-database', 'my-schema')
 
 For BigQuery:
 
 .. code-block:: python
 
-    connection = BigQuery('my-project')
+    connection = BigQueryConnection('my-project')
 
 .. note::
 
