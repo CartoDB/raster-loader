@@ -1,10 +1,11 @@
 import os
+from urllib.parse import urlparse
 import uuid
 
 import click
 from functools import wraps, partial
 
-from raster_loader.io.bigquery import BigQueryConnection
+from raster_loader.io.bigquery import BigQueryConnection, AccessTokenCredentials
 
 
 def catch_exception(func=None, *, handle=Exception):
@@ -30,8 +31,14 @@ def bigquery(args=None):
 
 
 @bigquery.command(help="Upload a raster file to Google BigQuery.")
-@click.option("--file_path", help="The path to the raster file.", required=True)
+@click.option(
+    "--file_path", help="The path to the raster file.", required=False, default=None
+)
+@click.option(
+    "--file_url", help="The path to the raster file.", required=False, default=None
+)
 @click.option("--project", help="The name of the Google Cloud project.", required=True)
+@click.option("--token", help="An access token to authenticate with.", default=None)
 @click.option("--dataset", help="The name of the dataset.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
 @click.option(
@@ -67,7 +74,9 @@ def bigquery(args=None):
 @catch_exception()
 def upload(
     file_path,
+    file_url,
     project,
+    token,
     dataset,
     table,
     band,
@@ -82,6 +91,14 @@ def upload(
         get_block_dims,
     )
 
+    if file_path is None and file_url is None:
+        raise ValueError("Either --file_path or --file_url must be provided.")
+
+    if file_path and file_url:
+        raise ValueError("Only one of --file_path or --file_url must be provided.")
+
+    is_local_file = file_path is not None
+
     # check that band and band_name are the same length
     # if band_name provided
     if band_name != (None,):
@@ -95,23 +112,36 @@ def upload(
 
     # create default table name if not provided
     if table is None:
-        table = os.path.basename(file_path).split(".")[0]
+        if is_local_file:
+            base_path = file_path
+        else:
+            base_path = urlparse(file_url).path
+
+        table = os.path.basename(base_path).split(".")[0]
         table = "_".join([table, "band", str(band), str(uuid.uuid4())])
 
-    connector = BigQueryConnection(project)
+    credentials = None
+    if token is not None:
+        credentials = AccessTokenCredentials(token)
+
+    connector = BigQueryConnection(project, credentials)
+
+    source = file_path if is_local_file else file_url
 
     # introspect raster file
-    num_blocks = get_number_of_blocks(file_path)
-    file_size_mb = os.path.getsize(file_path) / 1024 / 1024
+    num_blocks = get_number_of_blocks(source)
+    file_size_mb = 0
+    if is_local_file:
+        file_size_mb = os.path.getsize(file_path) / 1024 / 1024
 
     click.echo("Preparing to upload raster file to BigQuery...")
-    click.echo("File Path: {}".format(file_path))
+    click.echo("File Path: {}".format(source))
     click.echo("File Size: {} MB".format(file_size_mb))
-    print_band_information(file_path)
+    print_band_information(source)
     click.echo("Source Band: {}".format(band))
     click.echo("Band Name: {}".format(band_name))
     click.echo("Number of Blocks: {}".format(num_blocks))
-    click.echo("Block Dims: {}".format(get_block_dims(file_path)))
+    click.echo("Block Dims: {}".format(get_block_dims(source)))
     click.echo("Project: {}".format(project))
     click.echo("Dataset: {}".format(dataset))
     click.echo("Table: {}".format(table))
@@ -121,7 +151,7 @@ def upload(
 
     fqn = f"{project}.{dataset}.{table}"
     connector.upload_raster(
-        file_path,
+        source,
         fqn,
         bands_info,
         chunk_size,

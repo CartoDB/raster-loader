@@ -40,6 +40,55 @@ def test_bigquery_upload(*args, **kwargs):
 
 @patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
 @patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
+def test_bigquery_file_path_or_url_check(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+            "--chunk_size",
+            1,
+            "--band",
+            1,
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Either --file_path or --file_url must be provided" in result.output
+
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--file_url",
+            "http://example.com/raster.tif",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+            "--chunk_size",
+            1,
+            "--band",
+            1,
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Only one of --file_path or --file_url must be provided" in result.output
+
+
+@patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
 def test_bigquery_upload_multiple_bands(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -153,6 +202,7 @@ def test_bigquery_upload_no_table_name(*args, **kwargs):
         ],
     )
     assert result.exit_code == 0
+    assert "Table: mosaic_cog_band_(1,)_" in result.output
 
 
 @patch(
