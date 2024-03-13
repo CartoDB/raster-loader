@@ -364,6 +364,7 @@ def test_rasterio_to_table_wrong_band_name_block(*args, **kwargs):
     "raster_loader.io.bigquery.BigQueryConnection.check_if_table_exists",
     return_value=False,
 )
+@patch("raster_loader.io.bigquery.BigQueryConnection.update_labels", return_value=None)
 @patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=False)
 def test_rasterio_to_table(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
@@ -389,6 +390,7 @@ def test_rasterio_to_table(*args, **kwargs):
 @patch("raster_loader.io.common.rasterio_metadata", return_value={})
 @patch("raster_loader.io.common.get_number_of_blocks", return_value=1)
 @patch("raster_loader.io.bigquery.BigQueryConnection.write_metadata", return_value=None)
+@patch("raster_loader.io.bigquery.BigQueryConnection.update_labels", return_value=None)
 def test_rasterio_to_table_overwrite(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
     connector = mocks.MockBigQueryConnection()
@@ -424,6 +426,7 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
         "num_pixels": 1,
     },
 )
+@patch("raster_loader.io.bigquery.BigQueryConnection.update_labels", return_value=None)
 def test_rasterio_to_table_is_not_empty_append(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
     connector = mocks.MockBigQueryConnection()
@@ -498,6 +501,7 @@ def test_rasterio_to_table_keyboard_interrupt(*args, **kwargs):
     "raster_loader.io.bigquery.BigQueryConnection.check_if_table_exists",
     return_value=False,
 )
+@patch("raster_loader.io.bigquery.BigQueryConnection.update_labels", return_value=None)
 def test_rasterio_to_table_with_chunk_size(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
     connector = mocks.MockBigQueryConnection()
@@ -515,6 +519,7 @@ def test_rasterio_to_table_with_chunk_size(*args, **kwargs):
     "raster_loader.io.bigquery.BigQueryConnection.check_if_table_exists",
     return_value=False,
 )
+@patch("raster_loader.io.bigquery.BigQueryConnection.update_labels", return_value=None)
 def test_rasterio_to_table_with_one_chunk_size(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
     connector = mocks.MockBigQueryConnection()
@@ -567,6 +572,7 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
         "num_pixels": 1,
     },
 )
+@patch("raster_loader.io.bigquery.BigQueryConnection.update_labels", return_value=None)
 def test_rasterio_to_bigquery_valid_raster(*args, **kwargs):
     table_name = "test_mosaic_valid_raster".upper()
     connector = mocks.MockBigQueryConnection()
