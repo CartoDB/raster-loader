@@ -608,3 +608,15 @@ def test_append_with_different_resolution(*args, **kwargs):
             os.path.join(fixtures_dir, "mosaic_cog.tif"),
             f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
         )
+
+def test_get_labels(*args, **kwargs):
+    connector = mocks.MockBigQueryConnection()
+
+    cases = {
+        "": {"raster_loader": ""},
+        "0.1.0": {"raster_loader": "0_1_0"},
+        "0.1.0 something": {"raster_loader": "0_1_0_something"},
+        "0.1.0+17$g1d1f3a3H": {"raster_loader": "0_1_0_17_g1d1f3a3h"},
+    }
+    for version, expected_labels in cases.items():
+      assert connector.get_labels(version) == expected_labels

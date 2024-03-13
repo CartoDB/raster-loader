@@ -164,7 +164,7 @@ class BigQueryConnection(DataWarehouseConnection):
             self.write_metadata(metadata, append_records, fqn)
 
             print("Updating labels...")
-            self.update_labels(fqn, {"raster_loader": re.sub(r'[^a-z0-9_-]', '_', __version__.lower())})
+            self.update_labels(fqn, self.get_labels(__version__))
 
         except IncompatibleRasterException as e:
             raise IOError("Error uploading to BigQuery: {}".format(e.message))
@@ -228,6 +228,11 @@ class BigQueryConnection(DataWarehouseConnection):
             return None
 
         return json.loads(rows[0]["metadata"])
+
+    def get_labels(self, version: str):
+        return {
+            "raster_loader": re.sub(r'[^a-z0-9_-]', '_', version.lower()),
+        }
 
     def update_labels(self, fqn, labels):
         table = self.client.get_table(fqn)
