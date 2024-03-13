@@ -231,7 +231,7 @@ class BigQueryConnection(DataWarehouseConnection):
 
     def get_labels(self, version: str):
         return {
-            "raster_loader": re.sub(r'[^a-z0-9_-]', '_', version.lower()),
+            "raster_loader": re.sub(r"[^a-z0-9_-]", "_", version.lower()),
         }
 
     def update_labels(self, fqn, labels):
