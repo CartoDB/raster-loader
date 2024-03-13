@@ -26,6 +26,8 @@ from raster_loader.errors import (
     error_not_google_compatible,
 )
 
+DEFAULT_COG_BLOCK_SIZE = 256
+
 should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
 
 
@@ -93,13 +95,6 @@ def rasterio_metadata(
     metadata = {}
     width = raster_info["Profile"]["Width"]
     height = raster_info["Profile"]["Height"]
-    resolution = raster_info["GEO"]["MaxZoom"]
-    metadata["block_resolution"] = resolution
-    metadata["minresolution"] = resolution
-    metadata["maxresolution"] = resolution
-    metadata["nodata"] = raster_info["Profile"]["Nodata"]
-    if metadata["nodata"] is not None and math.isnan(metadata["nodata"]):
-        metadata["nodata"] = None
 
     with rasterio.open(file_path) as raster_dataset:
         raster_crs = raster_dataset.crs.to_string()
@@ -108,6 +103,26 @@ def rasterio_metadata(
             raster_crs, "EPSG:4326", always_xy=True
         )
 
+        # assuming all windows have the same dimensions
+        a_window = next(raster_dataset.block_windows())
+        block_width = a_window[1].width
+        block_height = a_window[1].height
+        resolution = int(
+            raster_info["GEO"]["MaxZoom"]
+            - math.log(
+                block_width
+                / DEFAULT_COG_BLOCK_SIZE
+                * block_height
+                / DEFAULT_COG_BLOCK_SIZE,
+                4,
+            )
+        )
+        metadata["block_resolution"] = resolution
+        metadata["minresolution"] = resolution
+        metadata["maxresolution"] = resolution
+        metadata["nodata"] = raster_info["Profile"]["Nodata"]
+        if metadata["nodata"] is not None and math.isnan(metadata["nodata"]):
+            metadata["nodata"] = None
         bands_metadata = []
         for band, band_name in bands_info:
             meta = {
@@ -123,10 +138,6 @@ def rasterio_metadata(
         bounds_coords = list(bounds_polygon.bounds)
         center_coords = list(*bounds_polygon.centroid.coords)
         center_coords.append(resolution)
-        # assuming all windows have the same dimensions
-        a_window = next(raster_dataset.block_windows())
-        block_width = a_window[1].width
-        block_height = a_window[1].height
 
         pixel_resolution = int(resolution + math.log(block_width * block_height, 4))
         if pixel_resolution > 26:
