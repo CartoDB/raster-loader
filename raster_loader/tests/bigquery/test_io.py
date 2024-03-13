@@ -107,6 +107,9 @@ def test_rasterio_to_bigquery_with_raster_default_band_name():
         list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
     )
 
+    table = connector.client.get_table(fqn)
+    assert table.labels.get("raster_loader") is not None
+
 
 @pytest.mark.integration_test
 def test_rasterio_to_bigquery_appending_rows():
