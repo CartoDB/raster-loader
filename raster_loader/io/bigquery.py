@@ -2,7 +2,9 @@ import time
 import json
 import pandas as pd
 import rasterio
+import re
 
+from raster_loader import __version__
 from raster_loader.errors import import_error_bigquery, IncompatibleRasterException
 from raster_loader.utils import ask_yes_no_question, batched
 from raster_loader.io.common import (
@@ -176,6 +178,9 @@ class BigQueryConnection(DataWarehouseConnection):
             print("Writing metadata to BigQuery...")
             self.write_metadata(metadata, append_records, fqn)
 
+            print("Updating labels...")
+            self.update_labels(fqn, self.get_labels(__version__))
+
         except IncompatibleRasterException as e:
             raise IOError("Error uploading to BigQuery: {}".format(e.message))
 
@@ -238,6 +243,16 @@ class BigQueryConnection(DataWarehouseConnection):
             return None
 
         return json.loads(rows[0]["metadata"])
+
+    def get_labels(self, version: str):
+        return {
+            "raster_loader": re.sub(r"[^a-z0-9_-]", "_", version.lower()),
+        }
+
+    def update_labels(self, fqn, labels):
+        table = self.client.get_table(fqn)
+        table.labels = labels
+        table = self.client.update_table(table, ["labels"])
 
     def write_metadata(
         self,
