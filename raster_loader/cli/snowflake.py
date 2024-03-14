@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import click
 from functools import wraps, partial
 
-from raster_loader.cli.common import get_default_table_name
+from raster_loader.utils import get_default_table_name
 from raster_loader.io.snowflake import SnowflakeConnection
 
 

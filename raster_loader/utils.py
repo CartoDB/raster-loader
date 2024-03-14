@@ -1,4 +1,7 @@
 from itertools import islice
+import os
+import re
+import uuid
 
 
 def ask_yes_no_question(question: str) -> bool:
@@ -25,3 +28,8 @@ def batched(iterable, n):
     it = iter(iterable)
     while batch := tuple(islice(it, n)):  # noqa
         yield batch
+
+def get_default_table_name(base_path: str, band: tuple[int]):
+    table = os.path.basename(base_path).split(".")[0]
+    table = "_".join([table, "band", str(band), str(uuid.uuid4())])
+    return re.sub(r"[^a-zA-Z0-9_-]", "_", table)
