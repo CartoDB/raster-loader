@@ -183,10 +183,22 @@ def rasterio_windows_to_records(
     ).get("NAME"):
         error_not_google_compatible()
 
-    resolution = raster_info["GEO"]["MaxZoom"]
-
     """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
+        # assuming all windows have the same dimensions
+        a_window = next(raster_dataset.block_windows())
+        block_width = a_window[1].width
+        block_height = a_window[1].height
+        resolution = int(
+            raster_info["GEO"]["MaxZoom"]
+            - math.log(
+                block_width
+                / DEFAULT_COG_BLOCK_SIZE
+                * block_height
+                / DEFAULT_COG_BLOCK_SIZE,
+                4,
+            )
+        )
         raster_crs = raster_dataset.crs.to_string()
 
         transformer = pyproj.Transformer.from_crs(
