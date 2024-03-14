@@ -1,10 +1,10 @@
 import os
 from urllib.parse import urlparse
-import uuid
 
 import click
 from functools import wraps, partial
 
+from raster_loader.cli.common import get_default_table_name
 from raster_loader.io.bigquery import BigQueryConnection, AccessTokenCredentials
 
 
@@ -112,13 +112,7 @@ def upload(
 
     # create default table name if not provided
     if table is None:
-        if is_local_file:
-            base_path = file_path
-        else:
-            base_path = urlparse(file_url).path
-
-        table = os.path.basename(base_path).split(".")[0]
-        table = "_".join([table, "band", str(band), str(uuid.uuid4())])
+        table = get_default_table_name(file_path if is_local_file else urlparse(file_url).path, band)
 
     credentials = None
     if token is not None:

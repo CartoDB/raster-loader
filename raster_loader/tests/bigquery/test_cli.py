@@ -202,7 +202,7 @@ def test_bigquery_upload_no_table_name(*args, **kwargs):
         ],
     )
     assert result.exit_code == 0
-    assert "Table: mosaic_cog_band_(1,)_" in result.output
+    assert "Table: mosaic_cog_band__1___" in result.output
 
 
 @patch(

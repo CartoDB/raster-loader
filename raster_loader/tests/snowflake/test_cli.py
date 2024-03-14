@@ -45,6 +45,99 @@ def test_snowflake_upload(*args, **kwargs):
     )
     assert result.exit_code == 0
 
+@patch(
+    "raster_loader.io.snowflake.SnowflakeConnection.upload_raster", return_value=None
+)
+@patch("raster_loader.io.snowflake.SnowflakeConnection.__init__", return_value=None)
+def test_snowflake_credentials_validation(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "snowflake",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--database",
+            "database",
+            "--schema",
+            "schema",
+            "--table",
+            "table",
+            "--account",
+            "account",
+            "--username",
+            "username",
+            "--chunk_size",
+            1,
+            "--band",
+            1,
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Either --token or --username and --password must be provided." in result.output
+
+@patch(
+    "raster_loader.io.snowflake.SnowflakeConnection.upload_raster", return_value=None
+)
+@patch("raster_loader.io.snowflake.SnowflakeConnection.__init__", return_value=None)
+def test_snowflake_file_path_or_url_check(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "snowflake",
+            "upload",
+            "--database",
+            "database",
+            "--schema",
+            "schema",
+            "--table",
+            "table",
+            "--account",
+            "account",
+            "--username",
+            "username",
+            "--password",
+            "password",
+            "--chunk_size",
+            1,
+            "--band",
+            1,
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Either --file_path or --file_url must be provided" in result.output
+
+    result = runner.invoke(
+        main,
+        [
+            "snowflake",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--file_url",
+            "http://example.com/raster.tif",
+            "--database",
+            "database",
+            "--schema",
+            "schema",
+            "--table",
+            "table",
+            "--account",
+            "account",
+            "--username",
+            "username",
+            "--password",
+            "password",
+            "--chunk_size",
+            1,
+            "--band",
+            1,
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Only one of --file_path or --file_url must be provided" in result.output
 
 @patch(
     "raster_loader.io.snowflake.SnowflakeConnection.upload_raster", return_value=None
@@ -177,8 +270,6 @@ def test_snowflake_upload_no_table_name(*args, **kwargs):
             "database",
             "--schema",
             "schema",
-            "--table",
-            "table",
             "--account",
             "account",
             "--username",
@@ -192,6 +283,7 @@ def test_snowflake_upload_no_table_name(*args, **kwargs):
         ],
     )
     assert result.exit_code == 0
+    assert "Table: mosaic_cog_band__1___" in result.output
 
 
 @patch(
