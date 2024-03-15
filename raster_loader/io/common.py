@@ -74,6 +74,26 @@ def raster_band_type(raster_dataset: rasterio.io.DatasetReader, band: int) -> st
     return str(types[band])
 
 
+def get_resolution_and_block_sizes(
+    raster_dataset: rasterio.io.DatasetReader, raster_info: dict
+):
+    # assuming all windows have the same dimensions
+    a_window = next(raster_dataset.block_windows())
+    block_width = a_window[1].width
+    block_height = a_window[1].height
+    resolution = int(
+        raster_info["GEO"]["MaxZoom"]
+        - math.log(
+            block_width
+            / DEFAULT_COG_BLOCK_SIZE
+            * block_height
+            / DEFAULT_COG_BLOCK_SIZE,
+            4,
+        )
+    )
+    return block_width, block_height, resolution
+
+
 def rasterio_metadata(
     file_path: str,
     bands_info: List[Tuple[int, str]],
@@ -103,20 +123,10 @@ def rasterio_metadata(
             raster_crs, "EPSG:4326", always_xy=True
         )
 
-        # assuming all windows have the same dimensions
-        a_window = next(raster_dataset.block_windows())
-        block_width = a_window[1].width
-        block_height = a_window[1].height
-        resolution = int(
-            raster_info["GEO"]["MaxZoom"]
-            - math.log(
-                block_width
-                / DEFAULT_COG_BLOCK_SIZE
-                * block_height
-                / DEFAULT_COG_BLOCK_SIZE,
-                4,
-            )
+        block_width, block_height, resolution = get_resolution_and_block_sizes(
+            raster_dataset, raster_info
         )
+
         metadata["block_resolution"] = resolution
         metadata["minresolution"] = resolution
         metadata["maxresolution"] = resolution
@@ -185,19 +195,8 @@ def rasterio_windows_to_records(
 
     """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
-        # assuming all windows have the same dimensions
-        a_window = next(raster_dataset.block_windows())
-        block_width = a_window[1].width
-        block_height = a_window[1].height
-        resolution = int(
-            raster_info["GEO"]["MaxZoom"]
-            - math.log(
-                block_width
-                / DEFAULT_COG_BLOCK_SIZE
-                * block_height
-                / DEFAULT_COG_BLOCK_SIZE,
-                4,
-            )
+        block_width, block_height, resolution = get_resolution_and_block_sizes(
+            raster_dataset, raster_info
         )
         raster_crs = raster_dataset.crs.to_string()
 
