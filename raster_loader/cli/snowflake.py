@@ -95,7 +95,7 @@ def upload(
         get_block_dims,
     )
 
-    if token is None and (username is None or password is None):
+    if (token is None and (username is None or password is None)) or all(v is not None for v in [token, username, password]):
         raise ValueError("Either --token or --username and --password must be provided.")
 
     if file_path is None and file_url is None:
@@ -180,7 +180,7 @@ def upload(
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(account, username, password, token, role, database, schema, table, limit):
 
-    if token is None and (username is None or password is None):
+    if (token is None and (username is None or password is None)) or all(v is not None for v in [token, username, password]):
         raise ValueError("Either --token or --username and --password must be provided.")
 
     fqn = f"{database}.{schema}.{table}"

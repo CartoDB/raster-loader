@@ -77,6 +77,36 @@ def test_snowflake_credentials_validation(*args, **kwargs):
     assert result.exit_code == 1
     assert "Either --token or --username and --password must be provided." in result.output
 
+    result = runner.invoke(
+        main,
+        [
+            "snowflake",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--database",
+            "database",
+            "--schema",
+            "schema",
+            "--table",
+            "table",
+            "--account",
+            "account",
+            "--username",
+            "username",
+            "--password",
+            "password",
+            "--token",
+            "token",
+            "--chunk_size",
+            1,
+            "--band",
+            1,
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Either --token or --username and --password must be provided." in result.output
+
 @patch(
     "raster_loader.io.snowflake.SnowflakeConnection.upload_raster", return_value=None
 )
