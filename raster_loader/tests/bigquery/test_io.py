@@ -112,6 +112,46 @@ def test_rasterio_to_bigquery_with_raster_default_band_name():
 
 
 @pytest.mark.integration_test
+def test_rasterio_to_bigquery_with_blocksize_512():
+    check_integration_config()
+
+    table_name = "test_mosaic_blocksize_512"
+    fqn = f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}"
+
+    connector = BigQueryConnection(BQ_PROJECT_ID)
+
+    connector.upload_raster(
+        os.path.join(fixtures_dir, "mosaic_cog_512.tif"),
+        fqn,
+        overwrite=True,
+    )
+
+    result = connector.get_records(fqn, 20)
+
+    expected_dataframe = pd.read_pickle(
+        os.path.join(fixtures_dir, "expected_blocksize_512.pkl")
+    )
+    expected_dataframe = expected_dataframe.sort_values("block")
+
+    assert sorted(result.columns) == sorted(expected_dataframe.columns)
+    assert sorted(
+        list(result.block), key=lambda x: x if x is not None else -math.inf
+    ) == sorted(
+        list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
+    )
+    assert sorted(
+        list(result.metadata), key=lambda x: x if x is not None else ""
+    ) == sorted(
+        list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
+    )
+    assert sorted(
+        list(result.band_1), key=lambda x: x if x is not None else b""
+    ) == sorted(
+        list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
+    )
+
+
+@pytest.mark.integration_test
 def test_rasterio_to_bigquery_appending_rows():
     check_integration_config()
 
