@@ -20,6 +20,8 @@ from functools import partial
 
 try:
     from google.cloud import bigquery
+    from google.auth.credentials import Credentials
+
 except ImportError:  # pragma: no cover
     _has_bigquery = False
 else:
@@ -28,11 +30,24 @@ else:
 from raster_loader.io.datawarehouse import DataWarehouseConnection
 
 
+class AccessTokenCredentials(Credentials):
+    def __init__(self, access_token):
+        super(AccessTokenCredentials, self).__init__()
+        self._access_token = access_token
+
+    def refresh(self, request):
+        pass
+
+    def apply(self, headers, token=None):
+        headers["Authorization"] = f"Bearer {self._access_token}"
+
+
 class BigQueryConnection(DataWarehouseConnection):
-    def __init__(self, project):
+    def __init__(self, project, credentials: Credentials = None):
         if not _has_bigquery:  # pragma: no cover
             import_error_bigquery()
-        self.client = bigquery.Client(project=project)
+
+        self.client = bigquery.Client(project=project, credentials=credentials)
 
     def execute(self, sql):
         return self.client.query(sql).result()

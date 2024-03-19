@@ -28,19 +28,30 @@ except ImportError:  # pragma: no cover
 else:
     _has_snowflake = True
 
-
 class SnowflakeConnection(DataWarehouseConnection):
-    def __init__(self, username, password, account, database, schema):
+    def __init__(self, username, password, account, database, schema, token, role):
         if not _has_snowflake:
             import_error_snowflake()
 
-        self.client = snowflake.connector.connect(
-            user=username,
-            password=password,
-            account=account,
-            database=database.upper(),
-            schema=schema.upper(),
-        )
+        # TODO: Write a proper static factory for this
+        if token is None:
+            self.client = snowflake.connector.connect(
+                user=username,
+                password=password,
+                account=account,
+                database=database.upper(),
+                schema=schema.upper(),
+                role=role.upper() if role is not None else None,
+            )
+        else:
+            self.client = snowflake.connector.connect(
+                authenticator="oauth",
+                token=token,
+                account=account,
+                database=database.upper(),
+                schema=schema.upper(),
+                role=role.upper() if role is not None else None,
+            )
 
     def band_rename_function(self, band_name: str):
         return band_name

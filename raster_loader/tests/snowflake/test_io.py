@@ -32,10 +32,11 @@ SF_USERNAME = os.environ.get("SF_USERNAME")
 SF_PASSWORD = os.environ.get("SF_PASSWORD")
 SF_DATABASE = os.environ.get("SF_DATABASE")
 SF_SCHEMA = os.environ.get("SF_SCHEMA")
+SF_ROLE = os.environ.get("SF_ROLE")
 
 
 def check_integration_config():
-    if not all([SF_ACCOUNT, SF_USERNAME, SF_PASSWORD, SF_DATABASE, SF_SCHEMA]):
+    if not all([SF_ACCOUNT, SF_USERNAME, SF_PASSWORD, SF_DATABASE, SF_SCHEMA, SF_ROLE]):
         raise Exception(
             "You need to copy tests/.env.sample to test/.env and set your configuration"
             "before running the tests"
@@ -50,7 +51,13 @@ def test_rasterio_to_snowflake_with_raster_default_band_name():
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
     connector = SnowflakeConnection(
-        SF_USERNAME, SF_PASSWORD, SF_ACCOUNT, SF_DATABASE, SF_SCHEMA
+        username=SF_USERNAME,
+        password=SF_PASSWORD,
+        account=SF_ACCOUNT,
+        database=SF_DATABASE,
+        schema=SF_SCHEMA,
+        role=SF_ROLE,
+        token=None,
     )
 
     connector.upload_raster(
@@ -94,7 +101,13 @@ def test_rasterio_to_snowflake_appending_rows():
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
     connector = SnowflakeConnection(
-        SF_USERNAME, SF_PASSWORD, SF_ACCOUNT, SF_DATABASE, SF_SCHEMA
+        username=SF_USERNAME,
+        password=SF_PASSWORD,
+        account=SF_ACCOUNT,
+        database=SF_DATABASE,
+        schema=SF_SCHEMA,
+        role=SF_ROLE,
+        token=None,
     )
 
     connector.upload_raster(
@@ -172,7 +185,13 @@ def test_rasterio_to_snowflake_with_raster_custom_band_column():
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
     connector = SnowflakeConnection(
-        SF_USERNAME, SF_PASSWORD, SF_ACCOUNT, SF_DATABASE, SF_SCHEMA
+        username=SF_USERNAME,
+        password=SF_PASSWORD,
+        account=SF_ACCOUNT,
+        database=SF_DATABASE,
+        schema=SF_SCHEMA,
+        role=SF_ROLE,
+        token=None,
     )
 
     connector.upload_raster(
@@ -220,7 +239,13 @@ def test_rasterio_to_snowflake_with_raster_multiple_default():
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
     connector = SnowflakeConnection(
-        SF_USERNAME, SF_PASSWORD, SF_ACCOUNT, SF_DATABASE, SF_SCHEMA
+        username=SF_USERNAME,
+        password=SF_PASSWORD,
+        account=SF_ACCOUNT,
+        database=SF_DATABASE,
+        schema=SF_SCHEMA,
+        role=SF_ROLE,
+        token=None,
     )
 
     connector.upload_raster(
@@ -273,7 +298,13 @@ def test_rasterio_to_snowflake_with_raster_multiple_custom():
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
     connector = SnowflakeConnection(
-        SF_USERNAME, SF_PASSWORD, SF_ACCOUNT, SF_DATABASE, SF_SCHEMA
+        username=SF_USERNAME,
+        password=SF_PASSWORD,
+        account=SF_ACCOUNT,
+        database=SF_DATABASE,
+        schema=SF_SCHEMA,
+        role=SF_ROLE,
+        token=None,
     )
 
     connector.upload_raster(
