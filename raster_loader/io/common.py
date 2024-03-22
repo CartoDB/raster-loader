@@ -9,20 +9,12 @@ from typing import Callable
 from typing import List
 from typing import Tuple
 from affine import Affine
-
-try:
-    import rio_cogeo
-except ImportError:  # pragma: no cover
-    _has_rio_cogeo = False
-else:
-    _has_rio_cogeo = True
-
+import rio_cogeo
 import rasterio
 import quadbin
 
 from raster_loader.geo import raster_bounds
 from raster_loader.errors import (
-    import_error_rio_cogeo,
     error_not_google_compatible,
 )
 
@@ -99,10 +91,6 @@ def rasterio_metadata(
     bands_info: List[Tuple[int, str]],
     band_rename_function: Callable,
 ):
-    """Requires rio_cogeo."""
-    if not _has_rio_cogeo:  # pragma: no cover
-        import_error_rio_cogeo()
-
     """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
 
