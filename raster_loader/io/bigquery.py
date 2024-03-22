@@ -29,17 +29,28 @@ else:
 
 from raster_loader.io.datawarehouse import DataWarehouseConnection
 
+if _has_bigquery:
 
-class AccessTokenCredentials(Credentials):
-    def __init__(self, access_token):
-        super(AccessTokenCredentials, self).__init__()
-        self._access_token = access_token
+    class AccessTokenCredentials(Credentials):
+        def __init__(self, access_token):
+            super(AccessTokenCredentials, self).__init__()
+            self._access_token = access_token
 
-    def refresh(self, request):
-        pass
+        def refresh(self, request):
+            pass
 
-    def apply(self, headers, token=None):
-        headers["Authorization"] = f"Bearer {self._access_token}"
+        def apply(self, headers, token=None):
+            headers["Authorization"] = f"Bearer {self._access_token}"
+
+else:
+
+    class Credentials:
+        def __init__(self):
+            import_error_bigquery()
+
+    class AccessTokenCredentials:
+        def __init__(self, access_token):
+            import_error_bigquery()
 
 
 class BigQueryConnection(DataWarehouseConnection):
