@@ -1,4 +1,4 @@
-black==22.3.0
+black==24.3.0
 flake8==4.0.1
 ipython>=7.8.0
 lazydocs==0.4.8
