@@ -2,9 +2,7 @@ def import_error_bigquery():  # pragma: no cover
     msg = (
         "Google Cloud BigQuery is not installed.\n"
         "Please install Google Cloud BigQuery to use this function.\n"
-        "See https://googleapis.dev/python/bigquery/latest/index.html\n"
-        "for installation instructions.\n"
-        "OR, run `pip install google-cloud-bigquery` to install from pypi."
+        "run `pip install -U raster-loader[bigquery]` to install from pypi."
     )
     raise ImportError(msg)
 
@@ -14,8 +12,7 @@ def import_error_snowflake():  # pragma: no cover
         "Google Snowflake is not installed.\n"
         "Please install Snowflake to use this function.\n"
         "See https://docs.snowflake.com/en/developer-guide/python-connector\n"
-        "for installation instructions.\n"
-        "OR, run `pip install snowflake-connector-python` to install from pypi."
+        "run `pip install -U raster-loader[snowflake]` to install from pypi."
     )
     raise ImportError(msg)
 
