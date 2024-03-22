@@ -17,17 +17,6 @@ def import_error_snowflake():  # pragma: no cover
     raise ImportError(msg)
 
 
-def import_error_rasterio():  # pragma: no cover
-    msg = (
-        "Rasterio is not installed.\n"
-        "Please install rasterio to use this function.\n"
-        "See https://rasterio.readthedocs.io/en/latest/installation.html\n"
-        "for installation instructions.\n"
-        "Alternatively, run `pip install rasterio` to install from pypi."
-    )
-    raise ImportError(msg)
-
-
 def import_error_rio_cogeo():  # pragma: no cover
     msg = (
         "Rasterio is not installed.\n"
