@@ -5,13 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2024-03-25
+
+### Enhancements
+- Add labels to BQ uploaded tables (#131)
+- Support input URLs and more connection credential types (#129)
+
+### Bug Fixes
+- fixed using raster files with block size other than default value (#130)
+- fix: error when bigquery dependencies not installed (#133)
+
 ## [0.5.0] - 2024-01-05
 
 ### Enhancements
 - Add support for snowflake (#127)
 
 ## [0.4.0] - 2023-12-21
-  
+
 ### Enhancements
 - Update raster-loader to generate new Raster and Metadata table format (#116)
 - Add pixel_resolution, rename block_resolution (#123)
