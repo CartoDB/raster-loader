@@ -9,6 +9,8 @@ from typing import Callable
 from typing import List
 from typing import Tuple
 from affine import Affine
+from shapely import wkt  # Can not use directly from shapely.wkt
+
 import rio_cogeo
 import rasterio
 import quadbin
@@ -132,7 +134,7 @@ def rasterio_metadata(
 
         # compute whole bounds for metadata
         bounds_geog = raster_bounds(raster_dataset, transformer, "wkt")
-        bounds_polygon = shapely.Polygon(shapely.wkt.loads(bounds_geog))
+        bounds_polygon = shapely.Polygon(wkt.loads(bounds_geog))
         bounds_coords = list(bounds_polygon.bounds)
         center_coords = list(*bounds_polygon.centroid.coords)
         center_coords.append(resolution)
