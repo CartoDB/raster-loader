@@ -17,7 +17,10 @@ The Raster Loader documentation is available at [raster-loader.readthedocs.io](h
 ## Install
 
 ```bash
-pip install raster-loader
+pip install -U raster-loader
+
+pip install -U raster-loader"[bigquery]"
+pip install -U raster-loader"[snowflake]"
 ```
 
 ### Installing from source
