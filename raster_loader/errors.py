@@ -2,7 +2,7 @@ def import_error_bigquery():  # pragma: no cover
     msg = (
         "Google Cloud BigQuery client is not installed.\n"
         "Please install Google Cloud BigQuery dependencies to use this function.\n"
-        "run `pip install -U raster-loader[bigquery]` to install from pypi."
+        'run `pip install -U raster-loader"[bigquery]"` to install from pypi.'
     )
     raise ImportError(msg)
 
@@ -11,7 +11,7 @@ def import_error_snowflake():  # pragma: no cover
     msg = (
         "Snowflake client is not installed.\n"
         "Please install Snowflake dependencies to use this function.\n"
-        "run `pip install -U raster-loader[snowflake]` to install from pypi."
+        'run `pip install -U raster-loader"[snowflake]"` to install from pypi.'
     )
     raise ImportError(msg)
 
