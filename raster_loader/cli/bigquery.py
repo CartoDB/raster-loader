@@ -71,6 +71,12 @@ def bigquery(args=None):
     default=False,
     is_flag=True,
 )
+@click.option(
+    "--cleanup-on-failure",
+    help="Clean up resources if the upload fails. Useful for non-interactive scripts.",
+    default=False,
+    is_flag=True,
+)
 @catch_exception()
 def upload(
     file_path,
@@ -84,6 +90,7 @@ def upload(
     chunk_size,
     overwrite=False,
     append=False,
+    cleanup_on_failure=False,
 ):
     from raster_loader.io.common import (
         get_number_of_blocks,
@@ -151,6 +158,7 @@ def upload(
         chunk_size,
         overwrite=overwrite,
         append=append,
+        cleanup_on_failure=cleanup_on_failure,
     )
 
     click.echo("Raster file uploaded to Google BigQuery")
