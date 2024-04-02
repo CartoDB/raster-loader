@@ -103,6 +103,7 @@ class BigQueryConnection(DataWarehouseConnection):
         chunk_size: int = None,
         overwrite: bool = False,
         append: bool = False,
+        cleanup_on_failure: bool = False,
     ):
         """Write a raster file to a BigQuery table."""
         print("Loading raster file to BigQuery...")
@@ -196,7 +197,7 @@ class BigQueryConnection(DataWarehouseConnection):
             raise IOError("Error uploading to BigQuery: {}".format(e.message))
 
         except KeyboardInterrupt:
-            delete = ask_yes_no_question(
+            delete = cleanup_on_failure or ask_yes_no_question(
                 "Would you like to delete the partially uploaded table? [yes/no] "
             )
 
@@ -209,7 +210,7 @@ class BigQueryConnection(DataWarehouseConnection):
             raise e
 
         except Exception as e:
-            delete = ask_yes_no_question(
+            delete = cleanup_on_failure or ask_yes_no_question(
                 (
                     "Error uploading to BigQuery. "
                     "Would you like to delete the partially uploaded table? [yes/no] "
