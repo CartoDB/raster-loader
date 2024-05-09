@@ -226,7 +226,6 @@ def rasterio_windows_to_records(
                     raster_dataset.read(
                         band,
                         window=window,
-                        out_shape=(window.width, window.height),
                         boundless=True,
                         fill_value=no_data_value,
                     ),
