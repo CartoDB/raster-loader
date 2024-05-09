@@ -48,7 +48,10 @@ def get_nodata_value(raster_dataset: rasterio.io.DatasetReader, bands_info: List
     # So far we only support one nodata value for all bands
     if raster_dataset.nodata is None:
         for band, band_name in bands_info:
-            if band_nodata_value(raster_dataset, 1) != value:
+            band_value = band_nodata_value(raster_dataset, band)
+            # Note (np.NaN != np.NaN) == True
+            both_nan = np.isnan(band_value) and np.isnan(value)
+            if (not both_nan) and (band_value != value):
                 raise ValueError("Invalid no data value")
     return value
 
