@@ -31,9 +31,9 @@ DEFAULT_TYPES_NODATA_VALUES = {
     "uint16": 65535,
     "uint32": 4294967295,
     "uint64": 18446744073709551615,
-    "float16": math.nan,
-    "float32": math.nan,
-    "float64": math.nan,
+    "float16": np.NaN,
+    "float32": np.NaN,
+    "float64": np.NaN,
 }
 
 should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
@@ -41,6 +41,16 @@ should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False
 
 def band_field_name(custom_name: str, band: int, band_rename_function: Callable) -> str:
     return band_rename_function(custom_name or "band_" + str(band))
+
+
+def get_nodata_value(raster_dataset: rasterio.io.DatasetReader, bands_info: List[Tuple[int, str]]) -> float:
+    value = band_nodata_value(raster_dataset, 1)
+    # So far we only support one nodata value for all bands
+    if raster_dataset.nodata is None:
+        for band, band_name in bands_info:
+            if band_nodata_value(raster_dataset, 1) != value:
+                raise ValueError("Invalid no data value")
+    return value
 
 
 def band_nodata_value(raster_dataset: rasterio.io.DatasetReader, band: int) -> float:
@@ -73,9 +83,7 @@ def array_to_record(
     width = window.width
     height = window.height
 
-    x, y = transformer.transform(
-        *(geotransform * (col_off + width * 0.5, row_off + height * 0.5))
-    )
+    x, y = transformer.transform(*(geotransform * (col_off + width * 0.5, row_off + height * 0.5)))
 
     block = quadbin.point_to_cell(x, y, resolution)
 
@@ -94,15 +102,11 @@ def array_to_record(
 
 
 def raster_band_type(raster_dataset: rasterio.io.DatasetReader, band: int) -> str:
-    types = {
-        i: dtype for i, dtype in zip(raster_dataset.indexes, raster_dataset.dtypes)
-    }
+    types = {i: dtype for i, dtype in zip(raster_dataset.indexes, raster_dataset.dtypes)}
     return str(types[band])
 
 
-def get_resolution_and_block_sizes(
-    raster_dataset: rasterio.io.DatasetReader, raster_info: dict
-):
+def get_resolution_and_block_sizes(raster_dataset: rasterio.io.DatasetReader, raster_info: dict):
     # assuming all windows have the same dimensions
     a_window = next(raster_dataset.block_windows())
     block_width = a_window[1].width
@@ -110,10 +114,7 @@ def get_resolution_and_block_sizes(
     resolution = int(
         raster_info["GEO"]["MaxZoom"]
         - math.log(
-            block_width
-            / DEFAULT_COG_BLOCK_SIZE
-            * block_height
-            / DEFAULT_COG_BLOCK_SIZE,
+            block_width / DEFAULT_COG_BLOCK_SIZE * block_height / DEFAULT_COG_BLOCK_SIZE,
             4,
         )
     )
@@ -129,9 +130,7 @@ def rasterio_metadata(
     raster_info = rio_cogeo.cog_info(file_path).dict()
 
     """Check if raster is compatible."""
-    if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
-        "Tiling Scheme", {}
-    ).get("NAME"):
+    if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get("Tiling Scheme", {}).get("NAME"):
         error_not_google_compatible()
 
     metadata = {}
@@ -141,13 +140,9 @@ def rasterio_metadata(
     with rasterio.open(file_path) as raster_dataset:
         raster_crs = raster_dataset.crs.to_string()
 
-        transformer = pyproj.Transformer.from_crs(
-            raster_crs, "EPSG:4326", always_xy=True
-        )
+        transformer = pyproj.Transformer.from_crs(raster_crs, "EPSG:4326", always_xy=True)
 
-        block_width, block_height, resolution = get_resolution_and_block_sizes(
-            raster_dataset, raster_info
-        )
+        block_width, block_height, resolution = get_resolution_and_block_sizes(raster_dataset, raster_info)
 
         metadata["block_resolution"] = resolution
         metadata["minresolution"] = resolution - len(raster_dataset.overviews(1))
@@ -179,9 +174,7 @@ def rasterio_metadata(
                 "Please resample the raster to a lower resolution."
             )
 
-        metadata["bands"] = [
-            {"type": e["type"], "name": e["band_name"]} for e in bands_metadata
-        ]
+        metadata["bands"] = [{"type": e["type"], "name": e["band_name"]} for e in bands_metadata]
         metadata["bounds"] = bounds_coords
         metadata["center"] = center_coords
         metadata["width"] = width
@@ -200,9 +193,7 @@ def rasterio_windows_to_records(
     band_rename_function: Callable,
     bands_info: List[Tuple[int, str]],
 ) -> Iterable:
-    invalid_names = [
-        name for _, name in bands_info if name and name.lower() in ["block", "metadata"]
-    ]
+    invalid_names = [name for _, name in bands_info if name and name.lower() in ["block", "metadata"]]
 
     if invalid_names:
         raise ValueError(f"Invalid band names: {', '.join(invalid_names)}")
@@ -211,31 +202,31 @@ def rasterio_windows_to_records(
     raster_info = rio_cogeo.cog_info(file_path).dict()
 
     """Check if raster is compatible."""
-    if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get(
-        "Tiling Scheme", {}
-    ).get("NAME"):
+    if "GoogleMapsCompatible" != raster_info.get("Tags", {}).get("Tiling Scheme", {}).get("NAME"):
         error_not_google_compatible()
 
     """Open a raster file with rasterio."""
     with rasterio.open(file_path) as raster_dataset:
-        block_width, block_height, resolution = get_resolution_and_block_sizes(
-            raster_dataset, raster_info
-        )
+        block_width, block_height, resolution = get_resolution_and_block_sizes(raster_dataset, raster_info)
         raster_crs = raster_dataset.crs.to_string()
 
-        raster_to_4326_transformer = pyproj.Transformer.from_crs(
-            raster_crs, "EPSG:4326", always_xy=True
-        )
+        raster_to_4326_transformer = pyproj.Transformer.from_crs(raster_crs, "EPSG:4326", always_xy=True)
         # raster_crs must be 3857
         pixels_to_raster_transform = raster_dataset.transform
 
         # Base raster
-
         for _, window in raster_dataset.block_windows():
             record = {}
+            no_data_value = get_nodata_value(raster_dataset, bands_info)
             for band, band_name in bands_info:
                 newrecord = array_to_record(
-                    raster_dataset.read(band, window=window),
+                    raster_dataset.read(
+                        band,
+                        window=window,
+                        out_shape=(window.width, window.height),
+                        boundless=True,
+                        fill_value=no_data_value,
+                    ),
                     band_field_name(band_name, band, band_rename_function),
                     band_rename_function,
                     raster_to_4326_transformer,
@@ -253,12 +244,18 @@ def rasterio_windows_to_records(
 
         # Overviews
 
-        # We assume the following are equal for all bands;
-        # we avoid looping here over bands because we need
+        # Block size must be equal for all bands;
+        # We avoid looping here over bands because we need
         # to loop internally to accumulate, for each block
         # the data for all bands.
+        if not is_valid_block_shapes(raster_dataset.block_shapes):
+            raise ValueError("Invalid block shapes: must be equal for all bands")
+
         (block_width, block_height) = raster_dataset.block_shapes[0]
         overview_factors = raster_dataset.overviews(1)
+
+        if not is_valid_overview_indexes(overview_factors):
+            raise ValueError("Invalid overview factors: must be consecutive powers of 2")
 
         for overview_index in range(0, len(overview_factors)):
             # results are crs 4326, so x = long, y = lat
@@ -275,25 +272,17 @@ def rasterio_windows_to_records(
                 )
             )
             # quadbin cell at base resolution
-            min_base_tile = quadbin.point_to_cell(
-                min_base_tile_lng, min_base_tile_lat, resolution
-            )
+            min_base_tile = quadbin.point_to_cell(min_base_tile_lng, min_base_tile_lat, resolution)
             min_base_x, min_base_y, _z = quadbin.cell_to_tile(min_base_tile)
 
             # quadbin cell at overview resolution (quadbin_tile -> quadbin_cell)
-            min_tile = quadbin.point_to_cell(
-                min_base_tile_lng, min_base_tile_lat, resolution - overview_index - 1
-            )
-            max_tile = quadbin.point_to_cell(
-                max_base_tile_lng, max_base_tile_lat, resolution - overview_index - 1
-            )
+            min_tile = quadbin.point_to_cell(min_base_tile_lng, min_base_tile_lat, resolution - overview_index - 1)
+            max_tile = quadbin.point_to_cell(max_base_tile_lng, max_base_tile_lat, resolution - overview_index - 1)
             min_x, min_y, min_z = quadbin.cell_to_tile(min_tile)
             max_x, max_y, _z = quadbin.cell_to_tile(max_tile)
             for tile_x in range(min_x, max_x + 1):
                 for tile_y in range(min_y, max_y + 1):
-                    children = quadbin.cell_to_children(
-                        quadbin.tile_to_cell((tile_x, tile_y, min_z)), resolution
-                    )
+                    children = quadbin.cell_to_children(quadbin.tile_to_cell((tile_x, tile_y, min_z)), resolution)
                     # children x,y,z tuples (tiles)
                     children_tiles = [quadbin.cell_to_tile(child) for child in children]
                     child_xs = [child[0] for child in children_tiles]
@@ -305,23 +294,20 @@ def rasterio_windows_to_records(
                     tile_window = rasterio.windows.Window(
                         col_off=block_width * (min_child_x - min_base_x),
                         row_off=block_height * (min_child_y - min_base_y),
-                        width=(max_child_x - min_child_x + 1)
-                        * block_width,  # should equal block_width * factor
-                        height=(max_child_y - min_child_y + 1)
-                        * block_height,  # should equal block_width * factor
+                        width=(max_child_x - min_child_x + 1) * block_width,  # should equal block_width * factor
+                        height=(max_child_y - min_child_y + 1) * block_height,  # should equal block_width * factor
                     )
 
+                    # So far we only support one nodata value for all bands
+                    no_data_value = get_nodata_value(raster_dataset, bands_info)
                     record = {}
                     for band, band_name in bands_info:
                         tile_data = raster_dataset.read(
                             band,
                             window=tile_window,
-                            out_shape=(
-                                tile_window.width // factor,
-                                tile_window.height // factor,
-                            ),
+                            out_shape=(tile_window.width // factor, tile_window.height // factor),
                             boundless=True,
-                            fill_value=band_nodata_value(raster_dataset, band),
+                            fill_value=no_data_value,
                         )
                         newrecord = array_to_record(
                             tile_data,
@@ -335,6 +321,22 @@ def rasterio_windows_to_records(
                         record.update(newrecord)
 
                     yield record
+
+
+def is_valid_overview_indexes(overview_factors) -> bool:
+    for overview_index in range(0, len(overview_factors)):
+        if overview_factors[overview_index] != pow(2, overview_index + 1):
+            return False
+    return True
+
+
+def is_valid_block_shapes(block_shapes) -> bool:
+    (block_width, block_height) = block_shapes[0]
+    for block_shape_index in range(0, len(block_shapes)):
+        (index_block_width, index_block_height) = block_shapes[block_shape_index]
+        if (block_width != index_block_width) or (block_height != index_block_height):
+            return False
+    return True
 
 
 def check_metadata_is_compatible(metadata, old_metadata):
@@ -368,9 +370,7 @@ def check_metadata_is_compatible(metadata, old_metadata):
         metadata["block_width"] != old_metadata["block_width"]
         or metadata["block_height"] != old_metadata["block_height"]
     ):
-        raise ValueError(
-            "Cannot append records to a table with a different block width/height."
-        )
+        raise ValueError("Cannot append records to a table with a different block width/height.")
     if metadata["bands"] != old_metadata["bands"]:
         raise ValueError(
             "Cannot append records to a table with different bands."
@@ -403,12 +403,8 @@ def update_metadata(metadata, old_metadata):
     )
     metadata["num_blocks"] += old_metadata["num_blocks"]
     metadata["num_pixels"] += old_metadata["num_pixels"]
-    w, s, _ = quadbin.utils.point_to_tile(
-        metadata["bounds"][0], metadata["bounds"][1], metadata["block_resolution"]
-    )
-    e, n, _ = quadbin.utils.point_to_tile(
-        metadata["bounds"][2], metadata["bounds"][3], metadata["block_resolution"]
-    )
+    w, s, _ = quadbin.utils.point_to_tile(metadata["bounds"][0], metadata["bounds"][1], metadata["block_resolution"])
+    e, n, _ = quadbin.utils.point_to_tile(metadata["bounds"][2], metadata["bounds"][3], metadata["block_resolution"])
     metadata["height"] = (s - n) * metadata["block_height"]
     metadata["width"] = (e - w) * metadata["block_width"]
 
@@ -438,10 +434,7 @@ def print_band_information(file_path: str):
         print("Band types: {}".format(raster_dataset.dtypes))
         print(
             "Band sizes (MB): {}".format(
-                [
-                    size_mb_of_rasterio_band(file_path, band + 1)
-                    for band in range(raster_dataset.count)
-                ]
+                [size_mb_of_rasterio_band(file_path, band + 1) for band in range(raster_dataset.count)]
             )
         )
 
