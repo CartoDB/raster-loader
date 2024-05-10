@@ -222,9 +222,7 @@ def rasterio_windows_to_records(
             record = {}
             no_data_value = get_nodata_value(raster_dataset, bands_info)
             for band, band_name in bands_info:
-                tile_data = raster_dataset.read(
-                    band, window=window, boundless=True, masked=True, fill_value=no_data_value
-                )
+                tile_data = raster_dataset.read(band, window=window, boundless=True, masked=True)
                 newrecord = array_to_record(
                     tile_data.filled(fill_value=no_data_value),
                     band_field_name(band_name, band, band_rename_function),
@@ -308,7 +306,6 @@ def rasterio_windows_to_records(
                             out_shape=(tile_window.width // factor, tile_window.height // factor),
                             boundless=True,
                             masked=True,
-                            fill_value=no_data_value,
                         )
                         newrecord = array_to_record(
                             tile_data.filled(fill_value=no_data_value),
