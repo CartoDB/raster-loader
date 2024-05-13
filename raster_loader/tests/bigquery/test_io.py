@@ -9,6 +9,7 @@ from affine import Affine
 import numpy as np
 import pandas as pd
 import pytest
+import rasterio
 
 from raster_loader import io
 from raster_loader.tests import mocks
@@ -38,8 +39,7 @@ BQ_DATASET_ID = os.environ.get("BQ_DATASET_ID")
 def check_integration_config():
     if not BQ_PROJECT_ID or not BQ_DATASET_ID:
         raise Exception(
-            "You need to copy tests/.env.sample to test/.env and set your configuration"
-            "before running the tests"
+            "You need to copy tests/.env.sample to test/.env and set your configuration" "before running the tests"
         )
 
 
@@ -54,8 +54,7 @@ def test_array_to_record():
         transformer,
         geotransform,
         resolution=4,
-        row_off=20,
-        col_off=20,
+        window=rasterio.windows.Window(col_off=20, row_off=20, width=340, height=160),
     )
 
     if should_swap[arr.dtype.byteorder]:
@@ -85,25 +84,17 @@ def test_rasterio_to_bigquery_with_raster_default_band_name():
 
     result = connector.get_records(fqn, 20)
 
-    expected_dataframe = pd.read_pickle(
-        os.path.join(fixtures_dir, "expected_default_column.pkl")
-    )
+    expected_dataframe = pd.read_pickle(os.path.join(fixtures_dir, "expected_default_column.pkl"))
     expected_dataframe = expected_dataframe.sort_values("block")
 
     assert sorted(result.columns) == sorted(expected_dataframe.columns)
-    assert sorted(
-        list(result.block), key=lambda x: x if x is not None else -math.inf
-    ) == sorted(
+    assert sorted(list(result.block), key=lambda x: x if x is not None else -math.inf) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
-    assert sorted(
-        list(result.metadata), key=lambda x: x if x is not None else ""
-    ) == sorted(
+    assert sorted(list(result.metadata), key=lambda x: x if x is not None else "") == sorted(
         list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
     )
-    assert sorted(
-        list(result.band_1), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.band_1), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
     )
 
@@ -128,25 +119,17 @@ def test_rasterio_to_bigquery_with_blocksize_512():
 
     result = connector.get_records(fqn, 20)
 
-    expected_dataframe = pd.read_pickle(
-        os.path.join(fixtures_dir, "expected_blocksize_512.pkl")
-    )
+    expected_dataframe = pd.read_pickle(os.path.join(fixtures_dir, "expected_blocksize_512.pkl"))
     expected_dataframe = expected_dataframe.sort_values("block")
 
     assert sorted(result.columns) == sorted(expected_dataframe.columns)
-    assert sorted(
-        list(result.block), key=lambda x: x if x is not None else -math.inf
-    ) == sorted(
+    assert sorted(list(result.block), key=lambda x: x if x is not None else -math.inf) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
-    assert sorted(
-        list(result.metadata), key=lambda x: x if x is not None else ""
-    ) == sorted(
+    assert sorted(list(result.metadata), key=lambda x: x if x is not None else "") == sorted(
         list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
     )
-    assert sorted(
-        list(result.band_1), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.band_1), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
     )
 
@@ -250,25 +233,17 @@ def test_rasterio_to_bigquery_with_raster_custom_band_column():
     # sort value because return query can vary the order of rows
     result = result.sort_values("block")
 
-    expected_dataframe = pd.read_pickle(
-        os.path.join(fixtures_dir, "expected_custom_column.pkl")
-    )
+    expected_dataframe = pd.read_pickle(os.path.join(fixtures_dir, "expected_custom_column.pkl"))
     expected_dataframe = expected_dataframe.sort_values("block")
 
     assert sorted(result.columns) == sorted(expected_dataframe.columns)
-    assert sorted(
-        list(result.block), key=lambda x: x if x is not None else -math.inf
-    ) == sorted(
+    assert sorted(list(result.block), key=lambda x: x if x is not None else -math.inf) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
-    assert sorted(
-        list(result.metadata), key=lambda x: x if x is not None else ""
-    ) == sorted(
+    assert sorted(list(result.metadata), key=lambda x: x if x is not None else "") == sorted(
         list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
     )
-    assert sorted(
-        list(result.customband), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.customband), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.customband), key=lambda x: x if x is not None else b""
     )
 
@@ -295,30 +270,20 @@ def test_rasterio_to_bigquery_with_raster_multiple_default():
     # sort value because return query can vary the order of rows
     result = result.sort_values("block")
 
-    expected_dataframe = pd.read_pickle(
-        os.path.join(fixtures_dir, "expected_multiple_column.pkl")
-    )
+    expected_dataframe = pd.read_pickle(os.path.join(fixtures_dir, "expected_multiple_column.pkl"))
     expected_dataframe = expected_dataframe.sort_values("block")
 
     assert sorted(result.columns) == sorted(expected_dataframe.columns)
-    assert sorted(
-        list(result.block), key=lambda x: x if x is not None else -math.inf
-    ) == sorted(
+    assert sorted(list(result.block), key=lambda x: x if x is not None else -math.inf) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
-    assert sorted(
-        list(result.metadata), key=lambda x: x if x is not None else ""
-    ) == sorted(
+    assert sorted(list(result.metadata), key=lambda x: x if x is not None else "") == sorted(
         list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
     )
-    assert sorted(
-        list(result.band_1), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.band_1), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
     )
-    assert sorted(
-        list(result.band_2), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.band_2), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.band_2), key=lambda x: x if x is not None else b""
     )
 
@@ -345,31 +310,21 @@ def test_rasterio_to_bigquery_with_raster_multiple_custom():
     # sort value because return query can vary the order of rows
     result = result.sort_values("block")
 
-    expected_dataframe = pd.read_pickle(
-        os.path.join(fixtures_dir, "expected_custom_multiple_column.pkl")
-    )
+    expected_dataframe = pd.read_pickle(os.path.join(fixtures_dir, "expected_custom_multiple_column.pkl"))
     expected_dataframe = expected_dataframe.sort_values("block")
 
     assert sorted(result.columns) == sorted(expected_dataframe.columns)
-    assert sorted(
-        list(result.block), key=lambda x: x if x is not None else -math.inf
-    ) == sorted(
+    assert sorted(list(result.block), key=lambda x: x if x is not None else -math.inf) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
-    assert sorted(
-        list(result.metadata), key=lambda x: x if x is not None else ""
-    ) == sorted(
+    assert sorted(list(result.metadata), key=lambda x: x if x is not None else "") == sorted(
         list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
     )
-    assert sorted(
-        list(result.custom_band_1), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.custom_band_1), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.custom_band_1),
         key=lambda x: x if x is not None else b"",
     )
-    assert sorted(
-        list(result.custom_band_2), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.custom_band_2), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.custom_band_2),
         key=lambda x: x if x is not None else b"",
     )
@@ -464,7 +419,13 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
         "nodata": None,
         "block_width": 256,
         "block_height": 256,
-        "bands": [{"type": "uint8", "name": "band_1"}],
+        "bands": [
+            {
+                "type": "uint8",
+                "name": "band_1",
+                "stats": {"min": 0.0, "max": 255.0, "mean": 28.66073989868164, "stddev": 41.5693439511935},
+            }
+        ],
         "num_blocks": 1,
         "num_pixels": 1,
     },
@@ -610,7 +571,13 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
         "nodata": None,
         "block_width": 256,
         "block_height": 256,
-        "bands": [{"type": "uint8", "name": "band_1"}],
+        "bands": [
+            {
+                "type": "uint8",
+                "name": "band_1",
+                "stats": {"min": 0.0, "max": 255.0, "mean": 28.66073989868164, "stddev": 41.5693439511935},
+            }
+        ],
         "num_blocks": 1,
         "num_pixels": 1,
     },

@@ -38,8 +38,7 @@ SF_ROLE = os.environ.get("SF_ROLE")
 def check_integration_config():
     if not all([SF_ACCOUNT, SF_USERNAME, SF_PASSWORD, SF_DATABASE, SF_SCHEMA, SF_ROLE]):
         raise Exception(
-            "You need to copy tests/.env.sample to test/.env and set your configuration"
-            "before running the tests"
+            "You need to copy tests/.env.sample to test/.env and set your configuration" "before running the tests"
         )
 
 
@@ -68,27 +67,17 @@ def test_rasterio_to_snowflake_with_raster_default_band_name():
 
     result = connector.get_records(fqn, 20)
 
-    expected_dataframe = pd.read_pickle(
-        os.path.join(fixtures_dir, "expected_default_column.pkl")
-    )
+    expected_dataframe = pd.read_pickle(os.path.join(fixtures_dir, "expected_default_column.pkl"))
     expected_dataframe = expected_dataframe.sort_values("block")
 
-    assert sorted(result.columns) == sorted(
-        [col.upper() for col in expected_dataframe.columns]
-    )
-    assert sorted(
-        list(result.BLOCK), key=lambda x: x if x is not None else -math.inf
-    ) == sorted(
+    assert sorted(result.columns) == sorted([col.upper() for col in expected_dataframe.columns])
+    assert sorted(list(result.BLOCK), key=lambda x: x if x is not None else -math.inf) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
-    assert sorted(
-        [x.upper() for x in list(result.METADATA) if x is not None]
-    ) == sorted(
+    assert sorted([x.upper() for x in list(result.METADATA) if x is not None]) == sorted(
         [x.upper() for x in list(expected_dataframe.metadata) if x is not None],
     )
-    assert sorted(
-        list(result.BAND_1), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.BAND_1), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
     )
 
@@ -206,27 +195,17 @@ def test_rasterio_to_snowflake_with_raster_custom_band_column():
     # sort value because return query can vary the order of rows
     result = result.sort_values("BLOCK")
 
-    expected_dataframe = pd.read_pickle(
-        os.path.join(fixtures_dir, "expected_custom_column.pkl")
-    )
+    expected_dataframe = pd.read_pickle(os.path.join(fixtures_dir, "expected_custom_column.pkl"))
     expected_dataframe = expected_dataframe.sort_values("block")
 
-    assert sorted(result.columns) == sorted(
-        [col.upper() for col in expected_dataframe.columns]
-    )
-    assert sorted(
-        list(result.BLOCK), key=lambda x: x if x is not None else -math.inf
-    ) == sorted(
+    assert sorted(result.columns) == sorted([col.upper() for col in expected_dataframe.columns])
+    assert sorted(list(result.BLOCK), key=lambda x: x if x is not None else -math.inf) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
-    assert sorted(
-        [x.upper() for x in list(result.METADATA) if x is not None]
-    ) == sorted(
+    assert sorted([x.upper() for x in list(result.METADATA) if x is not None]) == sorted(
         [x.upper() for x in list(expected_dataframe.metadata) if x is not None],
     )
-    assert sorted(
-        list(result.CUSTOMBAND), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.CUSTOMBAND), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.customband), key=lambda x: x if x is not None else b""
     )
 
@@ -260,32 +239,20 @@ def test_rasterio_to_snowflake_with_raster_multiple_default():
     # sort value because return query can vary the order of rows
     result = result.sort_values("BLOCK")
 
-    expected_dataframe = pd.read_pickle(
-        os.path.join(fixtures_dir, "expected_multiple_column.pkl")
-    )
+    expected_dataframe = pd.read_pickle(os.path.join(fixtures_dir, "expected_multiple_column.pkl"))
     expected_dataframe = expected_dataframe.sort_values("block")
 
-    assert sorted(result.columns) == sorted(
-        [col.upper() for col in expected_dataframe.columns]
-    )
-    assert sorted(
-        list(result.BLOCK), key=lambda x: x if x is not None else -math.inf
-    ) == sorted(
+    assert sorted(result.columns) == sorted([col.upper() for col in expected_dataframe.columns])
+    assert sorted(list(result.BLOCK), key=lambda x: x if x is not None else -math.inf) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
-    assert sorted(
-        [x.upper() for x in list(result.METADATA) if x is not None]
-    ) == sorted(
+    assert sorted([x.upper() for x in list(result.METADATA) if x is not None]) == sorted(
         [x.upper() for x in list(expected_dataframe.metadata) if x is not None],
     )
-    assert sorted(
-        list(result.BAND_1), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.BAND_1), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
     )
-    assert sorted(
-        list(result.BAND_2), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.BAND_2), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.band_2), key=lambda x: x if x is not None else b""
     )
 
@@ -319,33 +286,21 @@ def test_rasterio_to_snowflake_with_raster_multiple_custom():
     # sort value because return query can vary the order of rows
     result = result.sort_values("BLOCK")
 
-    expected_dataframe = pd.read_pickle(
-        os.path.join(fixtures_dir, "expected_custom_multiple_column.pkl")
-    )
+    expected_dataframe = pd.read_pickle(os.path.join(fixtures_dir, "expected_custom_multiple_column.pkl"))
     expected_dataframe = expected_dataframe.sort_values("block")
 
-    assert sorted(result.columns) == sorted(
-        [col.upper() for col in expected_dataframe.columns]
-    )
-    assert sorted(
-        list(result.BLOCK), key=lambda x: x if x is not None else -math.inf
-    ) == sorted(
+    assert sorted(result.columns) == sorted([col.upper() for col in expected_dataframe.columns])
+    assert sorted(list(result.BLOCK), key=lambda x: x if x is not None else -math.inf) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
-    assert sorted(
-        [x.upper() for x in list(result.METADATA) if x is not None]
-    ) == sorted(
+    assert sorted([x.upper() for x in list(result.METADATA) if x is not None]) == sorted(
         [x.upper() for x in list(expected_dataframe.metadata) if x is not None],
     )
-    assert sorted(
-        list(result.CUSTOM_BAND_1), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.CUSTOM_BAND_1), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.custom_band_1),
         key=lambda x: x if x is not None else b"",
     )
-    assert sorted(
-        list(result.CUSTOM_BAND_2), key=lambda x: x if x is not None else b""
-    ) == sorted(
+    assert sorted(list(result.CUSTOM_BAND_2), key=lambda x: x if x is not None else b"") == sorted(
         list(expected_dataframe.custom_band_2),
         key=lambda x: x if x is not None else b"",
     )
@@ -408,9 +363,7 @@ def test_rasterio_to_table(*args, **kwargs):
 @patch("raster_loader.io.common.rasterio_windows_to_records", return_value={})
 @patch("raster_loader.io.common.rasterio_metadata", return_value={})
 @patch("raster_loader.io.common.get_number_of_blocks", return_value=1)
-@patch(
-    "raster_loader.io.snowflake.SnowflakeConnection.write_metadata", return_value=None
-)
+@patch("raster_loader.io.snowflake.SnowflakeConnection.write_metadata", return_value=None)
 @patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
 def test_rasterio_to_table_overwrite(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
@@ -442,7 +395,13 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
         "nodata": None,
         "block_width": 256,
         "block_height": 256,
-        "bands": [{"type": "uint8", "name": "BAND_1"}],
+        "bands": [
+            {
+                "type": "uint8",
+                "name": "BAND_1",
+                "stats": {"min": 0.0, "max": 255.0, "mean": 28.66073989868164, "stddev": 41.5693439511935},
+            }
+        ],
         "num_blocks": 1,
         "num_pixels": 1,
     },
@@ -588,7 +547,13 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
         "nodata": None,
         "block_width": 256,
         "block_height": 256,
-        "bands": [{"type": "uint8", "name": "BAND_1"}],
+        "bands": [
+            {
+                "type": "uint8",
+                "name": "BAND_1",
+                "stats": {"min": 0.0, "max": 255.0, "mean": 28.66073989868164, "stddev": 41.5693439511935},
+            }
+        ],
         "num_blocks": 1,
         "num_pixels": 1,
     },
