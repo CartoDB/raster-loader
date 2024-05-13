@@ -159,6 +159,7 @@ def rasterio_metadata(
                 "band": band,
                 "type": raster_band_type(raster_dataset, band),
                 "band_name": band_field_name(band_name, band, band_rename_function),
+                "stats": raster_band_stats(raster_dataset, band),
             }
             bands_metadata.append(meta)
 
@@ -177,7 +178,7 @@ def rasterio_metadata(
                 "Please resample the raster to a lower resolution."
             )
 
-        metadata["bands"] = [{"type": e["type"], "name": e["band_name"]} for e in bands_metadata]
+        metadata["bands"] = [{"type": e["type"], "name": e["band_name"], "stats": e["stats"]} for e in bands_metadata]
         metadata["bounds"] = bounds_coords
         metadata["center"] = center_coords
         metadata["width"] = width
@@ -189,6 +190,17 @@ def rasterio_metadata(
         metadata["pixel_resolution"] = pixel_resolution
 
     return metadata
+
+
+def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> dict:
+    """Get statistics for a raster band."""
+    stats = raster_dataset.read(band)
+    return {
+        "min": float(stats.min()),
+        "max": float(stats.max()),
+        "mean": float(stats.mean()),
+        "stddev": float(stats.std()),
+    }
 
 
 def rasterio_windows_to_records(
