@@ -159,6 +159,7 @@ def rasterio_metadata(
                 "band": band,
                 "type": raster_band_type(raster_dataset, band),
                 "band_name": band_field_name(band_name, band, band_rename_function),
+                "colorinterp": raster_dataset.colorinterp[band - 1].name,
                 "stats": raster_band_stats(raster_dataset, band),
             }
             bands_metadata.append(meta)
@@ -178,7 +179,15 @@ def rasterio_metadata(
                 "Please resample the raster to a lower resolution."
             )
 
-        metadata["bands"] = [{"type": e["type"], "name": e["band_name"], "stats": e["stats"]} for e in bands_metadata]
+        metadata["bands"] = [
+            {
+                "type": e["type"],
+                "name": e["band_name"],
+                "stats": e["stats"],
+                "colorinterp": e["colorinterp"],
+            }
+            for e in bands_metadata
+        ]
         metadata["bounds"] = bounds_coords
         metadata["center"] = center_coords
         metadata["width"] = width

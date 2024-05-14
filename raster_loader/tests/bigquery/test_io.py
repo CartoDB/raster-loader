@@ -423,6 +423,7 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
             {
                 "type": "uint8",
                 "name": "band_1",
+                "colorinterp": "red",
                 "stats": {"min": 0.0, "max": 255.0, "mean": 28.66073989868164, "stddev": 41.5693439511935},
             }
         ],
@@ -575,6 +576,7 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
             {
                 "type": "uint8",
                 "name": "band_1",
+                "colorinterp": "red",
                 "stats": {"min": 0.0, "max": 255.0, "mean": 28.66073989868164, "stddev": 41.5693439511935},
             }
         ],
