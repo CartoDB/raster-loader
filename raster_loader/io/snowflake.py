@@ -4,6 +4,8 @@ import pandas as pd
 
 from typing import Iterable, List, Tuple
 
+from datetime import datetime
+
 from raster_loader.errors import (
     IncompatibleRasterException,
     import_error_snowflake,
@@ -27,6 +29,17 @@ except ImportError:  # pragma: no cover
     _has_snowflake = False
 else:
     _has_snowflake = True
+
+
+def parse_timestamp_to_int(timestamp_str):
+    # Parse the timestamp string into a datetime object
+    dt_obj = datetime.fromisoformat(timestamp_str)
+
+    # Convert the datetime object to a Unix timestamp
+    unix_timestamp = int(dt_obj.timestamp())
+
+    return unix_timestamp
+
 
 class SnowflakeConnection(DataWarehouseConnection):
     def __init__(self, username, password, account, database, schema, token, role):
@@ -112,10 +125,14 @@ class SnowflakeConnection(DataWarehouseConnection):
         records: Iterable,
         fqn: str,
         overwrite: bool,
+        timestamp: str = None,
     ):
         records_list = []
         for record in records:
             del record["METADATA"]
+            if timestamp is not None:
+                # parse timestamp from date string to int
+                record["TIMESTAMP"] = parse_timestamp_to_int(timestamp)
             records_list.append(record)
 
         data_df = pd.DataFrame(records_list)
@@ -174,6 +191,7 @@ class SnowflakeConnection(DataWarehouseConnection):
         overwrite: bool = False,
         append: bool = False,
         cleanup_on_failure: bool = False,
+        timestamp: str = None,
     ) -> bool:
         print("Loading raster file to Snowflake...")
 
@@ -208,7 +226,7 @@ class SnowflakeConnection(DataWarehouseConnection):
             total_blocks = get_number_of_blocks(file_path)
 
             if chunk_size is None:
-                ret = self.upload_records(records_gen, fqn, overwrite)
+                ret = self.upload_records(records_gen, fqn, overwrite, timestamp)
                 if not ret:
                     raise IOError("Error uploading to Snowflake.")
             else:
@@ -221,7 +239,7 @@ class SnowflakeConnection(DataWarehouseConnection):
                     isFirstBatch = True
                     for records in batched(records_gen, chunk_size):
                         ret = self.upload_records(
-                            records, fqn, overwrite and isFirstBatch
+                            records, fqn, overwrite and isFirstBatch, timestamp
                         )
                         pbar.update(chunk_size)
                         if not ret:
