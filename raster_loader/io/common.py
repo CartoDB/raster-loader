@@ -243,8 +243,10 @@ def rasterio_windows_to_records(
             no_data_value = get_nodata_value(raster_dataset, bands_info)
             for band, band_name in bands_info:
                 tile_data = raster_dataset.read(band, window=window, boundless=True, masked=True)
+                if raster_dataset.colorinterp[band - 1].name != "alpha":
+                    tile_data = tile_data.filled(fill_value=no_data_value)
                 newrecord = array_to_record(
-                    tile_data.filled(fill_value=no_data_value),
+                    tile_data,
                     band_field_name(band_name, band, band_rename_function),
                     band_rename_function,
                     raster_to_4326_transformer,
@@ -327,8 +329,10 @@ def rasterio_windows_to_records(
                             boundless=True,
                             masked=True,
                         )
+                        if raster_dataset.colorinterp[band - 1].name != "alpha":
+                            tile_data = tile_data.filled(fill_value=no_data_value)
                         newrecord = array_to_record(
-                            tile_data.filled(fill_value=no_data_value),
+                            tile_data,
                             band_field_name(band_name, band, band_rename_function),
                             band_rename_function,
                             raster_to_4326_transformer,
