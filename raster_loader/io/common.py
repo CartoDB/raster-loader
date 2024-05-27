@@ -43,11 +43,11 @@ def band_field_name(custom_name: str, band: int, band_rename_function: Callable)
     return band_rename_function(custom_name or "band_" + str(band))
 
 
-def get_nodata_value(raster_dataset: rasterio.io.DatasetReader, bands_info: List[Tuple[int, str]]) -> float:
+def get_nodata_value(raster_dataset: rasterio.io.DatasetReader) -> float:
     value = band_nodata_value(raster_dataset, 1)
     # So far we only support one nodata value for all bands
     if raster_dataset.nodata is None:
-        for band, band_name in bands_info:
+        for band in raster_dataset.indexes:
             band_value = band_nodata_value(raster_dataset, band)
             # Note (np.NaN != np.NaN) == True
             both_nan = np.isnan(band_value) and np.isnan(value)
@@ -56,10 +56,15 @@ def get_nodata_value(raster_dataset: rasterio.io.DatasetReader, bands_info: List
     return value
 
 
-def band_nodata_value(raster_dataset: rasterio.io.DatasetReader, band: int) -> float:
+def band_original_nodata_value(raster_dataset: rasterio.io.DatasetReader, band: int) -> float:
     nodata_value = raster_dataset.nodata
     if nodata_value is None:
         nodata_value = raster_dataset.get_nodatavals()[band - 1]
+    return nodata_value
+
+
+def band_nodata_value(raster_dataset: rasterio.io.DatasetReader, band: int) -> float:
+    nodata_value = band_original_nodata_value(raster_dataset, band)
     if nodata_value is None:
         nodata_value = get_default_nodata_value(raster_dataset.dtypes[band - 1])
     return nodata_value
@@ -150,7 +155,9 @@ def rasterio_metadata(
         metadata["block_resolution"] = resolution
         metadata["minresolution"] = resolution - len(raster_dataset.overviews(1))
         metadata["maxresolution"] = resolution
-        metadata["nodata"] = raster_info["Profile"]["Nodata"]
+        metadata["nodata"] = get_nodata_value(raster_dataset)
+        # NaN cannot be represented in JSON so we'll use `null`.
+        # Note that json.dumps produces invalid JSON representaion of `float('nan')`.
         if metadata["nodata"] is not None and math.isnan(metadata["nodata"]):
             metadata["nodata"] = None
         bands_metadata = []
@@ -161,6 +168,7 @@ def rasterio_metadata(
                 "band_name": band_field_name(band_name, band, band_rename_function),
                 "colorinterp": raster_dataset.colorinterp[band - 1].name,
                 "stats": raster_band_stats(raster_dataset, band),
+                "band_nodata": str(band_nodata_value(raster_dataset, band)),
             }
             bands_metadata.append(meta)
 
@@ -185,6 +193,7 @@ def rasterio_metadata(
                 "name": e["band_name"],
                 "stats": e["stats"],
                 "colorinterp": e["colorinterp"],
+                "band_nodata": e["band_nodata"],
             }
             for e in bands_metadata
         ]
@@ -201,14 +210,54 @@ def rasterio_metadata(
     return metadata
 
 
+def get_alpha_band(raster_dataset: rasterio.io.DatasetReader):
+    for band in raster_dataset.indexes:
+        if raster_dataset.colorinterp[band - 1].name == "alpha":
+            return band
+    return None
+
+
+def read_masked(raster_dataset: rasterio.io.DatasetReader, band: int, alpha_band: int, **args) -> np.ma.masked_array:
+    if alpha_band and raster_dataset.dtypes[alpha_band - 1] != "uint8":
+        unmasked_data = raster_dataset.read(band, **args)
+        return np.ma.masked_array(data=unmasked_data, mask=raster_dataset.read(alpha_band, **args) == 0)
+    else:
+        return raster_dataset.read(band, masked=True, **args)
+
+
+def read_filled(raster_dataset: rasterio.io.DatasetReader, band: int, no_data_value, **args) -> np.array:
+    alpha_band = get_alpha_band(raster_dataset)
+    if band == alpha_band:
+        return raster_dataset.read(band, fill_value=0, **args)
+    else:
+        masked_array = read_masked(raster_dataset, band, alpha_band, **args)
+        return masked_array.filled(fill_value=no_data_value)
+
+
 def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> dict:
     """Get statistics for a raster band."""
-    stats = raster_dataset.read(band)
+    alpha_band = get_alpha_band(raster_dataset)
+    original_nodata_value = band_original_nodata_value(raster_dataset, band)
+    if band == alpha_band or (alpha_band is None and original_nodata_value is None):
+        masked = False
+        stats = raster_dataset.read(band)
+    else:
+        masked = True
+        if alpha_band:
+            # mask data with alpha band to exclude from stats
+            stats = read_masked(raster_dataset, band, alpha_band)
+        else:
+            raw_data = raster_dataset.read(band)
+            # mask nodata values to exclude from stats
+            stats = np.ma.masked_array(data=raw_data, mask=raw_data == original_nodata_value)
     return {
         "min": float(stats.min()),
         "max": float(stats.max()),
         "mean": float(stats.mean()),
         "stddev": float(stats.std()),
+        "sum": float(stats.sum()),
+        "sum_squares": float((stats**2).sum()),
+        "count": np.count_nonzero(stats.mask == False) if masked else math.prod(stats.shape),  # noqa: E712
     }
 
 
@@ -240,11 +289,9 @@ def rasterio_windows_to_records(
         # Base raster
         for _, window in raster_dataset.block_windows():
             record = {}
-            no_data_value = get_nodata_value(raster_dataset, bands_info)
+            no_data_value = get_nodata_value(raster_dataset)
             for band, band_name in bands_info:
-                tile_data = raster_dataset.read(band, window=window, boundless=True, masked=True)
-                if raster_dataset.colorinterp[band - 1].name != "alpha":
-                    tile_data = tile_data.filled(fill_value=no_data_value)
+                tile_data = read_filled(raster_dataset, band, no_data_value, window=window, boundless=True)
                 newrecord = array_to_record(
                     tile_data,
                     band_field_name(band_name, band, band_rename_function),
@@ -319,18 +366,17 @@ def rasterio_windows_to_records(
                     )
 
                     # So far we only support one nodata value for all bands
-                    no_data_value = get_nodata_value(raster_dataset, bands_info)
+                    no_data_value = get_nodata_value(raster_dataset)
                     record = {}
                     for band, band_name in bands_info:
-                        tile_data = raster_dataset.read(
+                        tile_data = read_filled(
+                            raster_dataset,
                             band,
+                            no_data_value,
                             window=tile_window,
                             out_shape=(tile_window.width // factor, tile_window.height // factor),
                             boundless=True,
-                            masked=True,
                         )
-                        if raster_dataset.colorinterp[band - 1].name != "alpha":
-                            tile_data = tile_data.filled(fill_value=no_data_value)
                         newrecord = array_to_record(
                             tile_data,
                             band_field_name(band_name, band, band_rename_function),
@@ -359,6 +405,14 @@ def is_valid_block_shapes(block_shapes) -> bool:
         if (block_width != index_block_width) or (block_height != index_block_height):
             return False
     return True
+
+
+def band_without_stats(band):
+    return {k: band[k] for k in set(list(band.keys())) - set(["stats"])}
+
+
+def bands_without_stats(metadata):
+    return [band_without_stats(band) for band in metadata["bands"]]
 
 
 def check_metadata_is_compatible(metadata, old_metadata):
@@ -393,7 +447,8 @@ def check_metadata_is_compatible(metadata, old_metadata):
         or metadata["block_height"] != old_metadata["block_height"]
     ):
         raise ValueError("Cannot append records to a table with a different block width/height.")
-    if metadata["bands"] != old_metadata["bands"]:
+
+    if bands_without_stats(metadata) != bands_without_stats(old_metadata):
         raise ValueError(
             "Cannot append records to a table with different bands."
             f"({metadata['bands']} != {old_metadata['bands']})."
@@ -429,6 +484,31 @@ def update_metadata(metadata, old_metadata):
     e, n, _ = quadbin.utils.point_to_tile(metadata["bounds"][2], metadata["bounds"][3], metadata["block_resolution"])
     metadata["height"] = (s - n) * metadata["block_height"]
     metadata["width"] = (e - w) * metadata["block_width"]
+
+    for old_band in old_metadata["bands"]:
+        new_band = next((band for band in metadata["bands"] if band["name"] == old_band["name"]), None)
+        if new_band is None:
+            raise ValueError(
+                "Cannot append records to a table with different bands" f"(band {old_band['name']} not found)."
+            )
+        new_stats = new_band["stats"]
+        old_stats = old_band["stats"]
+        sum = old_stats["sum"] + new_stats["sum"]
+        sum_squares = old_stats["sum_squares"] + new_stats["sum_squares"]
+        count = old_stats["count"] + new_stats["count"]
+        mean = sum / count
+        new_band["stats"] = {
+            "min": min(old_stats["min"], new_stats["min"]),
+            "max": max(old_stats["max"], new_stats["max"]),
+            "sum": sum,
+            "sum_squares": sum_squares,
+            "count": count,
+            "mean": mean,
+            "stddev": math.sqrt(sum_squares / count - mean * mean),
+        }
+
+        if old_band not in metadata["bands"]:
+            metadata["bands"].append(old_band)
 
 
 def get_number_of_blocks(file_path: str) -> int:
