@@ -162,13 +162,15 @@ def rasterio_metadata(
             metadata["nodata"] = None
         bands_metadata = []
         for band, band_name in bands_info:
+            colorinterp = raster_dataset.colorinterp[band - 1].name
+            band_nodata = "0" if colorinterp == "alpha" else str(band_nodata_value(raster_dataset, band))
             meta = {
                 "band": band,
                 "type": raster_band_type(raster_dataset, band),
                 "band_name": band_field_name(band_name, band, band_rename_function),
-                "colorinterp": raster_dataset.colorinterp[band - 1].name,
+                "colorinterp": colorinterp,
                 "stats": raster_band_stats(raster_dataset, band),
-                "band_nodata": str(band_nodata_value(raster_dataset, band)),
+                "band_nodata": band_nodata,
             }
             bands_metadata.append(meta)
 
