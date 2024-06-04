@@ -250,11 +250,26 @@ def get_compound_bands(raster_dataset: rasterio.io.DatasetReader, band: int) -> 
     return [band]
 
 
+def band_is_float(raster_dataset: rasterio.io.DatasetReader, band: int) -> bool:
+    return np.dtype(raster_dataset.dtypes[band - 1]) in ["float16", "float32", "float64"]
+
+
+def band_with_nodata_mask(raster_dataset: rasterio.io.DatasetReader, band: int) -> np.array:
+    raw_data = raster_dataset.read(band)
+    nodata_value = band_nodata_value(raster_dataset, band)
+    if math.isnan(nodata_value):
+        return (raw_data, np.isnan(raw_data))
+    else:
+        return (raw_data, raw_data == nodata_value)
+
+
 def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> dict:
     """Get statistics for a raster band."""
     alpha_band = get_alpha_band(raster_dataset)
     original_nodata_value = band_original_nodata_value(raster_dataset, band)
-    if band == alpha_band or (alpha_band is None and original_nodata_value is None):
+    if band == alpha_band or (
+        alpha_band is None and original_nodata_value is None and not band_is_float(raster_dataset, band)
+    ):
         masked = False
         stats = raster_dataset.read(band)
     else:
@@ -263,16 +278,15 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
             # mask data with alpha band to exclude from stats
             stats = read_masked(raster_dataset, band, alpha_band)
         else:
-            raw_data = raster_dataset.read(band)
             # mask nodata values to exclude from stats
             compound_bands = get_compound_bands(raster_dataset, band)
             if len(compound_bands) > 1:
                 # if band is part of a RGB triplet, we need to use the three bands for masking
-                mask = np.logical_and.reduce(
-                    [raster_dataset.read(b) == band_original_nodata_value(raster_dataset, b) for b in compound_bands]
-                )
+                bands_and_masks = [band_with_nodata_mask(raster_dataset, b) for b in compound_bands]
+                mask = np.logical_and.reduce([band_and_mask[1] for band_and_mask in bands_and_masks])
+                raw_data = bands_and_masks[compound_bands.index(band)][0]
             else:
-                mask = raw_data == original_nodata_value
+                (raw_data, mask) = band_with_nodata_mask(raster_dataset, band)
             stats = np.ma.masked_array(data=raw_data, mask=mask)
     return {
         "min": float(stats.min()),
