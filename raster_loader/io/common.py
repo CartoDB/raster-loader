@@ -247,7 +247,7 @@ def get_compound_bands(raster_dataset: rasterio.io.DatasetReader, band: int) -> 
         rgb_bands = [b for b in raster_dataset.indexes if raster_dataset.colorinterp[b - 1].name in rgb]
         if len(rgb_bands) == 3:
             return rgb_bands
-        return [band]
+    return [band]
 
 
 def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> dict:
