@@ -63,6 +63,10 @@ def band_original_nodata_value(raster_dataset: rasterio.io.DatasetReader, band: 
     return nodata_value
 
 
+def band_value_as_string(raster_dataset: rasterio.io.DatasetReader, band: int, value: float) -> str:
+    return str(np.array(value).astype(raster_dataset.dtypes[band - 1])) if value is not None else None
+
+
 def band_nodata_value(raster_dataset: rasterio.io.DatasetReader, band: int) -> float:
     nodata_value = band_original_nodata_value(raster_dataset, band)
     if nodata_value is None:
@@ -163,7 +167,10 @@ def rasterio_metadata(
         bands_metadata = []
         for band, band_name in bands_info:
             colorinterp = raster_dataset.colorinterp[band - 1].name
-            band_nodata = "0" if colorinterp == "alpha" else str(band_nodata_value(raster_dataset, band))
+            if colorinterp == "alpha":
+                band_nodata = "0"
+            else:
+                band_nodata = band_value_as_string(raster_dataset, band, band_nodata_value(raster_dataset, band))
             meta = {
                 "band": band,
                 "type": raster_band_type(raster_dataset, band),
