@@ -45,6 +45,7 @@ def test_snowflake_upload(*args, **kwargs):
     )
     assert result.exit_code == 0
 
+
 @patch(
     "raster_loader.io.snowflake.SnowflakeConnection.upload_raster", return_value=None
 )
@@ -75,7 +76,9 @@ def test_snowflake_credentials_validation(*args, **kwargs):
         ],
     )
     assert result.exit_code == 1
-    assert "Either --token or --username and --password must be provided." in result.output
+    assert (
+        "Either --token or --username and --password must be provided." in result.output
+    )
 
     result = runner.invoke(
         main,
@@ -105,7 +108,10 @@ def test_snowflake_credentials_validation(*args, **kwargs):
         ],
     )
     assert result.exit_code == 1
-    assert "Either --token or --username and --password must be provided." in result.output
+    assert (
+        "Either --token or --username and --password must be provided." in result.output
+    )
+
 
 @patch(
     "raster_loader.io.snowflake.SnowflakeConnection.upload_raster", return_value=None
@@ -168,6 +174,7 @@ def test_snowflake_file_path_or_url_check(*args, **kwargs):
     )
     assert result.exit_code == 1
     assert "Only one of --file_path or --file_url must be provided" in result.output
+
 
 @patch(
     "raster_loader.io.snowflake.SnowflakeConnection.upload_raster", return_value=None

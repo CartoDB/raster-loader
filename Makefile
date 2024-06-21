@@ -13,7 +13,7 @@ init:
 	$(BIN)/pip install -e .[snowflake,bigquery]
 
 lint:
-	$(BIN)/black -l 119 raster_loader setup.py
+	$(BIN)/black raster_loader setup.py
 	$(BIN)/flake8 raster_loader setup.py
 
 test:

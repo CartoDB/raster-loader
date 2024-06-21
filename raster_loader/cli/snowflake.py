@@ -34,10 +34,19 @@ def snowflake(args=None):
 @click.option("--account", help="The Swnoflake account.", required=True)
 @click.option("--username", help="The username.", required=False, default=None)
 @click.option("--password", help="The password.", required=False, default=None)
-@click.option("--token", help="An access token to authenticate with.", required=False, default=None)
+@click.option(
+    "--token",
+    help="An access token to authenticate with.",
+    required=False,
+    default=None,
+)
 @click.option("--role", help="The role to use for the file upload.", default=None)
-@click.option("--file_path", help="The path to the raster file.", required=False, default=None)
-@click.option("--file_url", help="The path to the raster file.", required=False, default=None)
+@click.option(
+    "--file_path", help="The path to the raster file.", required=False, default=None
+)
+@click.option(
+    "--file_url", help="The path to the raster file.", required=False, default=None
+)
 @click.option("--database", help="The name of the database.", required=True)
 @click.option("--schema", help="The name of the schema.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
@@ -102,8 +111,12 @@ def upload(
         get_block_dims,
     )
 
-    if (token is None and (username is None or password is None)) or all(v is not None for v in [token, username, password]):
-        raise ValueError("Either --token or --username and --password must be provided.")
+    if (token is None and (username is None or password is None)) or all(
+        v is not None for v in [token, username, password]
+    ):
+        raise ValueError(
+            "Either --token or --username and --password must be provided."
+        )
 
     if file_path is None and file_url is None:
         raise ValueError("Either --file_path or --file_url must be provided.")
@@ -126,7 +139,9 @@ def upload(
 
     # create default table name if not provided
     if table is None:
-        table = get_default_table_name(file_path if is_local_file else urlparse(file_url).path, band)
+        table = get_default_table_name(
+            file_path if is_local_file else urlparse(file_url).path, band
+        )
 
     connector = SnowflakeConnection(
         username=username,
@@ -180,7 +195,12 @@ def upload(
 @click.option("--account", help="The Swnoflake account.", required=True)
 @click.option("--username", help="The username.", required=False, default=None)
 @click.option("--password", help="The password.", required=False, default=None)
-@click.option("--token", help="An access token to authenticate with.", required=False, default=None)
+@click.option(
+    "--token",
+    help="An access token to authenticate with.",
+    required=False,
+    default=None,
+)
 @click.option("--role", help="The role to use for the file upload.", default=None)
 @click.option("--database", help="The name of the database.", required=True)
 @click.option("--schema", help="The name of the schema.", required=True)
@@ -188,8 +208,12 @@ def upload(
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(account, username, password, token, role, database, schema, table, limit):
 
-    if (token is None and (username is None or password is None)) or all(v is not None for v in [token, username, password]):
-        raise ValueError("Either --token or --username and --password must be provided.")
+    if (token is None and (username is None or password is None)) or all(
+        v is not None for v in [token, username, password]
+    ):
+        raise ValueError(
+            "Either --token or --username and --password must be provided."
+        )
 
     fqn = f"{database}.{schema}.{table}"
     connector = SnowflakeConnection(

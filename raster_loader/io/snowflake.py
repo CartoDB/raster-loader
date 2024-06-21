@@ -28,6 +28,7 @@ except ImportError:  # pragma: no cover
 else:
     _has_snowflake = True
 
+
 class SnowflakeConnection(DataWarehouseConnection):
     def __init__(self, username, password, account, database, schema, token, role):
         if not _has_snowflake:
