@@ -166,18 +166,18 @@ def rasterio_metadata(
             metadata["nodata"] = None
         bands_metadata = []
         for band, band_name in bands_info:
-            colorinterp = raster_dataset.colorinterp[band - 1].name
-            if colorinterp == "alpha":
+            band_colorinterp = raster_dataset.colorinterp[band - 1].name
+            if band_colorinterp == "alpha":
                 band_nodata = "0"
             else:
                 band_nodata = band_value_as_string(raster_dataset, band, band_nodata_value(raster_dataset, band))
             meta = {
                 "band": band,
                 "type": raster_band_type(raster_dataset, band),
-                "band_name": band_field_name(band_name, band, band_rename_function),
-                "colorinterp": colorinterp,
+                "name": band_field_name(band_name, band, band_rename_function),
+                "colorinterp": band_colorinterp,
                 "stats": raster_band_stats(raster_dataset, band),
-                "band_nodata": band_nodata,
+                "nodata": band_nodata,
             }
             bands_metadata.append(meta)
 
@@ -199,10 +199,10 @@ def rasterio_metadata(
         metadata["bands"] = [
             {
                 "type": e["type"],
-                "name": e["band_name"],
+                "name": e["name"],
                 "stats": e["stats"],
                 "colorinterp": e["colorinterp"],
-                "band_nodata": e["band_nodata"],
+                "nodata": e["nodata"],
             }
             for e in bands_metadata
         ]
