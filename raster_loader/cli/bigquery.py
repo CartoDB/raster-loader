@@ -119,7 +119,9 @@ def upload(
 
     # create default table name if not provided
     if table is None:
-        table = get_default_table_name(file_path if is_local_file else urlparse(file_url).path, band)
+        table = get_default_table_name(
+            file_path if is_local_file else urlparse(file_url).path, band
+        )
 
     credentials = None
     if token is not None:
@@ -170,7 +172,12 @@ def upload(
 @click.option("--dataset", help="The name of the dataset.", required=True)
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
-@click.option("--token", help="An access token to authenticate with.", required=False, default=None)
+@click.option(
+    "--token",
+    help="An access token to authenticate with.",
+    required=False,
+    default=None,
+)
 def describe(project, dataset, table, limit, token):
     credentials = None
     if token is not None:

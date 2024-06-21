@@ -439,10 +439,26 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
     return_value={
         "bounds": [0, 0, 0, 0],
         "block_resolution": 5,
-        "nodata": None,
+        "nodata": 255,
         "block_width": 256,
         "block_height": 256,
-        "bands": [{"type": "uint8", "name": "BAND_1"}],
+        "bands": [
+            {
+                "type": "uint8",
+                "name": "BAND_1",
+                "colorinterp": "red",
+                "stats": {
+                    "min": 0.0,
+                    "max": 255.0,
+                    "mean": 28.66073989868164,
+                    "stddev": 41.5693439511935,
+                    "count": 100000,
+                    "sum": 2866073.989868164,
+                    "sum_squares": 1e15,
+                },
+                "nodata": "255",
+            }
+        ],
         "num_blocks": 1,
         "num_pixels": 1,
     },
@@ -585,10 +601,26 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
     return_value={
         "bounds": [0, 0, 0, 0],
         "block_resolution": 5,
-        "nodata": None,
+        "nodata": 255,
         "block_width": 256,
         "block_height": 256,
-        "bands": [{"type": "uint8", "name": "BAND_1"}],
+        "bands": [
+            {
+                "type": "uint8",
+                "name": "BAND_1",
+                "colorinterp": "red",
+                "stats": {
+                    "min": 0.0,
+                    "max": 255.0,
+                    "mean": 28.66073989868164,
+                    "stddev": 41.5693439511935,
+                    "count": 100000,
+                    "sum": 2866073.989868164,
+                    "sum_squares": 1e15,
+                },
+                "nodata": "255",
+            }
+        ],
         "num_blocks": 1,
         "num_pixels": 1,
     },
