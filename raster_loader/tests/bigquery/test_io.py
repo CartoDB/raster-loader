@@ -568,7 +568,7 @@ def test_rasterio_to_table_with_chunk_size(*args, **kwargs):
     success = connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
-        chunk_size=1000,
+        chunk_size=10000,
     )
 
     assert success
@@ -604,7 +604,7 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
         connector.upload_raster(
             os.path.join(fixtures_dir, "mosaic.tif"),
             f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
-            chunk_size=1000,
+            chunk_size=10000,
         )
 
 

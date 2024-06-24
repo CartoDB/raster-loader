@@ -64,7 +64,7 @@ class DataWarehouseConnection:
         fqn: str,
         band: int = 1,
         band_name: str = None,
-        chunk_size: int = 1000,
+        chunk_size: int = 10000,
         overwrite: bool = False,
         append: bool = False,
     ):
@@ -80,7 +80,7 @@ class DataWarehouseConnection:
         band_name : str, optional
             Name of the band
         chunk_size : int, optional
-            Number of blocks to upload in each chunk, by default 1000
+            Number of blocks to upload in each chunk, by default 10000
         overwrite : bool, optional
             Overwrite existing data in the table if it already exists, by default False
         append : bool, optional
