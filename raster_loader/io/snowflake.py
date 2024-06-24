@@ -129,7 +129,7 @@ class SnowflakeConnection(DataWarehouseConnection):
             table_name=table,
             database=database,
             schema=schema,
-            chunk_size=1000,
+            chunk_size=10000,
             auto_create_table=True,
             overwrite=overwrite,
         )[0]

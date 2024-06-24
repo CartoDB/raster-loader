@@ -163,10 +163,10 @@ due to excessive operations in the destination table:
 Exceeded rate limits: too many table update operations for this table. For more information, see https://cloud.google.com/bigquery/troubleshooting-errors
 ```
 
-The default chunk size is 1000 rows.
+The default chunk size is 10000 rows.
 
 For example, the following command uploads the raster in chunks
-of 2000 rows:
+of 20000 rows:
 
 .. code-block:: bash
 
@@ -175,7 +175,7 @@ of 2000 rows:
      --project my-gcp-project \
      --dataset my-bigquery-dataset \
      --table my-bigquery-table \
-     --chunk_size 1000
+     --chunk_size 20000
 
 
 
