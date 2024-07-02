@@ -149,3 +149,8 @@ project.
 
 [ROADMAP.md](ROADMAP.md) contains a list of features and improvements planned for future
 versions of Raster Loader.
+
+## Releasing
+
+1. Create and merge a release PR `release/X.Y.Z` updating the CHANGELOG.md file
+2. Create and push a tag `vX.Y.Z`
