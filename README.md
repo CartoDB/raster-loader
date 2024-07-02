@@ -152,11 +152,45 @@ versions of Raster Loader.
 
 ## Releasing
 
-1. Create and merge a release PR `release/X.Y.Z` updating the CHANGELOG.md file
+### 1. Create and merge a release PR updating the CHANGELOG
 
-Title: `Release vX.Y.Z`
-Description: CHANGELOG release notes
+- Branch: `release/X.Y.Z`
+- Title: `Release vX.Y.Z`
+- Description: CHANGELOG release notes
 
-2. Create and push a tag `vX.Y.Z`
+Example:
+```
+## [0.7.0] - 2024-06-02
 
-This will trigger an automatic workflow that will create the release and publish the package.
+### Added
+- Support raster overviews (#140)
+
+### Enhancements
+- increase chunk-size to 10000 (#142)
+
+### Bug Fixes
+- fix: make the gdalwarp examples consistent (#143)
+```
+
+### 2. Create and push a tag `vX.Y.Z`
+
+This will trigger an automatic workflow that will publish the package at https://pypi.org/project/raster-loader.
+
+### 3. Create the GitHub release
+
+Go to the tags page (https://github.com/CartoDB/raster-loader/tags), select the release tag and click on "Create a new release"
+
+- Title: `vX.Y.Z`
+- Description: CHANGELOG release notes
+
+Example:
+```
+### Added
+- Support raster overviews (#140)
+
+### Enhancements
+- increase chunk-size to 10000 (#142)
+
+### Bug Fixes
+- fix: make the gdalwarp examples consistent (#143)
+```
