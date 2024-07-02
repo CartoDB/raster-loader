@@ -153,4 +153,10 @@ versions of Raster Loader.
 ## Releasing
 
 1. Create and merge a release PR `release/X.Y.Z` updating the CHANGELOG.md file
+
+Title: `Release vX.Y.Z`
+Description: CHANGELOG release notes
+
 2. Create and push a tag `vX.Y.Z`
+
+This will trigger an automatic workflow that will create the release and publish the package.
