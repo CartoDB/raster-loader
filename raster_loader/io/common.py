@@ -31,9 +31,9 @@ DEFAULT_TYPES_NODATA_VALUES = {
     "uint16": 65535,
     "uint32": 4294967295,
     "uint64": 18446744073709551615,
-    "float16": np.NaN,
-    "float32": np.NaN,
-    "float64": np.NaN,
+    "float16": np.nan,
+    "float32": np.nan,
+    "float64": np.nan,
 }
 
 should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
@@ -49,7 +49,7 @@ def get_nodata_value(raster_dataset: rasterio.io.DatasetReader) -> float:
     if raster_dataset.nodata is None:
         for band in raster_dataset.indexes:
             band_value = band_nodata_value(raster_dataset, band)
-            # Note (np.NaN != np.NaN) == True
+            # Note (np.nan != np.nan) == True
             both_nan = np.isnan(band_value) and np.isnan(value)
             if (not both_nan) and (band_value != value):
                 raise ValueError("Invalid no data value")
