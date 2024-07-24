@@ -4,6 +4,7 @@ import pyproj
 import shapely
 import numpy as np
 
+from raster_loader._version import __version__
 from collections import Counter
 from typing import Iterable
 from typing import Callable
@@ -356,7 +357,8 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
     quantiles = dict(zip(range(3, 20), quantiles))
     most_common = Counter(qdata).most_common(100)
     most_common.sort(key=lambda x: x[1], reverse=True)
-    most_common = [int(x[0]) for x in most_common]
+    most_common = dict([(int(x[0]), x[1]) for x in most_common])
+    version = ".".join(__version__.split(".")[:3])
     return {
         "min": float(stats.min()),
         "max": float(stats.max()),
@@ -366,6 +368,7 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
         "sum_squares": float((stats**2).sum()),
         "quantiles": quantiles,
         "top_values": most_common,
+        "version": version,
         "count": np.count_nonzero(stats.mask is False)
         if masked
         else math.prod(stats.shape),  # noqa: E712
