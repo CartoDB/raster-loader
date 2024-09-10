@@ -4,6 +4,8 @@ import pyproj
 import shapely
 import numpy as np
 
+from raster_loader._version import __version__
+from collections import Counter
 from typing import Iterable
 from typing import Callable
 from typing import List
@@ -347,6 +349,16 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
             else:
                 (raw_data, mask) = band_with_nodata_mask(raster_dataset, band)
             stats = np.ma.masked_array(data=raw_data, mask=mask)
+    qdata = stats.compressed()
+    ranges = [[j / i for j in range(1, i)] for i in range(3, 20)]
+    quantiles = [
+        [int(np.quantile(qdata, q, method="lower")) for q in r] for r in ranges
+    ]
+    quantiles = dict(zip(range(3, 20), quantiles))
+    most_common = Counter(qdata).most_common(100)
+    most_common.sort(key=lambda x: x[1], reverse=True)
+    most_common = dict([(int(x[0]), x[1]) for x in most_common])
+    version = ".".join(__version__.split(".")[:3])
     return {
         "min": float(stats.min()),
         "max": float(stats.max()),
@@ -354,6 +366,9 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
         "stddev": float(stats.std()),
         "sum": float(stats.sum()),
         "sum_squares": float((stats**2).sum()),
+        "quantiles": quantiles,
+        "top_values": most_common,
+        "version": version,
         "count": np.count_nonzero(stats.mask is False)
         if masked
         else math.prod(stats.shape),  # noqa: E712

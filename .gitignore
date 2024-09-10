@@ -170,3 +170,11 @@ carto_credentials.json
 
 # written by setuptools_scm
 */_version.py
+.idea/encodings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/raster-loader.iml
+.idea/vcs.xml
+.idea/codeStyles/codeStyleConfig.xml
+.idea/codeStyles/Project.xml
+.idea/.gitignore
