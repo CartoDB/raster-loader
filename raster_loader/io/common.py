@@ -327,7 +327,8 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
         and not band_is_float(raster_dataset, band)
     ):
         masked = False
-        stats = raster_dataset.read(band)
+        unmasked_data = raster_dataset.read(band)
+        stats = np.ma.masked_array(data=unmasked_data, mask=False)
     else:
         masked = True
         if alpha_band:
@@ -369,9 +370,9 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
         "quantiles": quantiles,
         "top_values": most_common,
         "version": version,
-        "count": np.count_nonzero(stats.mask is False)
-        if masked
-        else math.prod(stats.shape),  # noqa: E712
+        "count": (
+            np.count_nonzero(stats.mask is False) if masked else math.prod(stats.shape)
+        ),  # noqa: E712
     }
 
 
