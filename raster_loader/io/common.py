@@ -352,11 +352,15 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
             stats = np.ma.masked_array(data=raw_data, mask=mask)
     qdata = stats.compressed()
     ranges = [[j / i for j in range(1, i)] for i in range(3, 20)]
-    quantiles = [[np.quantile(qdata, q, method="lower") for q in r] for r in ranges]
+    casting_function = int if np.issubdtype(stats.dtype, np.integer) else float
+    quantiles = [
+        [casting_function(np.quantile(qdata, q, method="lower")) for q in r]
+        for r in ranges
+    ]
     quantiles = dict(zip(range(3, 20), quantiles))
     most_common = Counter(qdata).most_common(100)
     most_common.sort(key=lambda x: x[1], reverse=True)
-    most_common = dict([(x[0], x[1]) for x in most_common])
+    most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
     version = ".".join(__version__.split(".")[:3])
     return {
         "min": float(stats.min()),
