@@ -10,7 +10,7 @@ init:
 	[ -d $(VENV) ] || python3 -m venv $(VENV)
 	$(BIN)/pip install -r requirements-dev.txt
 	$(BIN)/pre-commit install
-	$(BIN)/pip install -e .[snowflake,bigquery]
+	$(BIN)/pip install -e .[snowflake,bigquery,databricks]
 
 lint:
 	$(BIN)/black raster_loader setup.py

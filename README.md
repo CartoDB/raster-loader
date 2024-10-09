@@ -21,6 +21,7 @@ pip install -U raster-loader
 
 pip install -U raster-loader"[bigquery]"
 pip install -U raster-loader"[snowflake]"
+pip install -U raster-loader"[databricks]"
 ```
 
 ### Installing from source
@@ -30,6 +31,22 @@ git clone https://github.com/cartodb/raster-loader
 cd raster-loader
 pip install .
 ```
+
+### Installing for Development
+
+It is reccomended to use a virtualenv when developing.
+
+```
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
+```
+
+Doing `which carto` should return something like `/my/local/filesystem/raster-loader/venv/bin/carto` instead of the system-wide installation.  
+
+The `-e` flag passed to the `pip install` program will set the project and its dependencies in development mode. Changes to the project files
+will be reflected in the `carto` command immedietly without the need to re-run any setup steps.
+
 
 ## Usage
 
