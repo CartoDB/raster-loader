@@ -42,10 +42,25 @@ Snowflake:
 To use the snowflake utilities, use the ``carto snowflake`` command. This command has
 several subcommands, which are described below.
 
+Using the Raster Loader with Databricks
+-----------------------------------------
+
+Before you can upload a raster file, you need to have set up the following in
+Databricks:
+
+#. A databricks instance host. Eg. `https://dbc-abcde12345-678f.cloud.databricks.com`
+#. A cluster id (cluser MUST BE turned on)
+#. A Personal Access Token (PAT). See `Databricks PAT Docs <https://docs.databricks.com/en/dev-tools/auth/pat.html>`_.
+#. A catalog
+#. A schema (in the same catalog)
+
+To use the databricks utilities, use the ``carto databricks`` command. This command has
+several subcommands, which are described below.
+
 Uploading a raster layer
 ------------------------
 
-To upload a raster file, use the ``carto [bigquery|snowflake] upload`` command.
+To upload a raster file, use the ``carto [bigquery|snowflake|databricks] upload`` command.
 
 The input raster must be a ``GoogleMapsCompatible`` raster. You can make your raster compatible
 by converting it with the following GDAL command:
@@ -97,6 +112,20 @@ The same operation, performed with Snowflake, would be:
 
 Authentication parameters are explicitly required in this case for Snowflake, since they
 are not set up in the environment.
+
+The same operation, performed with Databricks, would be:
+
+.. code-block:: bash
+
+   carto databricks upload \
+     --host 'https://dbc-12345abc-123f.cloud.databricks.com' \
+     --token <token> \
+     --cluster-id '0123-456789-abc12345xyz' \
+     --catalog 'main' \
+     --schema default \
+     --file_path \
+     /path/to/my/raster/file/tif \
+     --table mydatabrickstable
 
 If no band is specified, the first band of the raster will be uploaded. If the
 ``--band`` flag is set, the specified band will be uploaded. For example, the following

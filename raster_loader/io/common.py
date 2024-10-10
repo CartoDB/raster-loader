@@ -242,6 +242,8 @@ def rasterio_metadata(
         metadata["num_blocks"] = int(width * height / block_width / block_height)
         metadata["num_pixels"] = width * height
         metadata["pixel_resolution"] = pixel_resolution
+        metadata["crs"] = raster_crs
+        metadata["transform"] = raster_dataset.transform
 
     return metadata
 
