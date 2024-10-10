@@ -31,19 +31,14 @@ def databricks(args=None):
 @click.option("--host", help="The Databricks host URL.", required=True)
 @click.option("--token", help="The Databricks access token.", required=True)
 @click.option("--cluster-id", help="The Databricks cluster ID.", required=True)  # New option
-@click.option(
-    "--file_path", help="The path to the raster file.", required=False, default=None
-)
-@click.option(
-    "--file_url", help="The URL to the raster file.", required=False, default=None
-)
+@click.option("--file_path", help="The path to the raster file.", required=False, default=None)
+@click.option("--file_url", help="The URL to the raster file.", required=False, default=None)
 @click.option("--catalog", help="The name of the catalog.", required=True)
 @click.option("--schema", help="The name of the schema.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
 @click.option(
     "--band",
-    help="Band(s) within raster to upload. "
-    "Could repeat --band to specify multiple bands.",
+    help="Band(s) within raster to upload. " "Could repeat --band to specify multiple bands.",
     default=[1],
     multiple=True,
 )
@@ -55,9 +50,7 @@ def databricks(args=None):
     default=[None],
     multiple=True,
 )
-@click.option(
-    "--chunk_size", help="The number of blocks to upload in each chunk.", default=10000
-)
+@click.option("--chunk_size", help="The number of blocks to upload in each chunk.", default=10000)
 @click.option(
     "--overwrite",
     help="Overwrite existing data in the table if it already exists.",
@@ -121,16 +114,10 @@ def upload(
 
     # Create default table name if not provided
     if table is None:
-        table = get_default_table_name(
-            file_path if is_local_file else urlparse(file_url).path, band
-        )
+        table = get_default_table_name(file_path if is_local_file else urlparse(file_url).path, band)
 
     connector = DatabricksConnection(
-        host=host,
-        token=token,
-        cluster_id=cluster_id,  # Pass cluster_id to DatabricksConnection
-        catalog=catalog,
-        schema=schema,
+        host=host, token=token, cluster_id=cluster_id  # Pass cluster_id to DatabricksConnection
     )
 
     source = file_path if is_local_file else file_url
@@ -156,9 +143,10 @@ def upload(
 
     click.echo("Uploading Raster to Databricks")
 
+    fqn = f"`{catalog}`.{schema}.{table}"
     connector.upload_raster(
         source,
-        table,
+        fqn,
         bands_info,
         chunk_size,
         overwrite=overwrite,
@@ -168,4 +156,3 @@ def upload(
 
     click.echo("Raster file uploaded to Databricks")
     return 0
-
