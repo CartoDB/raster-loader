@@ -2,7 +2,6 @@ import os
 from unittest.mock import patch
 
 from click.testing import CliRunner
-import pandas as pd
 
 from raster_loader.cli import main
 

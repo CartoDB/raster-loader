@@ -25,8 +25,6 @@ try:
         StructType,
         StructField,
         StringType,
-        BinaryType,
-        IntegerType,
         LongType,
     )
 except ImportError:  # pragma: no cover
@@ -116,7 +114,7 @@ class DatabricksConnection(DataWarehouseConnection):
         schema_name, table_name = fqn.split(".")[1:3]  # Extract schema and table
         sql = f"""
             SELECT *
-            FROM {schema_name}.INFORMATION_SCHEMA.TABLES 
+            FROM {schema_name}.INFORMATION_SCHEMA.TABLES
             WHERE TABLE_NAME = '{table_name}'
         """
         df = self.execute(sql)
@@ -162,9 +160,14 @@ class DatabricksConnection(DataWarehouseConnection):
         append_records = False
 
         try:
-            if self.check_if_table_exists(fqn) and not self.check_if_table_is_empty(fqn) and not overwrite:
+            if (
+                self.check_if_table_exists(fqn)
+                and not self.check_if_table_is_empty(fqn)
+                and not overwrite
+            ):
                 append_records = append or ask_yes_no_question(
-                    f"Table {fqn} already exists and is not empty. Append records? [yes/no] "
+                    f"Table {fqn} already exists and is not empty. "
+                    f"Append records? [yes/no] "
                 )
 
                 if not append_records:
@@ -172,7 +175,10 @@ class DatabricksConnection(DataWarehouseConnection):
 
             # Prepare band columns
             self.band_columns = ", ".join(
-                [f"{self.band_rename_function(band_name or f'band_{band}')} BINARY" for band, band_name in bands_info]
+                [
+                    f"{self.band_rename_function(band_name or f'band_{band}')} BINARY"
+                    for band, band_name in bands_info
+                ]
             )
 
             # Create schema and table if not exists
@@ -204,7 +210,9 @@ class DatabricksConnection(DataWarehouseConnection):
                         chunk_size = total_blocks
                     isFirstBatch = True
                     for records in batched(records_gen, chunk_size):
-                        ret = self.upload_records(records, fqn, overwrite and isFirstBatch)
+                        ret = self.upload_records(
+                            records, fqn, overwrite and isFirstBatch
+                        )
                         pbar.update(len(records))
                         if not ret:
                             raise IOError("Error uploading to Databricks.")
@@ -233,7 +241,10 @@ class DatabricksConnection(DataWarehouseConnection):
 
         except Exception as e:
             delete = cleanup_on_failure or ask_yes_no_question(
-                ("Error uploading to Databricks. " "Would you like to delete the partially uploaded table? [yes/no] ")
+                (
+                    "Error uploading to Databricks. "
+                    "Would you like to delete the partially uploaded table? [yes/no] "
+                )
             )
 
             if delete:
