@@ -14,5 +14,5 @@ __all__ = [
     "__version__",
     "BigQueryConnection",
     "SnowflakeConnection",
-    "DatabricksConnection"
+    "DatabricksConnection",
 ]

@@ -155,4 +155,4 @@ def upload(
     )
 
     click.echo("Raster file uploaded to Databricks")
-    return 0
+    exit(0)

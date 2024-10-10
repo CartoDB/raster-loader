@@ -15,6 +15,7 @@ def import_error_snowflake():  # pragma: no cover
     )
     raise ImportError(msg)
 
+
 def import_error_databricks():  # pragma: no cover
     msg = (
         "Databricks client is not installed.\n"
@@ -22,6 +23,7 @@ def import_error_databricks():  # pragma: no cover
         'run `pip install -U raster-loader"[databricks]"` to install from pypi.'
     )
     raise ImportError(msg)
+
 
 class IncompatibleRasterException(Exception):
     def __init__(self):
@@ -38,4 +40,3 @@ class IncompatibleRasterException(Exception):
 
 def error_not_google_compatible():  # pragma: no cover
     raise IncompatibleRasterException()
-

@@ -240,4 +240,3 @@ def test_databricks_upload_no_table_name(*args, **kwargs):
     )
     assert result.exit_code == 0
     assert "Table: mosaic_cog_band__1___" in result.output
-

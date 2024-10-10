@@ -179,7 +179,9 @@ class DatabricksConnection(DataWarehouseConnection):
             self.create_schema_if_not_exists(fqn)
             self.create_table_if_not_exists(fqn)
 
-            metadata = rasterio_metadata(file_path, bands_info, self.band_rename_function)
+            metadata = rasterio_metadata(
+                file_path, bands_info, self.band_rename_function
+            )
 
             records_gen = rasterio_windows_to_records(
                 file_path,
