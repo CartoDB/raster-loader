@@ -154,15 +154,12 @@ versions of Raster Loader.
 
 ### Installing for Development
 
-It is reccomended to use a virtualenv when developing.
-
 ```
-python3 -m venv venv
-source venv/bin/activate
-pip install -e .[all]
+make init
+source env/bin/activate
 ```
 
-Doing `which carto` should return something like `/my/local/filesystem/raster-loader/venv/bin/carto` instead of the system-wide installation.  
+Doing `which carto` should return something like `/my/local/filesystem/raster-loader/eenv/bin/carto` instead of the system-wide installation.  
 
 The `-e` flag passed to the `pip install` program will set the project and its dependencies in development mode. Changes to the project files
 will be reflected in the `carto` command immedietly without the need to re-run any setup steps.
