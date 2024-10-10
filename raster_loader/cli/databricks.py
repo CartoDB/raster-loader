@@ -58,7 +58,7 @@ def databricks(args=None):
     multiple=True,
 )
 @click.option(
-    "--chunk_size", help="The number of blocks to upload in each chunk.", default=10000
+    "--chunk_size", help="The number of blocks to upload in each chunk.", default=400
 )
 @click.option(
     "--overwrite",
