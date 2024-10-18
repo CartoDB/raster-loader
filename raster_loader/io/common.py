@@ -5,7 +5,6 @@ import shapely
 import numpy as np
 
 from raster_loader._version import __version__
-from collections import Counter
 from typing import Iterable
 from typing import Callable
 from typing import List
