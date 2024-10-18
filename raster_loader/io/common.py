@@ -99,6 +99,7 @@ def array_to_record(
     geotransform: Affine,
     resolution: int,
     window: rasterio.windows.Window,
+    no_data_value: float = None
 ) -> dict:
     row_off = window.row_off
     col_off = window.col_off
@@ -110,6 +111,10 @@ def array_to_record(
     )
 
     block = quadbin.point_to_cell(x, y, resolution)
+    # print('block:', block, 'x:', x, 'y:', y, 'resolution:', resolution, 'sum', arr.sum())
+
+    if no_data_value and np.all(arr == no_data_value):
+        return None
 
     if should_swap[arr.dtype.byteorder]:
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
@@ -152,6 +157,15 @@ def get_resolution_and_block_sizes(
     return block_width, block_height, resolution
 
 
+def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
+    try:
+        if raster_dataset.colorinterp[band - 1].name == "palette":
+            return raster_dataset.colormap(band)
+        return None
+    except ValueError:
+        return None
+
+
 def rasterio_metadata(
     file_path: str,
     bands_info: List[Tuple[int, str]],
@@ -190,6 +204,7 @@ def rasterio_metadata(
         if metadata["nodata"] is not None and math.isnan(metadata["nodata"]):
             metadata["nodata"] = None
         bands_metadata = []
+
         for band, band_name in bands_info:
             band_colorinterp = raster_dataset.colorinterp[band - 1].name
             if band_colorinterp == "alpha":
@@ -203,6 +218,7 @@ def rasterio_metadata(
                 "type": raster_band_type(raster_dataset, band),
                 "name": band_field_name(band_name, band, band_rename_function),
                 "colorinterp": band_colorinterp,
+                "colortable": get_color_table(raster_dataset, band),
                 "stats": raster_band_stats(raster_dataset, band),
                 "nodata": band_nodata,
             }
@@ -214,7 +230,6 @@ def rasterio_metadata(
         bounds_coords = list(bounds_polygon.bounds)
         center_coords = list(*bounds_polygon.centroid.coords)
         center_coords.append(resolution)
-
         pixel_resolution = int(resolution + math.log(block_width * block_height, 4))
         if pixel_resolution > 26:
             raise ValueError(
@@ -230,6 +245,7 @@ def rasterio_metadata(
                 "stats": e["stats"],
                 "colorinterp": e["colorinterp"],
                 "nodata": e["nodata"],
+                "colortable": e["colortable"],
             }
             for e in bands_metadata
         ]
@@ -319,60 +335,24 @@ def band_with_nodata_mask(
 
 def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> dict:
     """Get statistics for a raster band."""
-    alpha_band = get_alpha_band(raster_dataset)
-    original_nodata_value = band_original_nodata_value(raster_dataset, band)
-    if band == alpha_band or (
-        alpha_band is None
-        and original_nodata_value is None
-        and not band_is_float(raster_dataset, band)
-    ):
-        masked = False
-        unmasked_data = raster_dataset.read(band)
-        stats = np.ma.masked_array(data=unmasked_data, mask=False)
-    else:
-        masked = True
-        if alpha_band:
-            # mask data with alpha band to exclude from stats
-            stats = read_masked(raster_dataset, band, alpha_band)
-        else:
-            # mask nodata values to exclude from stats
-            compound_bands = get_compound_bands(raster_dataset, band)
-            if len(compound_bands) > 1:
-                # if band is part of a RGB triplet,
-                # we need to use the three bands for masking
-                bands_and_masks = [
-                    band_with_nodata_mask(raster_dataset, b) for b in compound_bands
-                ]
-                mask = np.logical_and.reduce(
-                    [band_and_mask[1] for band_and_mask in bands_and_masks]
-                )
-                raw_data = bands_and_masks[compound_bands.index(band)][0]
-            else:
-                (raw_data, mask) = band_with_nodata_mask(raster_dataset, band)
-            stats = np.ma.masked_array(data=raw_data, mask=mask)
-    qdata = stats.compressed()
-    ranges = [[j / i for j in range(1, i)] for i in range(3, 20)]
-    quantiles = [
-        [int(np.quantile(qdata, q, method="lower")) for q in r] for r in ranges
-    ]
-    quantiles = dict(zip(range(3, 20), quantiles))
-    most_common = Counter(qdata).most_common(100)
-    most_common.sort(key=lambda x: x[1], reverse=True)
-    most_common = dict([(int(x[0]), x[1]) for x in most_common])
-    version = ".".join(__version__.split(".")[:3])
+    print('Computing stats for band:', band)
+    approx_stats = raster_dataset.stats(indexes=[band], approx=True)[0]
+    print('approx stats:', approx_stats)
+    _min = approx_stats.min
+    _max = approx_stats.max
+    _mean = approx_stats.mean
+    _std = approx_stats.std
     return {
-        "min": float(stats.min()),
-        "max": float(stats.max()),
-        "mean": float(stats.mean()),
-        "stddev": float(stats.std()),
-        "sum": float(stats.sum()),
-        "sum_squares": float((stats**2).sum()),
-        "quantiles": quantiles,
-        "top_values": most_common,
-        "version": version,
-        "count": (
-            np.count_nonzero(stats.mask is False) if masked else math.prod(stats.shape)
-        ),  # noqa: E712
+        "min": _min,
+        "max": _max,
+        "mean": _mean,
+        "stddev": _std,
+        "sum": 0.0,
+        "sum_squares": 0.0,
+        "quantiles": 0.0,
+        "top_values": 0.0,
+        "version": ".".join(__version__.split(".")[:3]),
+        "count": 0.0
     }
 
 
@@ -425,14 +405,21 @@ def rasterio_windows_to_records(
                     pixels_to_raster_transform,
                     resolution,
                     window,
+                    no_data_value
                 )
 
                 # add the new columns generated by array_t
                 # o_record
                 # but leaving unchanged the index e.g. the block column
-                record.update(newrecord)
+                if newrecord:
+                    record.update(newrecord)
 
-            yield record
+            if record:
+                # import pickle
+                # with open("/tmp/record.pkl", "wb") as f:
+                #     pickle.dump(record, f)
+                # import sys; sys.exit(0)
+                yield record
 
         # Overviews
 
@@ -525,10 +512,13 @@ def rasterio_windows_to_records(
                             pixels_to_raster_transform,
                             resolution - overview_index - 1,
                             tile_window,
+                            no_data_value
                         )
-                        record.update(newrecord)
+                        if newrecord:
+                            record.update(newrecord)
 
-                    yield record
+                    if record:
+                        yield record
 
 
 def is_valid_overview_indexes(overview_factors) -> bool:
