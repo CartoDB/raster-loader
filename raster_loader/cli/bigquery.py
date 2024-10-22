@@ -77,6 +77,12 @@ def bigquery(args=None):
     default=False,
     is_flag=True,
 )
+@click.option(
+    "--exact_stats",
+    help="Compute exact statistics for the raster bands.",
+    default=False,
+    is_flag=True,
+)
 @catch_exception()
 def upload(
     file_path,
@@ -91,6 +97,7 @@ def upload(
     overwrite=False,
     append=False,
     cleanup_on_failure=False,
+    exact_stats=False,
 ):
     from raster_loader.io.common import (
         get_number_of_blocks,
@@ -161,6 +168,7 @@ def upload(
         overwrite=overwrite,
         append=append,
         cleanup_on_failure=cleanup_on_failure,
+        exact_stats=exact_stats,
     )
 
     click.echo("Raster file uploaded to Google BigQuery")

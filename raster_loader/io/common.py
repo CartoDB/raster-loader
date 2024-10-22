@@ -6,16 +6,14 @@ import numpy as np
 
 from raster_loader._version import __version__
 from collections import Counter
-from typing import Iterable
-from typing import Callable
-from typing import List
-from typing import Tuple
+from typing import Dict, Callable, Iterable, List, Tuple, Union
 from affine import Affine
 from shapely import wkt  # Can not use directly from shapely.wkt
 
 import rio_cogeo
 import rasterio
 import quadbin
+from rasterio.sample import sort_xy
 
 from raster_loader.geo import raster_bounds
 from raster_loader.errors import (
@@ -38,7 +36,16 @@ DEFAULT_TYPES_NODATA_VALUES = {
     "float64": np.nan,
 }
 
+MAX_MOST_COMMON = 10
+SAMPLING_MAX_ITERATIONS = 100
+SAMPLING_MAX_SAMPLES = 10000
+OVERVIEWS = range(3, 20)
+
 should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
+
+Quantiles = List[List[float]]
+Ranges = Tuple[float, float]
+Samples = Dict[int, List[Union[int, float]]]
 
 
 def band_field_name(custom_name: str, band: int, band_rename_function: Callable) -> str:
@@ -152,10 +159,20 @@ def get_resolution_and_block_sizes(
     return block_width, block_height, resolution
 
 
+def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
+    try:
+        if raster_dataset.colorinterp[band - 1].name == "palette":
+            return raster_dataset.colormap(band)
+        return None
+    except ValueError:
+        return None
+
+
 def rasterio_metadata(
     file_path: str,
     bands_info: List[Tuple[int, str]],
     band_rename_function: Callable,
+    exact_stats: bool = False,
 ):
     """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
@@ -190,7 +207,21 @@ def rasterio_metadata(
         if metadata["nodata"] is not None and math.isnan(metadata["nodata"]):
             metadata["nodata"] = None
         bands_metadata = []
+
+        # We only need to sample if we are not computing exact stats
+        # and we need to sample from the raster dataset just once!
+        if not exact_stats:
+            samples = sample_not_masked_values(raster_dataset, SAMPLING_MAX_SAMPLES)
+
         for band, band_name in bands_info:
+
+            if exact_stats:
+                print("Computing exact stats...")
+                stats = raster_band_stats(raster_dataset, band)
+            else:
+                print("Computing approximate stats...")
+                stats = raster_band_approx_stats(raster_dataset, samples, band)
+
             band_colorinterp = raster_dataset.colorinterp[band - 1].name
             if band_colorinterp == "alpha":
                 band_nodata = "0"
@@ -203,7 +234,8 @@ def rasterio_metadata(
                 "type": raster_band_type(raster_dataset, band),
                 "name": band_field_name(band_name, band, band_rename_function),
                 "colorinterp": band_colorinterp,
-                "stats": raster_band_stats(raster_dataset, band),
+                "colortable": get_color_table(raster_dataset, band),
+                "stats": stats,
                 "nodata": band_nodata,
             }
             bands_metadata.append(meta)
@@ -214,7 +246,6 @@ def rasterio_metadata(
         bounds_coords = list(bounds_polygon.bounds)
         center_coords = list(*bounds_polygon.centroid.coords)
         center_coords.append(resolution)
-
         pixel_resolution = int(resolution + math.log(block_width * block_height, 4))
         if pixel_resolution > 26:
             raise ValueError(
@@ -230,6 +261,7 @@ def rasterio_metadata(
                 "stats": e["stats"],
                 "colorinterp": e["colorinterp"],
                 "nodata": e["nodata"],
+                "colortable": e["colortable"],
             }
             for e in bands_metadata
         ]
@@ -317,8 +349,102 @@ def band_with_nodata_mask(
         return (raw_data, raw_data == nodata_value)
 
 
-def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> dict:
-    """Get statistics for a raster band."""
+def quantile_ranges() -> List[Ranges]:
+    """Return a list of ranges to compute quantiles."""
+    return [[j / i for j in range(1, i)] for i in OVERVIEWS]
+
+
+def sample_not_masked_values(
+    raster_dataset: rasterio.io.DatasetReader, n_samples: int
+) -> Samples:
+    """Compute quantiles for a raster dataset band."""
+    def not_enough_samples():
+        return (
+            len(not_masked_samples[1]) < n_samples
+            and iterations < SAMPLING_MAX_ITERATIONS
+        )
+
+    west = raster_dataset.bounds.left
+    south = raster_dataset.bounds.bottom
+    east = raster_dataset.bounds.right
+    north = raster_dataset.bounds.top
+
+    bands = range(1, raster_dataset.count + 1)
+
+    not_masked_samples = {b: [] for b in bands}
+
+    iterations = 0
+
+    print('Sampling raster...')
+    while not_enough_samples():
+        x = np.random.uniform(west, east, n_samples)
+        y = np.random.uniform(south, north, n_samples)
+
+        coords = sort_xy(zip(x, y))
+
+        samples = raster_dataset.sample(coords, indexes=bands, masked=True)
+        for sample in samples:
+            raster_is_masked = (
+                sample.mask if isinstance(sample.mask, np.bool_) else sample.mask.any()
+            )
+            if not raster_is_masked:
+                for band in bands:
+                    not_masked_samples[band].append(sample[band - 1])
+
+        iterations += 1
+
+    for b in bands:
+        not_masked_samples[b] = not_masked_samples[b][:n_samples]
+
+    return not_masked_samples
+
+
+def most_common_approx(samples: List[Union[int, float]]) -> Dict[int, int]:
+    """Compute the most common values in a list of int samples."""
+    counts = np.bincount(samples)
+    nth = min(MAX_MOST_COMMON, len(counts))
+    idx = np.argpartition(counts, -nth)[-nth:]
+    return dict([(int(i), int(counts[i])) for i in idx if counts[i] > 0])
+
+
+def compute_quantiles(
+    data: List[Union[int, float]], cast_function: Callable
+) -> dict:
+    """Compute quantiles for a raster dataset band."""
+    print("Computing quantiles...")
+    quantiles = [
+        [cast_function(np.quantile(data, q, method="lower")) for q in r]
+        for r in quantile_ranges()
+    ]
+    return dict(zip(OVERVIEWS, quantiles))
+
+
+def raster_band_approx_stats(
+    raster_dataset: rasterio.io.DatasetReader, samples: Samples, band: int
+) -> dict:
+    """Get approximate statistics for a raster band."""
+    stats = raster_dataset.stats(indexes=[band], approx=True)[0]
+
+    samples_band = samples[band]
+
+    quantiles = compute_quantiles(samples_band, int)
+
+    most_common = dict()
+    if not band_is_float(raster_dataset, band):
+        most_common = most_common_approx(samples_band)
+
+    return {
+        "min": stats.min,
+        "max": stats.max,
+        "mean": stats.mean,
+        "stddev": stats.std,
+        "quantiles": quantiles,
+        "top_values": most_common,
+        "version": ".".join(__version__.split(".")[:3]),
+    }
+
+
+def read_raster_band(raster_dataset: rasterio.io.DatasetReader, band: int) -> np.array:
     alpha_band = get_alpha_band(raster_dataset)
     original_nodata_value = band_original_nodata_value(raster_dataset, band)
     if band == alpha_band or (
@@ -326,55 +452,67 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
         and original_nodata_value is None
         and not band_is_float(raster_dataset, band)
     ):
-        masked = False
         unmasked_data = raster_dataset.read(band)
-        stats = np.ma.masked_array(data=unmasked_data, mask=False)
+        return np.ma.masked_array(data=unmasked_data, mask=False)
+
+    if alpha_band:
+        # mask data with alpha band to exclude from stats
+        return read_masked(raster_dataset, band, alpha_band)
+
+    # mask nodata values to exclude from stats
+    compound_bands = get_compound_bands(raster_dataset, band)
+    if len(compound_bands) > 1:
+        # if band is part of a RGB triplet,
+        # we need to use the three bands for masking
+        bands_and_masks = [
+            band_with_nodata_mask(raster_dataset, b) for b in compound_bands
+        ]
+        mask = np.logical_and.reduce(
+            [band_and_mask[1] for band_and_mask in bands_and_masks]
+        )
+        raw_data = bands_and_masks[compound_bands.index(band)][0]
     else:
-        masked = True
-        if alpha_band:
-            # mask data with alpha band to exclude from stats
-            stats = read_masked(raster_dataset, band, alpha_band)
-        else:
-            # mask nodata values to exclude from stats
-            compound_bands = get_compound_bands(raster_dataset, band)
-            if len(compound_bands) > 1:
-                # if band is part of a RGB triplet,
-                # we need to use the three bands for masking
-                bands_and_masks = [
-                    band_with_nodata_mask(raster_dataset, b) for b in compound_bands
-                ]
-                mask = np.logical_and.reduce(
-                    [band_and_mask[1] for band_and_mask in bands_and_masks]
-                )
-                raw_data = bands_and_masks[compound_bands.index(band)][0]
-            else:
-                (raw_data, mask) = band_with_nodata_mask(raster_dataset, band)
-            stats = np.ma.masked_array(data=raw_data, mask=mask)
-    qdata = stats.compressed()
-    ranges = [[j / i for j in range(1, i)] for i in range(3, 20)]
-    casting_function = int if np.issubdtype(stats.dtype, np.integer) else float
-    quantiles = [
-        [casting_function(np.quantile(qdata, q, method="lower")) for q in r]
-        for r in ranges
-    ]
-    quantiles = dict(zip(range(3, 20), quantiles))
+        (raw_data, mask) = band_with_nodata_mask(raster_dataset, band)
+
+    return np.ma.masked_array(data=raw_data, mask=mask)
+
+
+def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> dict:
+    """Get statistics for a raster band."""
+
+    print('Computing stats for band {0}...'.format(band))
+    _stats = raster_dataset.stats(indexes=[band], approx=False)[0]
+    _min = _stats.min
+    _max = _stats.max
+    _mean = _stats.mean
+    _std = _stats.std
+
+    raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
+
+    print("Removing masked data...")
+    qdata = raster_band.compressed()
+
+    casting_function = int if np.issubdtype(raster_band.dtype, np.integer) else float
+
+    quantiles = compute_quantiles(qdata, casting_function)
+
+    print("Computing most commons values...")
+    # Not sure whether we should compute most_common values for float bands
+    # since most_common values are meant for categorical data
     most_common = Counter(qdata).most_common(100)
     most_common.sort(key=lambda x: x[1], reverse=True)
     most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
+
     version = ".".join(__version__.split(".")[:3])
+
     return {
-        "min": float(stats.min()),
-        "max": float(stats.max()),
-        "mean": float(stats.mean()),
-        "stddev": float(stats.std()),
-        "sum": float(stats.sum()),
-        "sum_squares": float((stats**2).sum()),
+        "min": float(_min),
+        "max": float(_max),
+        "mean": float(_mean),
+        "stddev": float(_std),
         "quantiles": quantiles,
         "top_values": most_common,
         "version": version,
-        "count": (
-            np.count_nonzero(stats.mask is False) if masked else math.prod(stats.shape)
-        ),  # noqa: E712
     }
 
 
