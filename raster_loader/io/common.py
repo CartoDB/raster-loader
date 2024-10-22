@@ -111,8 +111,7 @@ def array_to_record(
 
     block = quadbin.point_to_cell(x, y, resolution)
     # print('block:', block, 'x:', x, 'y:', y, 'resolution:', resolution, 'sum', arr.sum())
-
-    if no_data_value and np.all(arr == no_data_value):
+    if no_data_value is not None and np.all(arr == no_data_value):
         return None
 
     if should_swap[arr.dtype.byteorder]:
