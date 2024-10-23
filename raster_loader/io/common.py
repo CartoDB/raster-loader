@@ -36,15 +36,13 @@ DEFAULT_TYPES_NODATA_VALUES = {
     "float64": np.nan,
 }
 
-MAX_MOST_COMMON = 10
-SAMPLING_MAX_ITERATIONS = 100
-SAMPLING_MAX_SAMPLES = 10000
-OVERVIEWS = range(3, 20)
+DEFAULT_MAX_MOST_COMMON = 10
+DEFAULT_SAMPLING_MAX_ITERATIONS = 100
+DEFAULT_SAMPLING_MAX_SAMPLES = 10000
+DEFAULT_OVERVIEWS = range(3, 20)
 
 should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
 
-Quantiles = List[List[float]]
-Ranges = Tuple[float, float]
 Samples = Dict[int, List[Union[int, float]]]
 
 
@@ -216,7 +214,9 @@ def rasterio_metadata(
         # We only need to sample if we are not computing exact stats
         # and we need to sample from the raster dataset just once!
         if not exact_stats:
-            samples = sample_not_masked_values(raster_dataset, SAMPLING_MAX_SAMPLES)
+            samples = sample_not_masked_values(
+                raster_dataset, DEFAULT_SAMPLING_MAX_SAMPLES
+            )
 
         for band, band_name in bands_info:
 
@@ -354,9 +354,9 @@ def band_with_nodata_mask(
         return (raw_data, raw_data == nodata_value)
 
 
-def quantile_ranges() -> List[Ranges]:
+def quantile_ranges() -> List[List[float]]:
     """Return a list of ranges to compute quantiles."""
-    return [[j / i for j in range(1, i)] for i in OVERVIEWS]
+    return [[j / i for j in range(1, i)] for i in DEFAULT_OVERVIEWS]
 
 
 def sample_not_masked_values(
@@ -366,7 +366,7 @@ def sample_not_masked_values(
     def not_enough_samples():
         return (
             len(not_masked_samples[1]) < n_samples
-            and iterations < SAMPLING_MAX_ITERATIONS
+            and iterations < DEFAULT_SAMPLING_MAX_ITERATIONS
         )
 
     west = raster_dataset.bounds.left
@@ -407,7 +407,7 @@ def sample_not_masked_values(
 def most_common_approx(samples: List[Union[int, float]]) -> Dict[int, int]:
     """Compute the most common values in a list of int samples."""
     counts = np.bincount(samples)
-    nth = min(MAX_MOST_COMMON, len(counts))
+    nth = min(DEFAULT_MAX_MOST_COMMON, len(counts))
     idx = np.argpartition(counts, -nth)[-nth:]
     return dict([(int(i), int(counts[i])) for i in idx if counts[i] > 0])
 
@@ -421,7 +421,7 @@ def compute_quantiles(
         [cast_function(np.quantile(data, q, method="lower")) for q in r]
         for r in quantile_ranges()
     ]
-    return dict(zip(OVERVIEWS, quantiles))
+    return dict(zip(DEFAULT_OVERVIEWS, quantiles))
 
 
 def raster_band_approx_stats(
