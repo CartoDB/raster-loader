@@ -1,8 +1,9 @@
-import sys
 import math
+import numpy as np
 import pyproj
 import shapely
-import numpy as np
+import sys
+import warnings
 
 from raster_loader._version import __version__
 from collections import Counter
@@ -397,6 +398,12 @@ def sample_not_masked_values(
                     not_masked_samples[band].append(sample[band - 1])
 
         iterations += 1
+
+    if len(not_masked_samples[1]) < n_samples:
+        warnings.warn(
+            "The data is very sparse and could not sample enough non-masked values.\n"
+            f"Only {len(not_masked_samples[1])} samples were collected",
+        )
 
     for b in bands:
         not_masked_samples[b] = not_masked_samples[b][:n_samples]
