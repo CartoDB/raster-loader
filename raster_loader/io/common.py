@@ -387,9 +387,10 @@ def sample_not_masked_values(
     iterations = 0
 
     print('Sampling raster...')
+    rng = np.random.default_rng()
     while not_enough_samples():
-        x = np.random.uniform(west, east, n_samples)
-        y = np.random.uniform(south, north, n_samples)
+        x = rng.uniform(west, east, n_samples)
+        y = rng.random.uniform(south, north, n_samples)
 
         coords = sort_xy(zip(x, y))
 
