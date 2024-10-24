@@ -405,10 +405,12 @@ def sample_not_masked_values(
         iterations += 1
 
     if len(not_masked_samples[1]) < n_samples:
-        warnings.warn(
-            "The data is very sparse and could not sample enough non-masked values.\n"
-            f"Only {len(not_masked_samples[1])} samples were collected",
+        msg = (
+            "The data is very sparse and there are not enough non-masked samples.\n"
+            f"Only {len(not_masked_samples[1])} samples were collected and "
+            "quantiles and most common values may be inaccurate.\n"
         )
+        warnings.warn(msg, UserWarning)
 
     for b in bands:
         not_masked_samples[b] = not_masked_samples[b][:n_samples]
