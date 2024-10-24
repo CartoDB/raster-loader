@@ -177,6 +177,7 @@ def rasterio_metadata(
     bands_info: List[Tuple[int, str]],
     band_rename_function: Callable,
     exact_stats: bool = False,
+    all_stats: bool = False,
 ):
     """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
@@ -215,18 +216,22 @@ def rasterio_metadata(
         # We only need to sample if we are not computing exact stats
         # and we need to sample from the raster dataset just once!
         if not exact_stats:
-            samples = sample_not_masked_values(
-                raster_dataset, DEFAULT_SAMPLING_MAX_SAMPLES
-            )
+            samples = None
+            if all_stats:
+                samples = sample_not_masked_values(
+                    raster_dataset, DEFAULT_SAMPLING_MAX_SAMPLES
+                )
 
         for band, band_name in bands_info:
 
             if exact_stats:
                 print("Computing exact stats...")
-                stats = raster_band_stats(raster_dataset, band)
+                stats = raster_band_stats(raster_dataset, band, all_stats)
             else:
                 print("Computing approximate stats...")
-                stats = raster_band_approx_stats(raster_dataset, samples, band)
+                stats = raster_band_approx_stats(
+                    raster_dataset, samples, band, all_stats
+                )
 
             band_colorinterp = raster_dataset.colorinterp[band - 1].name
             if band_colorinterp == "alpha":
@@ -432,18 +437,24 @@ def compute_quantiles(
 
 
 def raster_band_approx_stats(
-    raster_dataset: rasterio.io.DatasetReader, samples: Samples, band: int
+    raster_dataset: rasterio.io.DatasetReader,
+    samples: Samples,
+    band: int,
+    all_stats: bool,
 ) -> dict:
     """Get approximate statistics for a raster band."""
     stats = raster_dataset.statistics(band, approx=True)
 
-    samples_band = samples[band]
+    quantiles = None
+    most_common = None
+    if all_stats:
+        samples_band = samples[band]
 
-    quantiles = compute_quantiles(samples_band, int)
+        quantiles = compute_quantiles(samples_band, int)
 
-    most_common = dict()
-    if not band_is_float(raster_dataset, band):
-        most_common = most_common_approx(samples_band)
+        most_common = dict()
+        if not band_is_float(raster_dataset, band):
+            most_common = most_common_approx(samples_band)
 
     return {
         "min": stats.min,
@@ -489,7 +500,9 @@ def read_raster_band(raster_dataset: rasterio.io.DatasetReader, band: int) -> np
     return np.ma.masked_array(data=raw_data, mask=mask)
 
 
-def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> dict:
+def raster_band_stats(
+    raster_dataset: rasterio.io.DatasetReader, band: int, all_stats: bool
+) -> dict:
     """Get statistics for a raster band."""
 
     print('Computing stats for band {0}...'.format(band))
@@ -499,21 +512,26 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
     _mean = _stats.mean
     _std = _stats.std
 
-    raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
+    quantiles = None
+    most_common = None
+    if all_stats:
+        raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
 
-    print("Removing masked data...")
-    qdata = raster_band.compressed()
+        print("Removing masked data...")
+        qdata = raster_band.compressed()
 
-    casting_function = int if np.issubdtype(raster_band.dtype, np.integer) else float
+        casting_function = (
+            int if np.issubdtype(raster_band.dtype, np.integer) else float
+        )
 
-    quantiles = compute_quantiles(qdata, casting_function)
+        quantiles = compute_quantiles(qdata, casting_function)
 
-    print("Computing most commons values...")
-    # Not sure whether we should compute most_common values for float bands
-    # since most_common values are meant for categorical data
-    most_common = Counter(qdata).most_common(100)
-    most_common.sort(key=lambda x: x[1], reverse=True)
-    most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
+        print("Computing most commons values...")
+        # Not sure whether we should compute most_common values for float bands
+        # since most_common values are meant for categorical data
+        most_common = Counter(qdata).most_common(100)
+        most_common.sort(key=lambda x: x[1], reverse=True)
+        most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
 
     version = ".".join(__version__.split(".")[:3])
 
