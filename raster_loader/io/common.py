@@ -435,7 +435,7 @@ def raster_band_approx_stats(
     raster_dataset: rasterio.io.DatasetReader, samples: Samples, band: int
 ) -> dict:
     """Get approximate statistics for a raster band."""
-    stats = raster_dataset.stats(indexes=[band], approx=True)[0]
+    stats = raster_dataset.statistics(band, approx=True)
 
     samples_band = samples[band]
 
@@ -493,7 +493,7 @@ def raster_band_stats(raster_dataset: rasterio.io.DatasetReader, band: int) -> d
     """Get statistics for a raster band."""
 
     print('Computing stats for band {0}...'.format(band))
-    _stats = raster_dataset.stats(indexes=[band], approx=False)[0]
+    _stats = raster_dataset.statistics(band, approx=False)
     _min = _stats.min
     _max = _stats.max
     _mean = _stats.mean
