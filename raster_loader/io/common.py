@@ -464,6 +464,7 @@ def raster_band_approx_stats(
         "quantiles": quantiles,
         "top_values": most_common,
         "version": ".".join(__version__.split(".")[:3]),
+        "approximated_stats": True,
     }
 
 
@@ -543,6 +544,7 @@ def raster_band_stats(
         "quantiles": quantiles,
         "top_values": most_common,
         "version": version,
+        "approximated_stats": False,
     }
 
 
