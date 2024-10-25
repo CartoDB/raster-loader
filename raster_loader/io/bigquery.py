@@ -154,8 +154,8 @@ class BigQueryConnection(DataWarehouseConnection):
                 update_metadata(metadata, old_metadata)
 
             number_of_blocks = get_number_of_blocks(file_path)
-            number_of_overview_blocks = get_number_of_overviews_blocks(file_path)
-            total_blocks = number_of_blocks + number_of_overview_blocks
+            number_of_overview_tiles = get_number_of_overviews_blocks(file_path)
+            total_blocks = number_of_blocks + number_of_overview_tiles
 
             if chunk_size is None:
                 job = self.upload_records(records_gen, fqn)
@@ -166,7 +166,10 @@ class BigQueryConnection(DataWarehouseConnection):
 
                 jobs = []
                 errors = []
-                print(f"Writing {total_blocks} blocks to BigQuery...")
+                print(
+                    f"Writing {number_of_blocks} blocks and {number_of_overview_tiles} "
+                    "overview tiles to BigQuery..."
+                )
                 with tqdm(total=total_blocks) as pbar:
                     if total_blocks < chunk_size:
                         chunk_size = total_blocks
