@@ -446,7 +446,7 @@ def raster_band_approx_stats(
     all_stats: bool,
 ) -> dict:
     """Get approximate statistics for a raster band."""
-    stats = raster_dataset.statistics(band, approx=True)
+    stats = raster_dataset.stats(indexes=[band], approx=True)[0]
 
     quantiles = None
     most_common = None
@@ -510,7 +510,7 @@ def raster_band_stats(
     """Get statistics for a raster band."""
 
     print('Computing stats for band {0}...'.format(band))
-    _stats = raster_dataset.statistics(band, approx=False)
+    _stats = raster_dataset.stats(indexes=[band], approx=False)[0]
     _min = _stats.min
     _max = _stats.max
     _mean = _stats.mean
