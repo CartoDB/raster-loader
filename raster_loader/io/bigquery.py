@@ -146,7 +146,7 @@ class BigQueryConnection(DataWarehouseConnection):
                 self.band_rename_function,
                 bands_info,
             )
-            records_gen = chain(windows_records_gen, overviews_records_gen)
+            records_gen = chain(overviews_records_gen, windows_records_gen)
 
             if append_records:
                 old_metadata = self.get_metadata(fqn)
@@ -154,8 +154,8 @@ class BigQueryConnection(DataWarehouseConnection):
                 update_metadata(metadata, old_metadata)
 
             number_of_blocks = get_number_of_blocks(file_path)
-            number_of_overviews_blocks = get_number_of_overviews_blocks(file_path)
-            total_blocks = number_of_blocks + number_of_overviews_blocks
+            number_of_overview_blocks = get_number_of_overviews_blocks(file_path)
+            total_blocks = number_of_blocks + number_of_overview_blocks
 
             if chunk_size is None:
                 job = self.upload_records(records_gen, fqn)
@@ -183,9 +183,11 @@ class BigQueryConnection(DataWarehouseConnection):
                             # job already removed because failed
                             pass
 
+                    processed_blocks = 0
                     for records in batched(records_gen, chunk_size):
                         job = self.upload_records(records, fqn)
                         job.num_records = len(records)
+                        processed_blocks += len(records)
 
                         job.add_done_callback(partial(lambda job: done_callback(job)))
                         jobs.append(job)
@@ -201,7 +203,10 @@ class BigQueryConnection(DataWarehouseConnection):
                     if len(errors):
                         raise Exception(errors)
 
-                    pbar.update(1)
+                    empty_blocks = total_blocks - processed_blocks
+                    pbar.update(empty_blocks)
+
+                print("Number of empty blocks: ", empty_blocks)
 
             print("Writing metadata to BigQuery...")
             self.write_metadata(metadata, append_records, fqn)
