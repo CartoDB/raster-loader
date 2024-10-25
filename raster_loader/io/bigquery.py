@@ -3,15 +3,19 @@ import json
 import pandas as pd
 import rasterio
 import re
+import rio_cogeo
 
+from itertools import chain
 from raster_loader import __version__
 from raster_loader.errors import import_error_bigquery, IncompatibleRasterException
 from raster_loader.utils import ask_yes_no_question, batched
 from raster_loader.io.common import (
-    rasterio_metadata,
-    rasterio_windows_to_records,
-    get_number_of_blocks,
     check_metadata_is_compatible,
+    get_number_of_blocks,
+    get_number_of_overviews_blocks,
+    rasterio_metadata,
+    rasterio_overview_to_records,
+    rasterio_windows_to_records,
     update_metadata,
 )
 
@@ -131,18 +135,28 @@ class BigQueryConnection(DataWarehouseConnection):
                 file_path, bands_info, self.band_rename_function, exact_stats, all_stats
             )
 
-            records_gen = rasterio_windows_to_records(
+            overviews_records_gen = rasterio_overview_to_records(
+                file_path,
+                self.band_rename_function,
+                bands_info
+            )
+
+            windows_records_gen = rasterio_windows_to_records(
                 file_path,
                 self.band_rename_function,
                 bands_info,
             )
+            records_gen = chain(windows_records_gen, overviews_records_gen)
 
             if append_records:
                 old_metadata = self.get_metadata(fqn)
                 check_metadata_is_compatible(metadata, old_metadata)
                 update_metadata(metadata, old_metadata)
 
-            total_blocks = get_number_of_blocks(file_path)
+            number_of_blocks = get_number_of_blocks(file_path)
+            number_of_overviews_blocks = get_number_of_overviews_blocks(file_path)
+            total_blocks = number_of_blocks + number_of_overviews_blocks
+
             if chunk_size is None:
                 job = self.upload_records(records_gen, fqn)
                 # raise error if job went wrong (blocking call)

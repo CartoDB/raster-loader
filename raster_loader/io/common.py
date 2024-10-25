@@ -551,6 +551,176 @@ def raster_band_stats(
     }
 
 
+def get_number_of_overviews_blocks(file_path: str) -> int:
+
+    raster_info = rio_cogeo.cog_info(file_path).dict()
+    with rasterio.open(file_path) as raster_dataset:
+        overview_factors = raster_dataset.overviews(1)
+        block_width, block_height, resolution = get_resolution_and_block_sizes(
+            raster_dataset, raster_info
+        )
+        raster_crs = raster_dataset.crs.to_string()
+        raster_to_4326_transformer = pyproj.Transformer.from_crs(
+            raster_crs, "EPSG:4326", always_xy=True
+        )
+        pixels_to_raster_transform = raster_dataset.transform
+
+        # results are crs 4326, so x = long, y = lat
+        min_base_tile_lng, min_base_tile_lat = raster_to_4326_transformer.transform(
+            *(pixels_to_raster_transform * (block_width * 0.5, block_height * 0.5))
+        )
+        max_base_tile_lng, max_base_tile_lat = raster_to_4326_transformer.transform(
+            *(
+                pixels_to_raster_transform
+                * (
+                    raster_dataset.width - block_width * 0.5,
+                    raster_dataset.height - block_height * 0.5,
+                )
+            )
+        )
+
+        # quadbin cell at base resolution
+        min_base_tile = quadbin.point_to_cell(
+            min_base_tile_lng, min_base_tile_lat, resolution
+        )
+        min_base_x, min_base_y, _z = quadbin.cell_to_tile(min_base_tile)
+
+        n_records = 0
+        for overview_index in range(0, len(overview_factors)):
+            # quadbin cell at overview resolution (quadbin_tile -> quadbin_cell)
+            min_tile = quadbin.point_to_cell(
+                min_base_tile_lng, min_base_tile_lat, resolution - overview_index - 1
+            )
+            max_tile = quadbin.point_to_cell(
+                max_base_tile_lng, max_base_tile_lat, resolution - overview_index - 1
+            )
+            min_x, min_y, min_z = quadbin.cell_to_tile(min_tile)
+            max_x, max_y, _z = quadbin.cell_to_tile(max_tile)
+
+            n_records += (max_x - min_x + 1) * (max_y - min_y + 1)
+
+    return n_records
+
+
+def rasterio_overview_to_records(
+    #  raster_dataset: rasterio.io.DatasetReader,
+    file_path: str,
+    band_rename_function: Callable,
+    bands_info: List[Tuple[int, str]]
+) -> Iterable:
+    raster_info = rio_cogeo.cog_info(file_path).dict()
+    with rasterio.open(file_path) as raster_dataset:
+        block_width, block_height, resolution = get_resolution_and_block_sizes(
+            raster_dataset, raster_info
+        )
+        raster_crs = raster_dataset.crs.to_string()
+
+        raster_to_4326_transformer = pyproj.Transformer.from_crs(
+            raster_crs, "EPSG:4326", always_xy=True
+        )
+        # raster_crs must be 3857
+        pixels_to_raster_transform = raster_dataset.transform
+        is_valid_raster_dataset(raster_dataset)
+
+        block_width, block_height, resolution = get_resolution_and_block_sizes(
+            raster_dataset, raster_info
+        )
+        raster_crs = raster_dataset.crs.to_string()
+
+        raster_to_4326_transformer = pyproj.Transformer.from_crs(
+            raster_crs, "EPSG:4326", always_xy=True
+        )
+        # raster_crs must be 3857
+        pixels_to_raster_transform = raster_dataset.transform
+
+        overview_factors = raster_dataset.overviews(1)
+        (block_width, block_height) = raster_dataset.block_shapes[0]
+
+        for overview_index in range(0, len(overview_factors)):
+            # results are crs 4326, so x = long, y = lat
+            min_base_tile_lng, min_base_tile_lat = raster_to_4326_transformer.transform(
+                *(pixels_to_raster_transform * (block_width * 0.5, block_height * 0.5))
+            )
+            max_base_tile_lng, max_base_tile_lat = raster_to_4326_transformer.transform(
+                *(
+                    pixels_to_raster_transform
+                    * (
+                        raster_dataset.width - block_width * 0.5,
+                        raster_dataset.height - block_height * 0.5,
+                    )
+                )
+            )
+            # quadbin cell at base resolution
+            min_base_tile = quadbin.point_to_cell(
+                min_base_tile_lng, min_base_tile_lat, resolution
+            )
+            min_base_x, min_base_y, _z = quadbin.cell_to_tile(min_base_tile)
+
+            # quadbin cell at overview resolution (quadbin_tile -> quadbin_cell)
+            min_tile = quadbin.point_to_cell(
+                min_base_tile_lng, min_base_tile_lat, resolution - overview_index - 1
+            )
+            max_tile = quadbin.point_to_cell(
+                max_base_tile_lng, max_base_tile_lat, resolution - overview_index - 1
+            )
+            min_x, min_y, min_z = quadbin.cell_to_tile(min_tile)
+            max_x, max_y, _z = quadbin.cell_to_tile(max_tile)
+
+            for tile_x in range(min_x, max_x + 1):
+                for tile_y in range(min_y, max_y + 1):
+                    children = quadbin.cell_to_children(
+                        quadbin.tile_to_cell((tile_x, tile_y, min_z)), resolution
+                    )
+                    # children x,y,z tuples (tiles)
+                    children_tiles = [quadbin.cell_to_tile(child) for child in children]
+                    child_xs = [child[0] for child in children_tiles]
+                    child_ys = [child[1] for child in children_tiles]
+                    min_child_x, max_child_x = min(child_xs), max(child_xs)
+                    min_child_y, max_child_y = min(child_ys), max(child_ys)
+                    factor = overview_factors[overview_index]
+
+                    # tile_window for current overview
+                    tile_window = rasterio.windows.Window(
+                        col_off=block_width * (min_child_x - min_base_x),
+                        row_off=block_height * (min_child_y - min_base_y),
+                        width=(max_child_x - min_child_x + 1)
+                        * block_width,  # should equal block_width * factor
+                        height=(max_child_y - min_child_y + 1)
+                        * block_height,  # should equal block_width * factor
+                    )
+
+                    # So far we only support one nodata value for all bands
+                    no_data_value = get_nodata_value(raster_dataset)
+                    record = {}
+                    for band, band_name in bands_info:
+                        tile_data = read_filled(
+                            raster_dataset,
+                            band,
+                            no_data_value,
+                            window=tile_window,
+                            out_shape=(
+                                tile_window.width // factor,
+                                tile_window.height // factor,
+                            ),
+                            boundless=True,
+                        )
+                        newrecord = array_to_record(
+                            tile_data,
+                            band_field_name(band_name, band, band_rename_function),
+                            band_rename_function,
+                            raster_to_4326_transformer,
+                            pixels_to_raster_transform,
+                            resolution - overview_index - 1,
+                            tile_window,
+                            no_data_value
+                        )
+                        if newrecord:
+                            record.update(newrecord)
+
+                    if record:
+                        yield record
+
+
 def rasterio_windows_to_records(
     file_path: str,
     band_rename_function: Callable,
@@ -604,116 +774,12 @@ def rasterio_windows_to_records(
                 )
 
                 # add the new columns generated by array_t
-                # o_record
-                # but leaving unchanged the index e.g. the block column
+                # o_record but leaving unchanged the index e.g. the block column
                 if newrecord:
                     record.update(newrecord)
 
             if record:
-                # import pickle
-                # with open("/tmp/record.pkl", "wb") as f:
-                #     pickle.dump(record, f)
-                # import sys; sys.exit(0)
                 yield record
-
-        # Overviews
-
-        # Block size must be equal for all bands;
-        # We avoid looping here over bands because we need
-        # to loop internally to accumulate, for each block
-        # the data for all bands.
-        if not is_valid_block_shapes(raster_dataset.block_shapes):
-            raise ValueError("Invalid block shapes: must be equal for all bands")
-
-        (block_width, block_height) = raster_dataset.block_shapes[0]
-        overview_factors = raster_dataset.overviews(1)
-
-        if not is_valid_overview_indexes(overview_factors):
-            raise ValueError(
-                "Invalid overview factors: must be consecutive powers of 2"
-            )
-
-        for overview_index in range(0, len(overview_factors)):
-            # results are crs 4326, so x = long, y = lat
-            min_base_tile_lng, min_base_tile_lat = raster_to_4326_transformer.transform(
-                *(pixels_to_raster_transform * (block_width * 0.5, block_height * 0.5))
-            )
-            max_base_tile_lng, max_base_tile_lat = raster_to_4326_transformer.transform(
-                *(
-                    pixels_to_raster_transform
-                    * (
-                        raster_dataset.width - block_width * 0.5,
-                        raster_dataset.height - block_height * 0.5,
-                    )
-                )
-            )
-            # quadbin cell at base resolution
-            min_base_tile = quadbin.point_to_cell(
-                min_base_tile_lng, min_base_tile_lat, resolution
-            )
-            min_base_x, min_base_y, _z = quadbin.cell_to_tile(min_base_tile)
-
-            # quadbin cell at overview resolution (quadbin_tile -> quadbin_cell)
-            min_tile = quadbin.point_to_cell(
-                min_base_tile_lng, min_base_tile_lat, resolution - overview_index - 1
-            )
-            max_tile = quadbin.point_to_cell(
-                max_base_tile_lng, max_base_tile_lat, resolution - overview_index - 1
-            )
-            min_x, min_y, min_z = quadbin.cell_to_tile(min_tile)
-            max_x, max_y, _z = quadbin.cell_to_tile(max_tile)
-            for tile_x in range(min_x, max_x + 1):
-                for tile_y in range(min_y, max_y + 1):
-                    children = quadbin.cell_to_children(
-                        quadbin.tile_to_cell((tile_x, tile_y, min_z)), resolution
-                    )
-                    # children x,y,z tuples (tiles)
-                    children_tiles = [quadbin.cell_to_tile(child) for child in children]
-                    child_xs = [child[0] for child in children_tiles]
-                    child_ys = [child[1] for child in children_tiles]
-                    min_child_x, max_child_x = min(child_xs), max(child_xs)
-                    min_child_y, max_child_y = min(child_ys), max(child_ys)
-                    factor = overview_factors[overview_index]
-                    # tile_window for current overview
-                    tile_window = rasterio.windows.Window(
-                        col_off=block_width * (min_child_x - min_base_x),
-                        row_off=block_height * (min_child_y - min_base_y),
-                        width=(max_child_x - min_child_x + 1)
-                        * block_width,  # should equal block_width * factor
-                        height=(max_child_y - min_child_y + 1)
-                        * block_height,  # should equal block_width * factor
-                    )
-
-                    # So far we only support one nodata value for all bands
-                    no_data_value = get_nodata_value(raster_dataset)
-                    record = {}
-                    for band, band_name in bands_info:
-                        tile_data = read_filled(
-                            raster_dataset,
-                            band,
-                            no_data_value,
-                            window=tile_window,
-                            out_shape=(
-                                tile_window.width // factor,
-                                tile_window.height // factor,
-                            ),
-                            boundless=True,
-                        )
-                        newrecord = array_to_record(
-                            tile_data,
-                            band_field_name(band_name, band, band_rename_function),
-                            band_rename_function,
-                            raster_to_4326_transformer,
-                            pixels_to_raster_transform,
-                            resolution - overview_index - 1,
-                            tile_window,
-                            no_data_value
-                        )
-                        if newrecord:
-                            record.update(newrecord)
-
-                    if record:
-                        yield record
 
 
 def is_valid_overview_indexes(overview_factors) -> bool:
@@ -724,11 +790,28 @@ def is_valid_overview_indexes(overview_factors) -> bool:
 
 
 def is_valid_block_shapes(block_shapes) -> bool:
+    # Block size must be equal for all bands;
+    # We avoid looping here over bands because we need
+    # to loop internally to accumulate, for each block
+    # the data for all bands.
     (block_width, block_height) = block_shapes[0]
     for block_shape_index in range(0, len(block_shapes)):
         (index_block_width, index_block_height) = block_shapes[block_shape_index]
         if (block_width != index_block_width) or (block_height != index_block_height):
             return False
+    return True
+
+
+def is_valid_raster_dataset(raster_dataset: rasterio.io.DatasetReader) -> bool:
+
+    if not is_valid_block_shapes(raster_dataset.block_shapes):
+        raise ValueError("Invalid block shapes: must be equal for all bands")
+
+    if not is_valid_overview_indexes(raster_dataset.overviews(1)):
+        raise ValueError(
+            "Invalid overview factors: must be consecutive powers of 2"
+        )
+
     return True
 
 
