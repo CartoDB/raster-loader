@@ -85,7 +85,7 @@ def bigquery(args=None):
 )
 @click.option(
     "--all_stats",
-    help="Compute all statistics for the raster bands including quantiles and most frequent values.",
+    help="Compute all statistics including quantiles and most frequent values.",
     required=False,
     is_flag=True,
 )
