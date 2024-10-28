@@ -2,6 +2,7 @@ import json
 import rasterio
 import pandas as pd
 
+from itertools import chain
 from typing import Iterable, List, Tuple
 
 from raster_loader.errors import (
@@ -13,8 +14,10 @@ from raster_loader.utils import ask_yes_no_question, batched
 
 from raster_loader.io.common import (
     rasterio_metadata,
+    rasterio_overview_to_records,
     rasterio_windows_to_records,
     get_number_of_blocks,
+    get_number_of_overviews_blocks,
     check_metadata_is_compatible,
     update_metadata,
 )
@@ -175,6 +178,8 @@ class SnowflakeConnection(DataWarehouseConnection):
         overwrite: bool = False,
         append: bool = False,
         cleanup_on_failure: bool = False,
+        exact_stats: bool = False,
+        all_stats: bool = False,
     ) -> bool:
         print("Loading raster file to Snowflake...")
 
@@ -198,15 +203,28 @@ class SnowflakeConnection(DataWarehouseConnection):
                 if not append_records:
                     exit()
 
-            metadata = rasterio_metadata(file_path, bands_info, lambda x: x.upper())
+            band_rename_function = lambda x: x.upper()
 
-            records_gen = rasterio_windows_to_records(
+            metadata = rasterio_metadata(
+                file_path, bands_info, band_rename_function, exact_stats, all_stats
+            )
+
+            overviews_records_gen = rasterio_overview_to_records(
                 file_path,
-                lambda x: x.upper(),
+                band_rename_function,
+                bands_info,
+            )
+            windows_records_gen = rasterio_windows_to_records(
+                file_path,
+                band_rename_function,
                 bands_info,
             )
 
-            total_blocks = get_number_of_blocks(file_path)
+            records_gen = chain(overviews_records_gen, windows_records_gen)
+
+            number_of_blocks = get_number_of_blocks(file_path)
+            number_of_overview_tiles = get_number_of_overviews_blocks(file_path)
+            total_blocks = number_of_blocks + number_of_overview_tiles
 
             if chunk_size is None:
                 ret = self.upload_records(records_gen, fqn, overwrite)
@@ -215,20 +233,32 @@ class SnowflakeConnection(DataWarehouseConnection):
             else:
                 from tqdm.auto import tqdm
 
-                print(f"Writing {total_blocks} blocks to Snowflake...")
+                processed_blocks = 0
+                print(
+                    f"Writing {number_of_blocks} blocks and {number_of_overview_tiles} "
+                    "overview tiles to Snowflake..."
+                )
                 with tqdm(total=total_blocks) as pbar:
                     if total_blocks < chunk_size:
                         chunk_size = total_blocks
                     isFirstBatch = True
+
                     for records in batched(records_gen, chunk_size):
                         ret = self.upload_records(
                             records, fqn, overwrite and isFirstBatch
                         )
-                        pbar.update(chunk_size)
+                        num_records = len(records)
+                        processed_blocks += num_records
+                        pbar.update(num_records)
+
                         if not ret:
                             raise IOError("Error uploading to Snowflake.")
                         isFirstBatch = False
-                    pbar.update(1)
+
+                    empty_blocks = total_blocks - processed_blocks
+                    pbar.update(empty_blocks)
+
+                print("Number of empty blocks: ", empty_blocks)
 
             print("Writing metadata to Snowflake...")
             if append_records:
