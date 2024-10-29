@@ -40,6 +40,60 @@ def test_bigquery_upload(*args, **kwargs):
 
 @patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
 @patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
+def test_bigquery_upload_with_all_stats(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+            "--chunk_size",
+            1,
+            "--band",
+            1,
+            "--all_stats",
+        ],
+    )
+    assert result.exit_code == 0
+
+
+@patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
+def test_bigquery_upload_with_exact_stats(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+            "--chunk_size",
+            1,
+            "--band",
+            1,
+            "--exact_stats",
+        ],
+    )
+    assert result.exit_code == 0
+
+
+@patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
 def test_bigquery_file_path_or_url_check(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
