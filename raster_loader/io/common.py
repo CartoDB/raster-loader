@@ -224,6 +224,11 @@ def rasterio_metadata(
 
             if exact_stats:
                 print("Computing exact stats...")
+                warnings.warn(
+                    "Exact statistics can be quite resources demanding. "
+                    "User is encourage to compute approximate statistics instead.",
+                    UserWarning,
+                )
                 stats = raster_band_stats(raster_dataset, band, all_stats)
             else:
                 print("Computing approximate stats...")
@@ -404,12 +409,12 @@ def sample_not_masked_values(
         iterations += 1
 
     if len(not_masked_samples[1]) < n_samples:
-        msg = (
+        warnings.warn(
             "The data is very sparse and there are not enough non-masked samples.\n"
             f"Only {len(not_masked_samples[1])} samples were collected and "
-            "quantiles and most common values may be inaccurate.\n"
+            "quantiles and most common values may be inaccurate.",
+            UserWarning,
         )
-        warnings.warn(msg, UserWarning)
 
     for b in bands:
         not_masked_samples[b] = not_masked_samples[b][:n_samples]
