@@ -457,6 +457,8 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
                     "sum_squares": 1e15,
                 },
                 "nodata": "255",
+                "colorinterp": 'red',
+                "colortable": None,
             }
         ],
         "num_blocks": 1,
@@ -619,6 +621,8 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
                     "sum_squares": 1e15,
                 },
                 "nodata": "255",
+                "colorinterp": 'red',
+                "colortable": None,
             }
         ],
         "num_blocks": 1,
