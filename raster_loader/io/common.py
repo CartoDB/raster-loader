@@ -930,18 +930,28 @@ def update_metadata(metadata, old_metadata):
     metadata["height"] = (s - n) * metadata["block_height"]
     metadata["width"] = (e - w) * metadata["block_width"]
 
-    for old_band in old_metadata["bands"]:
-        new_band = next(
-            (band for band in metadata["bands"] if band["name"] == old_band["name"]),
+    for band in metadata["bands"]:
+        old_band = next(
+            (
+                old_band
+                for old_band in old_metadata["bands"]
+                if old_band["name"] == band["name"]
+            ),
             None,
         )
-        if new_band is None:
+
+        if old_band is None:
+            # Extra precaution as this should never happen
             raise ValueError(
                 "Cannot append records to a table with different bands"
                 f"(band {old_band['name']} not found)."
             )
-        new_stats = new_band["stats"]
+
+        new_stats = band["stats"]
         old_stats = old_band["stats"]
+
+        _min = min(old_stats["min"], new_stats["min"])
+        _max = max(old_stats["max"], new_stats["max"])
         _sum = old_stats["sum"] + new_stats["sum"]
         sum_squares = old_stats["sum_squares"] + new_stats["sum_squares"]
         count = old_stats["count"] + new_stats["count"]
@@ -953,18 +963,33 @@ def update_metadata(metadata, old_metadata):
             mean = _sum / count
             stdev = math.sqrt(sum_squares / count - mean * mean)
 
-        new_band["stats"] = {
-            "min": min(old_stats["min"], new_stats["min"]),
-            "max": max(old_stats["max"], new_stats["max"]),
+        approximated_stats = (
+            old_stats["approximated_stats"] or new_stats["approximated_stats"]
+        )
+
+        try:
+            top_values = set(new_stats["top_values"] + old_stats["top_values"])
+            top_values = list(top_values).sort(reverse=True)[:DEFAULT_MAX_MOST_COMMON]
+        except TypeError:
+            # If top values in any of either metadata is None,
+            # the above will raise a TypeError
+            top_values = None
+
+        version = max(old_stats["version"], new_stats["version"])
+
+        band["stats"] = {
+            "min": _min,
+            "max": _max,
             "sum": _sum,
             "sum_squares": sum_squares,
             "count": count,
             "mean": mean,
             "stddev": stdev,
+            'quantiles': None,
+            'top_values': top_values,
+            'version': version,
+            'approximated_stats': approximated_stats,
         }
-
-        if old_band not in metadata["bands"]:
-            metadata["bands"].append(old_band)
 
 
 def get_number_of_blocks(file_path: str) -> int:
