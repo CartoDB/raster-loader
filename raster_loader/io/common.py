@@ -3,7 +3,6 @@ import numpy as np
 import pyproj
 import shapely
 import sys
-import warnings
 
 from raster_loader._version import __version__
 from collections import Counter
@@ -20,6 +19,7 @@ from raster_loader.geo import raster_bounds
 from raster_loader.errors import (
     error_not_google_compatible,
 )
+from raster_loader.utils import warnings
 
 DEFAULT_COG_BLOCK_SIZE = 256
 

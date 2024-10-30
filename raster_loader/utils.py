@@ -2,6 +2,7 @@ from itertools import islice
 import os
 import re
 import uuid
+import warnings
 
 
 def ask_yes_no_question(question: str) -> bool:
@@ -34,3 +35,20 @@ def get_default_table_name(base_path: str, band):
     table = os.path.basename(base_path).split(".")[0]
     table = "_".join([table, "band", str(band), str(uuid.uuid4())])
     return re.sub(r"[^a-zA-Z0-9_-]", "_", table)
+
+
+# Modify the __init__ so that self.line = "" instead of None
+def new_init(
+    self, message, category, filename, lineno, file=None, line=None, source=None
+):
+    self.message = message
+    self.category = category
+    self.filename = filename
+    self.lineno = lineno
+    self.file = file
+    self.line = ""
+    self.source = source
+    self._category_name = category.__name__.upper() if category else None
+
+
+warnings.WarningMessage.__init__ = new_init
