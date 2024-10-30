@@ -856,7 +856,7 @@ def is_valid_raster_dataset(raster_dataset: rasterio.io.DatasetReader) -> bool:
 
 
 def band_without_stats(band):
-    return {k: band[k] for k in set(list(band.keys())) - set(["stats"])}
+    return {k: band[k] for k in set(list(band.keys())) - set(["stats", "colorinterp", "colortable"])}
 
 
 def bands_without_stats(metadata):
