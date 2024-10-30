@@ -38,8 +38,8 @@ DEFAULT_TYPES_NODATA_VALUES = {
 }
 
 DEFAULT_MAX_MOST_COMMON = 10
-DEFAULT_SAMPLING_MAX_ITERATIONS = 100
-DEFAULT_SAMPLING_MAX_SAMPLES = 10000
+DEFAULT_SAMPLING_MAX_ITERATIONS = 10
+DEFAULT_SAMPLING_MAX_SAMPLES = 1000
 DEFAULT_OVERVIEWS = range(3, 20)
 
 should_swap = {"=": sys.byteorder != "little", "<": False, ">": True, "|": False}
@@ -454,8 +454,11 @@ def raster_band_approx_stats(
     samples_band = samples[band]
 
     count = len(samples_band)
-    _sum = int(np.sum(samples_band))
-    sum_squares = int(np.sum(np.array(samples_band) ** 2))
+    _sum = 0
+    sum_squares = 0
+    if count > 0:
+        _sum = int(np.sum(samples_band))
+        sum_squares = int(np.sum(np.array(samples_band) ** 2))
 
     quantiles = None
     most_common = None
@@ -939,18 +942,25 @@ def update_metadata(metadata, old_metadata):
             )
         new_stats = new_band["stats"]
         old_stats = old_band["stats"]
-        sum = old_stats["sum"] + new_stats["sum"]
+        _sum = old_stats["sum"] + new_stats["sum"]
         sum_squares = old_stats["sum_squares"] + new_stats["sum_squares"]
         count = old_stats["count"] + new_stats["count"]
-        mean = sum / count
+
+        if old_stats["count"] == 0 or new_stats["count"] == 0:
+            mean = (old_stats["mean"] + new_stats["mean"]) / 2
+            stdev = math.sqrt(old_stats["stddev"] ** 2 + new_stats["stddev"] ** 2)
+        else:
+            mean = _sum / count
+            stdev = math.sqrt(sum_squares / count - mean * mean)
+
         new_band["stats"] = {
             "min": min(old_stats["min"], new_stats["min"]),
             "max": max(old_stats["max"], new_stats["max"]),
-            "sum": sum,
+            "sum": _sum,
             "sum_squares": sum_squares,
             "count": count,
             "mean": mean,
-            "stddev": math.sqrt(sum_squares / count - mean * mean),
+            "stddev": stdev,
         }
 
         if old_band not in metadata["bands"]:
