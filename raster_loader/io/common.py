@@ -236,7 +236,16 @@ def rasterio_metadata(
                     raster_dataset, samples, band, all_stats
                 )
 
-            band_colorinterp = raster_dataset.colorinterp[band - 1].name
+            try:
+                # There is [an issue](https://github.com/OSGeo/gdal/issues/1928)
+                # in gdal with the same error message that we see in this line:
+                #   "Failed to compute statistics, no valid pixels found in sampling."
+                #
+                # It seems to be an error with cropped rasters.
+                band_colorinterp = raster_dataset.colorinterp[band - 1].name
+            except Exception:
+                band_colorinterp = None
+
             if band_colorinterp == "alpha":
                 band_nodata = "0"
             else:
