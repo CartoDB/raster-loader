@@ -10,3 +10,4 @@ repos:
       hooks:
           - id: flake8
             language: python_venv
+            additional_dependencies: [flake8-typing-imports==1.10.0]

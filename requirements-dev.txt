@@ -1,5 +1,6 @@
 black==24.3.0
 flake8==4.0.1
+importlib-metadata==4.8.3
 ipython>=7.8.0
 lazydocs==0.4.8
 myst-parser==0.18.1
