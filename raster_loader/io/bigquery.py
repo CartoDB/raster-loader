@@ -4,14 +4,17 @@ import pandas as pd
 import rasterio
 import re
 
+from itertools import chain
 from raster_loader import __version__
 from raster_loader.errors import import_error_bigquery, IncompatibleRasterException
 from raster_loader.utils import ask_yes_no_question, batched
 from raster_loader.io.common import (
-    rasterio_metadata,
-    rasterio_windows_to_records,
-    get_number_of_blocks,
     check_metadata_is_compatible,
+    get_number_of_blocks,
+    get_number_of_overviews_blocks,
+    rasterio_metadata,
+    rasterio_overview_to_records,
+    rasterio_windows_to_records,
     update_metadata,
 )
 
@@ -104,6 +107,8 @@ class BigQueryConnection(DataWarehouseConnection):
         overwrite: bool = False,
         append: bool = False,
         cleanup_on_failure: bool = False,
+        exact_stats: bool = False,
+        all_stats: bool = False,
     ):
         """Write a raster file to a BigQuery table."""
         print("Loading raster file to BigQuery...")
@@ -126,21 +131,31 @@ class BigQueryConnection(DataWarehouseConnection):
                         exit()
 
             metadata = rasterio_metadata(
-                file_path, bands_info, self.band_rename_function
+                file_path, bands_info, self.band_rename_function, exact_stats, all_stats
             )
 
-            records_gen = rasterio_windows_to_records(
+            overviews_records_gen = rasterio_overview_to_records(
+                file_path,
+                self.band_rename_function,
+                bands_info
+            )
+
+            windows_records_gen = rasterio_windows_to_records(
                 file_path,
                 self.band_rename_function,
                 bands_info,
             )
+            records_gen = chain(overviews_records_gen, windows_records_gen)
 
             if append_records:
                 old_metadata = self.get_metadata(fqn)
                 check_metadata_is_compatible(metadata, old_metadata)
                 update_metadata(metadata, old_metadata)
 
-            total_blocks = get_number_of_blocks(file_path)
+            number_of_blocks = get_number_of_blocks(file_path)
+            number_of_overview_tiles = get_number_of_overviews_blocks(file_path)
+            total_blocks = number_of_blocks + number_of_overview_tiles
+
             if chunk_size is None:
                 job = self.upload_records(records_gen, fqn)
                 # raise error if job went wrong (blocking call)
@@ -150,7 +165,10 @@ class BigQueryConnection(DataWarehouseConnection):
 
                 jobs = []
                 errors = []
-                print(f"Writing {total_blocks} blocks to BigQuery...")
+                print(
+                    f"Writing {number_of_blocks} blocks and {number_of_overview_tiles} "
+                    "overview tiles to BigQuery..."
+                )
                 with tqdm(total=total_blocks) as pbar:
                     if total_blocks < chunk_size:
                         chunk_size = total_blocks
@@ -167,9 +185,11 @@ class BigQueryConnection(DataWarehouseConnection):
                             # job already removed because failed
                             pass
 
+                    processed_blocks = 0
                     for records in batched(records_gen, chunk_size):
                         job = self.upload_records(records, fqn)
                         job.num_records = len(records)
+                        processed_blocks += len(records)
 
                         job.add_done_callback(partial(lambda job: done_callback(job)))
                         jobs.append(job)
@@ -185,7 +205,10 @@ class BigQueryConnection(DataWarehouseConnection):
                     if len(errors):
                         raise Exception(errors)
 
-                    pbar.update(1)
+                    empty_blocks = total_blocks - processed_blocks
+                    pbar.update(empty_blocks)
+
+                print("Number of empty blocks: ", empty_blocks)
 
             print("Writing metadata to BigQuery...")
             self.write_metadata(metadata, append_records, fqn)
@@ -220,6 +243,8 @@ class BigQueryConnection(DataWarehouseConnection):
             if delete:
                 self.delete_table(fqn)
 
+            import traceback
+            print(traceback.print_exc())
             raise IOError("Error uploading to BigQuery: {}".format(e))
 
         print("Done.")

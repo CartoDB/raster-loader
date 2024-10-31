@@ -86,6 +86,18 @@ def snowflake(args=None):
     default=False,
     is_flag=True,
 )
+@click.option(
+    "--exact_stats",
+    help="Compute exact statistics for the raster bands.",
+    default=False,
+    is_flag=True,
+)
+@click.option(
+    "--all_stats",
+    help="Compute all statistics including quantiles and most frequent values.",
+    required=False,
+    is_flag=True,
+)
 @catch_exception()
 def upload(
     account,
@@ -104,6 +116,8 @@ def upload(
     overwrite=False,
     append=False,
     cleanup_on_failure=False,
+    exact_stats=False,
+    all_stats=False,
 ):
     from raster_loader.io.common import (
         get_number_of_blocks,
@@ -185,6 +199,8 @@ def upload(
         overwrite=overwrite,
         append=append,
         cleanup_on_failure=cleanup_on_failure,
+        exact_stats=exact_stats,
+        all_stats=all_stats,
     )
 
     click.echo("Raster file uploaded to Snowflake")
