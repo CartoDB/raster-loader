@@ -462,7 +462,12 @@ def raster_band_approx_stats(
     all_stats: bool,
 ) -> dict:
     """Get approximate statistics for a raster band."""
-    stats = raster_dataset.stats(indexes=[band], approx=True)[0]
+    try:
+        # stats method is supported since rasterio 1.4.0 and statistics
+        # method will be deprecated in future versions of rasterio
+        stats = raster_dataset.stats(indexes=[band], approx=True)[0]
+    except AttributeError:
+        stats = raster_dataset.statistics(indexes=band, approx=True)
 
     samples_band = samples[band]
 
