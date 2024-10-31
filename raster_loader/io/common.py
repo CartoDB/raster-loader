@@ -455,6 +455,18 @@ def compute_quantiles(
     return dict(zip(DEFAULT_OVERVIEWS, quantiles))
 
 
+def get_stats(
+    raster_dataset: rasterio.io.DatasetReader, band: int
+) -> rasterio.Statistics:
+    """Get statistics for a raster band."""
+    try:
+        # stats method is supported since rasterio 1.4.0 and statistics
+        # method will be deprecated in future versions of rasterio
+        return raster_dataset.stats(indexes=[band], approx=True)[0]
+    except AttributeError:
+        return raster_dataset.statistics(band, approx=True)
+
+
 def raster_band_approx_stats(
     raster_dataset: rasterio.io.DatasetReader,
     samples: Samples,
@@ -462,12 +474,8 @@ def raster_band_approx_stats(
     all_stats: bool,
 ) -> dict:
     """Get approximate statistics for a raster band."""
-    try:
-        # stats method is supported since rasterio 1.4.0 and statistics
-        # method will be deprecated in future versions of rasterio
-        stats = raster_dataset.stats(indexes=[band], approx=True)[0]
-    except AttributeError:
-        stats = raster_dataset.statistics(indexes=band, approx=True)
+
+    stats = get_stats(raster_dataset, band)
 
     samples_band = samples[band]
 
@@ -549,7 +557,8 @@ def raster_band_stats(
     """Get statistics for a raster band."""
 
     print('Computing stats for band {0}...'.format(band))
-    _stats = raster_dataset.stats(indexes=[band], approx=False)[0]
+
+    _stats = get_stats(raster_dataset, band)
     _min = _stats.min
     _max = _stats.max
     _mean = _stats.mean
