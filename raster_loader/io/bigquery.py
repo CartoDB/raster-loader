@@ -3,7 +3,6 @@ import json
 import pandas as pd
 import rasterio
 import re
-import rio_cogeo
 
 from itertools import chain
 from raster_loader import __version__
@@ -244,6 +243,8 @@ class BigQueryConnection(DataWarehouseConnection):
             if delete:
                 self.delete_table(fqn)
 
+            import traceback
+            print(traceback.print_exc())
             raise IOError("Error uploading to BigQuery: {}".format(e))
 
         print("Done.")

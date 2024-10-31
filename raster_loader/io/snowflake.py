@@ -181,6 +181,9 @@ class SnowflakeConnection(DataWarehouseConnection):
         exact_stats: bool = False,
         all_stats: bool = False,
     ) -> bool:
+        def band_rename_function(x):
+            return x.upper()
+
         print("Loading raster file to Snowflake...")
 
         bands_info = bands_info or [(1, None)]
@@ -202,8 +205,6 @@ class SnowflakeConnection(DataWarehouseConnection):
 
                 if not append_records:
                     exit()
-
-            band_rename_function = lambda x: x.upper()
 
             metadata = rasterio_metadata(
                 file_path, bands_info, band_rename_function, exact_stats, all_stats
