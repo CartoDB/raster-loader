@@ -13,7 +13,6 @@ from shapely import wkt  # Can not use directly from shapely.wkt
 import rio_cogeo
 import rasterio
 import quadbin
-from rasterio.sample import sort_xy
 
 from raster_loader.geo import raster_bounds
 from raster_loader.errors import (
@@ -404,7 +403,12 @@ def sample_not_masked_values(
         x = rng.uniform(west, east, n_samples)
         y = rng.uniform(south, north, n_samples)
 
-        coords = sort_xy(zip(x, y))
+        try:
+            from rasterio.sample import sort_xy
+        except ImportError:
+            coords = zip(x, y)
+        else:
+            coords = sort_xy(zip(x, y))
 
         samples = raster_dataset.sample(coords, indexes=bands, masked=True)
         for sample in samples:
