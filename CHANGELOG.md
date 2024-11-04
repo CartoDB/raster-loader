@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
+## [0.9.0](https://github.com/CartoDB/raster-loader/releases/tag/0.9.0) - 2024-11-04
+
+### Added
+
+-   Added exact stats (#153)
+
 ## [0.8.2] - 2024-10-07
 
 ### Bug Fixes
