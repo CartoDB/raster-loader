@@ -47,9 +47,8 @@ If you don't have `make` available, you can open the file `Makefile` and run the
 commands manually to set up a virtual environment and install the dependencies.
 
 After creating your environment, you can enter the virtual environment with
-``source env/bin/activate`` on Linux and macOS or ``env\bin\Activate.ps1`` on Windows
+`source env/bin/activate` on Linux and macOS or `env\bin\Activate.ps1` on Windows
 (PowerShell).
-
 
 ### Setting up your environment (Docker / Docker-Compose)
 
@@ -58,7 +57,7 @@ development environment using Docker:
 
 1. Install Docker and Docker Compose on your system by following the instructions for your operating system from the official Docker website.
 2. Use `git clone` to clone [the Raster Loader repository](https://github.com/CartoDB/raster-loader)
-to your local machine.
+   to your local machine.
 3. Navigate to the root directory of the repository in your terminal.
 4. Run `make docker-build` command to build the docker image
 5. Run `make docker-start` to start the development environment. Keep this process running.
@@ -72,7 +71,7 @@ to your local machine.
 13. Run `make docker-stop` to stop the development environment
 14. Run `make docker-remove` to remove docker raster_loader Container/Network/Volume from your system
 
-*Note: If you want to make changes to library dependencies (i.e. requirements.txt or requirements-dev.txt) while the container is running, you'll need to rebuild the image using the make docker-build command and restart the container."*
+_Note: If you want to make changes to library dependencies (i.e. requirements.txt or requirements-dev.txt) while the container is running, you'll need to rebuild the image using the make docker-build command and restart the container."_
 
 ### Tests and linting
 
@@ -89,7 +88,7 @@ make lint
 
 This runs [flake8](https://flake8.pycqa.org/en/latest/) and
 [black](https://black.readthedocs.io/en/stable/). You can also run these tools
-individually using the ``flake8`` or ``black`` command.
+individually using the `flake8` or `black` command.
 
 #### Running tests
 
@@ -101,7 +100,7 @@ make test
 ```
 
 This runs all tests in the `tests` directory. You can also run all tests with the
-``pytest`` command.
+`pytest` command.
 
 The test suite includes optional integration tests that require credentials for a
 BigQuery account. To run these tests, you need to set the `GOOGLE_APPLICATION_CREDENTIALS`
@@ -191,3 +190,11 @@ to indicate that it is not ready for review.
 
 Before merging a pull request, the Raster Loader maintainers will review your code and
 might request changes. You can make changes to your pull request by pushing new commits.
+
+### Commit messages and changelog
+
+Raster loader uses Semantic Versioning and Conventional Commits. Format your PR and commit messages accordingly.
+
+To update the changelog before a new release, run the following in your terminal:
+
+$ git-changelog --output CHANGELOG.md --in-place --filter-commits "v0.8.2.."
