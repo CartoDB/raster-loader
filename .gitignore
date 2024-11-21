@@ -167,6 +167,7 @@ cython_debug/
 
 # Custom
 carto_credentials.json
+raster_loader/tests/fixtures/*.tif.aux.xml
 
 # written by setuptools_scm
 */_version.py

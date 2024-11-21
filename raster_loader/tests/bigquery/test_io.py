@@ -461,7 +461,7 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
     return_value={
         "bounds": [0, 0, 0, 0],
         "block_resolution": 5,
-        "nodata": 255,
+        "nodata": 0,
         "block_width": 256,
         "block_height": 256,
         "bands": [
@@ -482,7 +482,7 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
                     "version": "0.0.3",
                 },
                 'colorinterp': 'red',
-                'nodata': '255',
+                'nodata': '0',
                 'colortable': None,
             }
         ],
@@ -628,7 +628,7 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
     return_value={
         "bounds": [0, 0, 0, 0],
         "block_resolution": 5,
-        "nodata": 255,
+        "nodata": 0,
         "block_width": 256,
         "block_height": 256,
         "bands": [
@@ -649,7 +649,7 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
                     "version": "0.0.3",
                 },
                 'colorinterp': 'red',
-                'nodata': '255',
+                'nodata': '0',
                 'colortable': None,
             }
         ],
