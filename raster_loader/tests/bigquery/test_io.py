@@ -481,7 +481,6 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
                     "top_values": [1, 2, 3],
                     "version": "0.0.3",
                 },
-                "colorinterp": "red",
                 "nodata": "0",
                 "colortable": None,
             }
@@ -648,7 +647,6 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
                     "top_values": [1, 2, 3],
                     "version": "0.0.3",
                 },
-                "colorinterp": "red",
                 "nodata": "0",
                 "colortable": None,
             }
