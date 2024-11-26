@@ -7,13 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
-## [v0.9.1] 2024-11-26
+## [0.9.1] 2024-11-26
 
 ### Fixed
 
 -   fix: changed default no data for byte data type ([06ad98f](https://github.com/CartoDB/raster-loader/commit/06ad98f3723c44ce847f475887cdca084c6ca571) by volaya).
 
-## [v0.9.0](https://github.com/CartoDB/raster-loader/releases/tag/v0.9.0) - 2024-11-04
+## [0.9.0](https://github.com/CartoDB/raster-loader/releases/tag/v0.9.0) - 2024-11-04
 
 <small>[Compare with first commit](https://github.com/CartoDB/raster-loader/compare/167c3d69359f9b3abb49a3c1c5aa6249f76c0992...v0.9.0)</small>
 
