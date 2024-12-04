@@ -162,13 +162,28 @@ def get_resolution_and_block_sizes(
     return block_width, block_height, resolution
 
 
+def get_color_name(raster_dataset: rasterio.io.DatasetReader, band: int) -> str:
+    try:
+        # There is [an issue](https://github.com/OSGeo/gdal/issues/1928)
+        # in gdal with the same error message that we see in this line:
+        #   "Failed to compute statistics, no valid pixels found in sampling."
+        #
+        # It seems to be an error with cropped rasters.
+        band_colorinterp = raster_dataset.colorinterp[band - 1].name
+    except Exception:
+        band_colorinterp = None
+
+    return band_colorinterp
+
+
 def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
     try:
-        if raster_dataset.colorinterp[band - 1].name == "palette":
+        if get_color_name(raster_dataset, band) == "palette":
             return raster_dataset.colormap(band)
         return None
     except ValueError:
         return None
+
 
 
 def rasterio_metadata(
@@ -235,16 +250,7 @@ def rasterio_metadata(
                     raster_dataset, samples, band, omit_stats
                 )
 
-            try:
-                # There is [an issue](https://github.com/OSGeo/gdal/issues/1928)
-                # in gdal with the same error message that we see in this line:
-                #   "Failed to compute statistics, no valid pixels found in sampling."
-                #
-                # It seems to be an error with cropped rasters.
-                band_colorinterp = raster_dataset.colorinterp[band - 1].name
-            except Exception:
-                band_colorinterp = None
-
+            band_colorinterp = get_color_name(raster_dataset, band)
             if band_colorinterp == "alpha":
                 band_nodata = "0"
             else:
@@ -302,7 +308,7 @@ def rasterio_metadata(
 
 def get_alpha_band(raster_dataset: rasterio.io.DatasetReader):
     for band in raster_dataset.indexes:
-        if raster_dataset.colorinterp[band - 1].name == "alpha":
+        if get_color_name(raster_dataset, band) == "alpha":
             return band
     return None
 
