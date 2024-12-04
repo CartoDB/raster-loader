@@ -1004,7 +1004,10 @@ def update_metadata(metadata, old_metadata):
             stdev = math.sqrt(old_stats["stddev"] ** 2 + new_stats["stddev"] ** 2)
         else:
             mean = _sum / count
-            stdev = math.sqrt(sum_squares / count - mean * mean)
+            try:
+                stdev = math.sqrt(sum_squares / count - mean * mean)
+            except ValueError:
+                stdev = math.sqrt(old_stats["stddev"] ** 2 + new_stats["stddev"] ** 2)
 
         approximated_stats = (
             old_stats["approximated_stats"] or new_stats["approximated_stats"]
