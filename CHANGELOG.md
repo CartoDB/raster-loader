@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Change '--all_stats' flag to '--omit_stats' ([805677f](https://github.com/CartoDB/raster-loader/commit/805677f26c73c0426a7d8600af358b213dd6797c) by Roberto Antolín).
+- Change '--all_stats' flag to '--basic_stats' ([2cb89cc](https://github.com/CartoDB/raster-loader/pull/156/commits/2cb89cca30eb15189c876760c026074e262cc10f) by Roberto Antolín).
 
 ## [0.9.1] 2024-11-26
 
