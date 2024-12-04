@@ -429,6 +429,13 @@ def sample_not_masked_values(
         iterations += 1
 
     if len(not_masked_samples[1]) < n_samples:
+        if len(not_masked_samples[1]) == 0:
+            raise ValueError(
+                "The data is very sparse and no non-masked samples were collected.\n"
+                "Please, consider to use the --exact_stats option to compute exact "
+                "stats"
+            )
+
         warnings.warn(
             "The data is very sparse and there are not enough non-masked samples.\n"
             f"Only {len(not_masked_samples[1])} samples were collected and "
