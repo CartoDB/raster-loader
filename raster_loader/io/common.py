@@ -576,14 +576,14 @@ def raster_band_stats(
     _mean = _stats.mean
     _std = _stats.std
 
-    count = math.prod(_stats.shape)
+    raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
+
+    count = math.prod(raster_band.shape)
     if is_masked_band(raster_dataset, band):
-        count = np.count_nonzero(_stats.mask is False)
+        count = np.count_nonzero(raster_band.mask is False)
 
     _sum = _mean * count
     sum_squares = count * _std**2 + _mean**2
-
-    raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
 
     print("Removing masked data...")
     qdata = raster_band.compressed()
