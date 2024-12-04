@@ -108,7 +108,7 @@ class BigQueryConnection(DataWarehouseConnection):
         append: bool = False,
         cleanup_on_failure: bool = False,
         exact_stats: bool = False,
-        omit_stats: bool = False,
+        basic_stats: bool = False,
     ):
         """Write a raster file to a BigQuery table."""
         print("Loading raster file to BigQuery...")
@@ -131,7 +131,7 @@ class BigQueryConnection(DataWarehouseConnection):
                         exit()
 
             metadata = rasterio_metadata(
-                file_path, bands_info, self.band_rename_function, exact_stats, omit_stats
+                file_path, bands_info, self.band_rename_function, exact_stats, basic_stats
             )
 
             overviews_records_gen = rasterio_overview_to_records(

@@ -40,7 +40,7 @@ def test_bigquery_upload(*args, **kwargs):
 
 @patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
 @patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
-def test_bigquery_upload_with_omit_stats(*args, **kwargs):
+def test_bigquery_upload_with_basic_stats(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
         main,
@@ -59,7 +59,7 @@ def test_bigquery_upload_with_omit_stats(*args, **kwargs):
             1,
             "--band",
             1,
-            "--omit_stats",
+            "--basic_stats",
         ],
     )
     assert result.exit_code == 0

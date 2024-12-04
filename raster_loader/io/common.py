@@ -191,7 +191,7 @@ def rasterio_metadata(
     bands_info: List[Tuple[int, str]],
     band_rename_function: Callable,
     exact_stats: bool = False,
-    omit_stats: bool = False,
+    basic_stats: bool = False,
 ):
     """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
@@ -243,11 +243,11 @@ def rasterio_metadata(
                     "User is encourage to compute approximate statistics instead.",
                     UserWarning,
                 )
-                stats = raster_band_stats(raster_dataset, band, omit_stats)
+                stats = raster_band_stats(raster_dataset, band, basic_stats)
             else:
                 print("Computing approximate stats...")
                 stats = raster_band_approx_stats(
-                    raster_dataset, samples, band, omit_stats
+                    raster_dataset, samples, band, basic_stats
                 )
 
             band_colorinterp = get_color_name(raster_dataset, band)
@@ -483,7 +483,7 @@ def raster_band_approx_stats(
     raster_dataset: rasterio.io.DatasetReader,
     samples: Samples,
     band: int,
-    omit_stats: bool,
+    basic_stats: bool,
 ) -> dict:
     """Get approximate statistics for a raster band."""
 
@@ -498,7 +498,7 @@ def raster_band_approx_stats(
         _sum = int(np.sum(samples_band))
         sum_squares = int(np.sum(np.array(samples_band) ** 2))
 
-    if omit_stats:
+    if basic_stats:
         quantiles = None
         most_common = None
     else:
@@ -564,7 +564,7 @@ def read_raster_band(raster_dataset: rasterio.io.DatasetReader, band: int) -> np
 
 
 def raster_band_stats(
-    raster_dataset: rasterio.io.DatasetReader, band: int, omit_stats: bool
+    raster_dataset: rasterio.io.DatasetReader, band: int, basic_stats: bool
 ) -> dict:
     """Get statistics for a raster band."""
 
@@ -588,7 +588,7 @@ def raster_band_stats(
     print("Removing masked data...")
     qdata = raster_band.compressed()
 
-    if omit_stats:
+    if basic_stats:
         quantiles = None
         most_common = None
     else:
@@ -603,7 +603,7 @@ def raster_band_stats(
             warnings.warn(
                 "Most common values are meant for categorical data. "
                 "Computing them for float bands can be meaningless.\n"
-                "Please, consider to use the --omit_stats option.",
+                "Please, consider to use the --basic_stats option.",
             )
         most_common = Counter(qdata).most_common(100)
         most_common.sort(key=lambda x: x[1], reverse=True)
