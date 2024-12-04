@@ -498,15 +498,15 @@ def raster_band_approx_stats(
         _sum = int(np.sum(samples_band))
         sum_squares = int(np.sum(np.array(samples_band) ** 2))
 
-    quantiles = compute_quantiles(samples_band, int)
-
-    most_common = dict()
-    if not band_is_float(raster_dataset, band):
-        most_common = most_common_approx(samples_band)
-
     if omit_stats:
         quantiles = None
         most_common = None
+    else:
+        quantiles = compute_quantiles(samples_band, int)
+
+        most_common = dict()
+        if not band_is_float(raster_dataset, band):
+            most_common = most_common_approx(samples_band)
 
     return {
         "min": stats.min,
@@ -588,24 +588,26 @@ def raster_band_stats(
     print("Removing masked data...")
     qdata = raster_band.compressed()
 
-    casting_function = (
-        int if np.issubdtype(raster_band.dtype, np.integer) else float
-    )
-
-    quantiles = compute_quantiles(qdata, casting_function)
-
-    print("Computing most commons values...")
-    warnings.warn(
-        "Most common values are meant for categorical data. "
-        "Computing them for float bands can be meaningless."
-    )
-    most_common = Counter(qdata).most_common(100)
-    most_common.sort(key=lambda x: x[1], reverse=True)
-    most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
-
     if omit_stats:
         quantiles = None
         most_common = None
+    else:
+        casting_function = (
+            int if np.issubdtype(raster_band.dtype, np.integer) else float
+        )
+
+        quantiles = compute_quantiles(qdata, casting_function)
+
+        print("Computing most commons values...")
+        if casting_function == float:
+            warnings.warn(
+                "Most common values are meant for categorical data. "
+                "Computing them for float bands can be meaningless.\n"
+                "Please, consider to use the --omit_stats option.",
+            )
+        most_common = Counter(qdata).most_common(100)
+        most_common.sort(key=lambda x: x[1], reverse=True)
+        most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
 
     version = ".".join(__version__.split(".")[:3])
 
