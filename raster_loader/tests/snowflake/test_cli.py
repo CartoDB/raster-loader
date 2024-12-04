@@ -75,7 +75,6 @@ def test_snowflake_upload_with_all_stats(*args, **kwargs):
             1,
             "--band",
             1,
-            "--all_stats",
         ],
     )
     assert result.exit_code == 0

@@ -93,7 +93,7 @@ def snowflake(args=None):
     is_flag=True,
 )
 @click.option(
-    "--all_stats",
+    "--omit_stats",
     help="Compute all statistics including quantiles and most frequent values.",
     required=False,
     is_flag=True,
@@ -117,7 +117,7 @@ def upload(
     append=False,
     cleanup_on_failure=False,
     exact_stats=False,
-    all_stats=False,
+    omit_stats=False,
 ):
     from raster_loader.io.common import (
         get_number_of_blocks,
@@ -200,7 +200,7 @@ def upload(
         append=append,
         cleanup_on_failure=cleanup_on_failure,
         exact_stats=exact_stats,
-        all_stats=all_stats,
+        omit_stats=omit_stats,
     )
 
     click.echo("Raster file uploaded to Snowflake")

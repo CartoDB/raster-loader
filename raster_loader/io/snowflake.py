@@ -179,7 +179,7 @@ class SnowflakeConnection(DataWarehouseConnection):
         append: bool = False,
         cleanup_on_failure: bool = False,
         exact_stats: bool = False,
-        all_stats: bool = False,
+        omit_stats: bool = False,
     ) -> bool:
         def band_rename_function(x):
             return x.upper()
@@ -207,7 +207,7 @@ class SnowflakeConnection(DataWarehouseConnection):
                     exit()
 
             metadata = rasterio_metadata(
-                file_path, bands_info, band_rename_function, exact_stats, all_stats
+                file_path, bands_info, band_rename_function, exact_stats, omit_stats
             )
 
             overviews_records_gen = rasterio_overview_to_records(

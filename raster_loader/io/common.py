@@ -176,7 +176,7 @@ def rasterio_metadata(
     bands_info: List[Tuple[int, str]],
     band_rename_function: Callable,
     exact_stats: bool = False,
-    all_stats: bool = False,
+    omit_stats: bool = False,
 ):
     """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
@@ -228,11 +228,11 @@ def rasterio_metadata(
                     "User is encourage to compute approximate statistics instead.",
                     UserWarning,
                 )
-                stats = raster_band_stats(raster_dataset, band, all_stats)
+                stats = raster_band_stats(raster_dataset, band, omit_stats)
             else:
                 print("Computing approximate stats...")
                 stats = raster_band_approx_stats(
-                    raster_dataset, samples, band, all_stats
+                    raster_dataset, samples, band, omit_stats
                 )
 
             try:
@@ -470,7 +470,7 @@ def raster_band_approx_stats(
     raster_dataset: rasterio.io.DatasetReader,
     samples: Samples,
     band: int,
-    all_stats: bool,
+    omit_stats: bool,
 ) -> dict:
     """Get approximate statistics for a raster band."""
 
@@ -485,15 +485,15 @@ def raster_band_approx_stats(
         _sum = int(np.sum(samples_band))
         sum_squares = int(np.sum(np.array(samples_band) ** 2))
 
-    quantiles = None
-    most_common = None
-    if all_stats:
+    quantiles = compute_quantiles(samples_band, int)
 
-        quantiles = compute_quantiles(samples_band, int)
+    most_common = dict()
+    if not band_is_float(raster_dataset, band):
+        most_common = most_common_approx(samples_band)
 
-        most_common = dict()
-        if not band_is_float(raster_dataset, band):
-            most_common = most_common_approx(samples_band)
+    if omit_stats:
+        quantiles = None
+        most_common = None
 
     return {
         "min": stats.min,
@@ -551,7 +551,7 @@ def read_raster_band(raster_dataset: rasterio.io.DatasetReader, band: int) -> np
 
 
 def raster_band_stats(
-    raster_dataset: rasterio.io.DatasetReader, band: int, all_stats: bool
+    raster_dataset: rasterio.io.DatasetReader, band: int, omit_stats: bool
 ) -> dict:
     """Get statistics for a raster band."""
 
@@ -570,28 +570,29 @@ def raster_band_stats(
     _sum = _mean * count
     sum_squares = count * _std**2 + _mean**2
 
-    quantiles = None
-    most_common = None
-    if all_stats:
-        raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
+    raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
 
-        print("Removing masked data...")
-        qdata = raster_band.compressed()
+    print("Removing masked data...")
+    qdata = raster_band.compressed()
 
-        casting_function = (
-            int if np.issubdtype(raster_band.dtype, np.integer) else float
-        )
+    casting_function = (
+        int if np.issubdtype(raster_band.dtype, np.integer) else float
+    )
 
-        quantiles = compute_quantiles(qdata, casting_function)
+    quantiles = compute_quantiles(qdata, casting_function)
 
-        print("Computing most commons values...")
-        warnings.warn(
-            "Most common values are meant for categorical data. "
-            "Computing them for float bands can be meaningless."
-        )
-        most_common = Counter(qdata).most_common(100)
-        most_common.sort(key=lambda x: x[1], reverse=True)
-        most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
+    print("Computing most commons values...")
+    warnings.warn(
+        "Most common values are meant for categorical data. "
+        "Computing them for float bands can be meaningless."
+    )
+    most_common = Counter(qdata).most_common(100)
+    most_common.sort(key=lambda x: x[1], reverse=True)
+    most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
+
+    if omit_stats:
+        quantiles = None
+        most_common = None
 
     version = ".".join(__version__.split(".")[:3])
 
