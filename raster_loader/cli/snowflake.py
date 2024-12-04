@@ -94,7 +94,7 @@ def snowflake(args=None):
 )
 @click.option(
     "--omit_stats",
-    help="Compute all statistics including quantiles and most frequent values.",
+    help="Omit quantiles and most frequent values statistics.",
     required=False,
     is_flag=True,
 )

@@ -85,7 +85,7 @@ def bigquery(args=None):
 )
 @click.option(
     "--omit_stats",
-    help="Omit quantiles and most frequent values statistics .",
+    help="Omit quantiles and most frequent values statistics.",
     required=False,
     is_flag=True,
 )
