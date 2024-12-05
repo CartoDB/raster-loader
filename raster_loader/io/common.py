@@ -598,16 +598,11 @@ def raster_band_stats(
 
         quantiles = compute_quantiles(qdata, casting_function)
 
-        print("Computing most commons values...")
-        if casting_function == float:
-            warnings.warn(
-                "Most common values are meant for categorical data. "
-                "Computing them for float bands can be meaningless.\n"
-                "Please, consider to use the --basic_stats option.",
-            )
-        most_common = Counter(qdata).most_common(100)
-        most_common.sort(key=lambda x: x[1], reverse=True)
-        most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
+        if casting_function == int:
+            print("Computing most commons values...")
+            most_common = Counter(qdata).most_common(100)
+            most_common.sort(key=lambda x: x[1], reverse=True)
+            most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
 
     version = ".".join(__version__.split(".")[:3])
 
