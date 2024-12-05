@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 <small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.9.1...HEAD)</small>
+### Added
+
+- Add: Compute top values only for integer bands ([6c10cc0](https://github.com/CartoDB/raster-loader/commit/6c10cc025f5691f7841beee560437fb591bddfe9) by Roberto Antolín).
 
 ### Fixed
 
