@@ -162,13 +162,28 @@ def get_resolution_and_block_sizes(
     return block_width, block_height, resolution
 
 
+def get_color_name(raster_dataset: rasterio.io.DatasetReader, band: int) -> str:
+    try:
+        # There is [an issue](https://github.com/OSGeo/gdal/issues/1928)
+        # in gdal with the same error message that we see in this line:
+        #   "Failed to compute statistics, no valid pixels found in sampling."
+        #
+        # It seems to be an error with cropped rasters.
+        band_colorinterp = raster_dataset.colorinterp[band - 1].name
+    except Exception:
+        band_colorinterp = None
+
+    return band_colorinterp
+
+
 def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
     try:
-        if raster_dataset.colorinterp[band - 1].name == "palette":
+        if get_color_name(raster_dataset, band) == "palette":
             return raster_dataset.colormap(band)
         return None
     except ValueError:
         return None
+
 
 
 def rasterio_metadata(
@@ -176,7 +191,7 @@ def rasterio_metadata(
     bands_info: List[Tuple[int, str]],
     band_rename_function: Callable,
     exact_stats: bool = False,
-    all_stats: bool = False,
+    basic_stats: bool = False,
 ):
     """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
@@ -228,23 +243,14 @@ def rasterio_metadata(
                     "User is encourage to compute approximate statistics instead.",
                     UserWarning,
                 )
-                stats = raster_band_stats(raster_dataset, band, all_stats)
+                stats = raster_band_stats(raster_dataset, band, basic_stats)
             else:
                 print("Computing approximate stats...")
                 stats = raster_band_approx_stats(
-                    raster_dataset, samples, band, all_stats
+                    raster_dataset, samples, band, basic_stats
                 )
 
-            try:
-                # There is [an issue](https://github.com/OSGeo/gdal/issues/1928)
-                # in gdal with the same error message that we see in this line:
-                #   "Failed to compute statistics, no valid pixels found in sampling."
-                #
-                # It seems to be an error with cropped rasters.
-                band_colorinterp = raster_dataset.colorinterp[band - 1].name
-            except Exception:
-                band_colorinterp = None
-
+            band_colorinterp = get_color_name(raster_dataset, band)
             if band_colorinterp == "alpha":
                 band_nodata = "0"
             else:
@@ -302,7 +308,7 @@ def rasterio_metadata(
 
 def get_alpha_band(raster_dataset: rasterio.io.DatasetReader):
     for band in raster_dataset.indexes:
-        if raster_dataset.colorinterp[band - 1].name == "alpha":
+        if get_color_name(raster_dataset, band) == "alpha":
             return band
     return None
 
@@ -423,6 +429,13 @@ def sample_not_masked_values(
         iterations += 1
 
     if len(not_masked_samples[1]) < n_samples:
+        if len(not_masked_samples[1]) == 0:
+            raise ValueError(
+                "The data is very sparse and no non-masked samples were collected.\n"
+                "Please, consider to use the --exact_stats option to compute exact "
+                "stats"
+            )
+
         warnings.warn(
             "The data is very sparse and there are not enough non-masked samples.\n"
             f"Only {len(not_masked_samples[1])} samples were collected and "
@@ -470,7 +483,7 @@ def raster_band_approx_stats(
     raster_dataset: rasterio.io.DatasetReader,
     samples: Samples,
     band: int,
-    all_stats: bool,
+    basic_stats: bool,
 ) -> dict:
     """Get approximate statistics for a raster band."""
 
@@ -485,10 +498,10 @@ def raster_band_approx_stats(
         _sum = int(np.sum(samples_band))
         sum_squares = int(np.sum(np.array(samples_band) ** 2))
 
-    quantiles = None
-    most_common = None
-    if all_stats:
-
+    if basic_stats:
+        quantiles = None
+        most_common = None
+    else:
         quantiles = compute_quantiles(samples_band, int)
 
         most_common = dict()
@@ -551,7 +564,7 @@ def read_raster_band(raster_dataset: rasterio.io.DatasetReader, band: int) -> np
 
 
 def raster_band_stats(
-    raster_dataset: rasterio.io.DatasetReader, band: int, all_stats: bool
+    raster_dataset: rasterio.io.DatasetReader, band: int, basic_stats: bool
 ) -> dict:
     """Get statistics for a raster band."""
 
@@ -563,35 +576,33 @@ def raster_band_stats(
     _mean = _stats.mean
     _std = _stats.std
 
-    count = math.prod(_stats.shape)
+    raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
+
+    count = math.prod(raster_band.shape)
     if is_masked_band(raster_dataset, band):
-        count = np.count_nonzero(_stats.mask is False)
+        count = np.count_nonzero(raster_band.mask is False)
 
     _sum = _mean * count
     sum_squares = count * _std**2 + _mean**2
 
-    quantiles = None
-    most_common = None
-    if all_stats:
-        raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
+    print("Removing masked data...")
+    qdata = raster_band.compressed()
 
-        print("Removing masked data...")
-        qdata = raster_band.compressed()
-
+    if basic_stats:
+        quantiles = None
+        most_common = None
+    else:
         casting_function = (
             int if np.issubdtype(raster_band.dtype, np.integer) else float
         )
 
         quantiles = compute_quantiles(qdata, casting_function)
 
-        print("Computing most commons values...")
-        warnings.warn(
-            "Most common values are meant for categorical data. "
-            "Computing them for float bands can be meaningless."
-        )
-        most_common = Counter(qdata).most_common(100)
-        most_common.sort(key=lambda x: x[1], reverse=True)
-        most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
+        if casting_function == int:
+            print("Computing most commons values...")
+            most_common = Counter(qdata).most_common(100)
+            most_common.sort(key=lambda x: x[1], reverse=True)
+            most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
 
     version = ".".join(__version__.split(".")[:3])
 
@@ -990,7 +1001,10 @@ def update_metadata(metadata, old_metadata):
             stdev = math.sqrt(old_stats["stddev"] ** 2 + new_stats["stddev"] ** 2)
         else:
             mean = _sum / count
-            stdev = math.sqrt(sum_squares / count - mean * mean)
+            try:
+                stdev = math.sqrt(sum_squares / count - mean * mean)
+            except ValueError:
+                stdev = math.sqrt(old_stats["stddev"] ** 2 + new_stats["stddev"] ** 2)
 
         approximated_stats = (
             old_stats["approximated_stats"] or new_stats["approximated_stats"]
