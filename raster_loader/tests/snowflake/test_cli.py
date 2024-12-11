@@ -50,6 +50,41 @@ def test_snowflake_upload(*args, **kwargs):
     "raster_loader.io.snowflake.SnowflakeConnection.upload_raster", return_value=None
 )
 @patch("raster_loader.io.snowflake.SnowflakeConnection.__init__", return_value=None)
+def test_snowflake_upload_with_basic_stats(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "snowflake",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--database",
+            "database",
+            "--schema",
+            "schema",
+            "--table",
+            "table",
+            "--account",
+            "account",
+            "--username",
+            "username",
+            "--password",
+            "password",
+            "--chunk_size",
+            1,
+            "--band",
+            1,
+            "--basic_stats",
+        ],
+    )
+    assert result.exit_code == 0
+
+
+@patch(
+    "raster_loader.io.snowflake.SnowflakeConnection.upload_raster", return_value=None
+)
+@patch("raster_loader.io.snowflake.SnowflakeConnection.__init__", return_value=None)
 def test_snowflake_upload_with_all_stats(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -75,7 +110,6 @@ def test_snowflake_upload_with_all_stats(*args, **kwargs):
             1,
             "--band",
             1,
-            "--all_stats",
         ],
     )
     assert result.exit_code == 0

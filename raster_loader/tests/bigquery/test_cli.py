@@ -40,6 +40,33 @@ def test_bigquery_upload(*args, **kwargs):
 
 @patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
 @patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
+def test_bigquery_upload_with_basic_stats(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+            "--chunk_size",
+            1,
+            "--band",
+            1,
+            "--basic_stats",
+        ],
+    )
+    assert result.exit_code == 0
+
+
+@patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
 def test_bigquery_upload_with_all_stats(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(
@@ -59,7 +86,6 @@ def test_bigquery_upload_with_all_stats(*args, **kwargs):
             1,
             "--band",
             1,
-            "--all_stats",
         ],
     )
     assert result.exit_code == 0
