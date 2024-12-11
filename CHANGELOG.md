@@ -6,22 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
-## Unreleased
+
+## [0.9.2] 2024-12-11
 
 <small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.9.1...HEAD)</small>
+
 ### Added
 
-- Add: Compute top values only for integer bands ([6c10cc0](https://github.com/CartoDB/raster-loader/commit/6c10cc025f5691f7841beee560437fb591bddfe9) by Roberto Antolín).
+-   Add: Compute top values only for integer bands ([6c10cc0](https://github.com/CartoDB/raster-loader/commit/6c10cc025f5691f7841beee560437fb591bddfe9) by Roberto Antolín).
 
 ### Fixed
 
-- Fix: Tackle degenerate case of stdev computation ([b112c80](https://github.com/CartoDB/raster-loader/commit/b112c80be7d7c1adfd08f651b43dc591fd54a2ef) by Roberto Antolín).
-- Fix: Get count stats from shape of raster band ([c066a30](https://github.com/CartoDB/raster-loader/commit/c066a307ee116598c54ea4871d563f79deebad0b) by Roberto Antolín).
-- Fix: Raise error when 0 non-masked samples due to sparse rasters ([dfd89ae](https://github.com/CartoDB/raster-loader/commit/dfd89aef27726a3217843022769600315d8e5b6f) by Roberto Antolín).
+-   Fix: Tackle degenerate case of stdev computation ([b112c80](https://github.com/CartoDB/raster-loader/commit/b112c80be7d7c1adfd08f651b43dc591fd54a2ef) by Roberto Antolín).
+-   Fix: Get count stats from shape of raster band ([c066a30](https://github.com/CartoDB/raster-loader/commit/c066a307ee116598c54ea4871d563f79deebad0b) by Roberto Antolín).
+-   Fix: Raise error when 0 non-masked samples due to sparse rasters ([dfd89ae](https://github.com/CartoDB/raster-loader/commit/dfd89aef27726a3217843022769600315d8e5b6f) by Roberto Antolín).
 
 ### Changed
 
-- Change '--all_stats' flag to '--basic_stats' ([2cb89cc](https://github.com/CartoDB/raster-loader/pull/156/commits/2cb89cca30eb15189c876760c026074e262cc10f) by Roberto Antolín).
+-   Change '--all_stats' flag to '--basic_stats' ([2cb89cc](https://github.com/CartoDB/raster-loader/pull/156/commits/2cb89cca30eb15189c876760c026074e262cc10f) by Roberto Antolín).
 
 ## [0.9.1] 2024-11-26
 
