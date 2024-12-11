@@ -273,6 +273,58 @@ def tiles_to_cells(x, y, zoom):
     return 0x4000000000000000 | (1 << 59) | (zoom << 52) | ((x | (y << 1)) >> 12) | (0xFFFFFFFFFFFFF >> (zoom * 2))
 
 
+def cell_to_tile(cell):
+    """Convert a cell into a tile.
+
+    Parameters
+    ----------
+    cell : int
+
+    Returns
+    -------
+    tile: tuple (x, y, z)
+    """
+    HEADER = 0x4000000000000000
+    FOOTER = 0xFFFFFFFFFFFFF
+    B = [
+        0x5555555555555555,
+        0x3333333333333333,
+        0x0F0F0F0F0F0F0F0F,
+        0x00FF00FF00FF00FF,
+        0x0000FFFF0000FFFF,
+        0x00000000FFFFFFFF,
+    ]
+    S = [1, 2, 4, 8, 16]
+
+    z = cell >> 52 & 31
+    q = (cell & FOOTER) << 12
+    x = q
+    y = q >> 1
+
+    x = x & B[0]
+    y = y & B[0]
+
+    x = (x | (x >> S[0])) & B[1]
+    y = (y | (y >> S[0])) & B[1]
+
+    x = (x | (x >> S[1])) & B[2]
+    y = (y | (y >> S[1])) & B[2]
+
+    x = (x | (x >> S[2])) & B[3]
+    y = (y | (y >> S[2])) & B[3]
+
+    x = (x | (x >> S[3])) & B[4]
+    y = (y | (y >> S[3])) & B[4]
+
+    x = (x | (x >> S[4])) & B[5]
+    y = (y | (y >> S[4])) & B[5]
+
+    x = x >> (32 - z)
+    y = y >> (32 - z)
+
+    return (x, y, z)
+
+
 def points_to_tile_fractions(longitudes, latitudes, resolution):
     """Compute the tiles in fractions for longitudes and latitudes in a specific resolution.
 
@@ -303,9 +355,9 @@ def points_to_tile_fractions(longitudes, latitudes, resolution):
 
 
 if __name__ == "__main__":
-    lons, lats = np.array([1.2]), np.array([-0.6])
-    # lons, lats = np.array([-6, -6.5, 0, 12, 1.4, -1.2]), np.array([36.5, 37.1, 42, -25.1, -1.5, -0.6])
-    zoom = 5
+    # lons, lats = np.array([1.2]), np.array([-0.6])
+    lons, lats = np.array([-6, -6.5, 0, 12, 1.4, -1.2]), np.array([36.5, 37.1, 42, -25.1, -1.5, -0.6])
+    zoom = 22
     res = points_to_cells(lons, lats, zoom)
     res2 = points_to_tile_fractions(lons, lats, zoom)
     print('res', res)
