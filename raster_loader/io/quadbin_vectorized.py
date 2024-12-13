@@ -1,11 +1,68 @@
 import numpy as np
-
+import quadbin
 
 
 MAX_LONGITUDE = 180.0
 MIN_LONGITUDE = -MAX_LONGITUDE
 MAX_LATITUDE = 89.0
 MIN_LATITUDE = -MAX_LATITUDE
+
+
+def tiles_to_longitudes(tiles, offset):
+    """Compute the longitudes for a set of tiles with an offset.
+
+    Parameters
+    ----------
+    tiles : np.ndarray [[x, y, z]]
+    offset : float
+        Inner position of the tile. From 0 to 1.
+
+    Returns
+    -------
+    longitudes : np.ndarray
+    """
+    x, _, z = tiles.T
+    return 180 * (2.0 * (x + offset) / (1 << z) - 1.0)
+
+
+def tiles_to_latitudes(tiles, offset):
+    """Compute the latitudes for a set of tiles with an offset.
+
+    Parameters
+    ----------
+    tiles : np.ndarray [[x, y, z]]
+    offset : float
+        Inner position of the tile. From 0 to 1.
+
+    Returns
+    -------
+    latitudes : np.ndarray
+    """
+    _, y, z = tiles.T
+    expy = np.exp(-(2.0 * (y + offset) / (1 << z) - 1) * np.pi)
+    return 360 * (np.arctan(expy) / np.pi - 0.25)
+
+
+def cells_to_bounding_boxes(cells):
+    """Convert cells into geographic bounding boxes.
+
+    Parameters
+    ----------
+    cells : np.ndarray
+
+    Returns
+    -------
+    np.ndarray
+        Bounding boxes in degrees [[xmin, ymin, xmax, ymax], ...]
+    """
+    tiles = np.array([cells_to_tiles(cell) for cell in cells])
+
+    xmins = tiles_to_longitudes(tiles, 0)
+    xmaxs = tiles_to_longitudes(tiles, 1)
+    ymins = tiles_to_latitudes(tiles, 1)
+    ymaxs = tiles_to_latitudes(tiles, 0)
+
+    return np.column_stack((xmins, ymins, xmaxs, ymaxs))
 
 
 def clip_numbers(nums, lower, upper):
@@ -109,135 +166,95 @@ def points_to_cells(longitudes, latitudes, resolution):
 
     return tiles_to_cells(x, y, z)
 
-# def tile_to_cell(tile):
-#     """Convert a tile into a cell.
 
-#     Parameters
-#     ----------
-#     tile : tuple (x, y, z)
+def get_resolution(indexes):
+    """Get the resolution of an index.
 
-#     Returns
-#     -------
-#     int
-#     """
-#     HEADER = 0x4000000000000000
-#     FOOTER = 0xFFFFFFFFFFFFF
-#     B = [
-#         0x5555555555555555,
-#         0x3333333333333333,
-#         0x0F0F0F0F0F0F0F0F,
-#         0x00FF00FF00FF00FF,
-#         0x0000FFFF0000FFFF,
-#         0x00000000FFFFFFFF,
-#     ]
-#     S = [1, 2, 4, 8, 16]
-#     if tile is None:
-#         return None
+    Parameters
+    ----------
+    indexes : np.ndarray
 
-#     x, y, z = tile
+    Returns
+    -------
+    np.ndarray
+    """
+    return (indexes >> 52) & 0x1F
 
-#     x = x << (32 - z)
-#     y = y << (32 - z)
 
-#     x = (x | (x << S[4])) & B[4]
-#     y = (y | (y << S[4])) & B[4]
+def cells_to_parent(cells, parent_resolution):
+    """Compute the parent cell for a specific resolution.
 
-#     x = (x | (x << S[3])) & B[3]
-#     y = (y | (y << S[3])) & B[3]
+    Parameters
+    ----------
+    cells : np.ndarray
+    parent_resolution : int
 
-#     x = (x | (x << S[2])) & B[2]
-#     y = (y | (y << S[2])) & B[2]
+    Returns
+    -------
+    np.ndarray
 
-#     x = (x | (x << S[1])) & B[1]
-#     y = (y | (y << S[1])) & B[1]
+    Raises
+    ------
+    ValueError
+        If the parent resolution is not valid.
+    """
+    resolution = get_resolution(cells)
+    parent_resolution = np.full_like(resolution, parent_resolution)
+    print(parent_resolution)
+    print(parent_resolution.dtype, resolution.dtype, cells.dtype)
 
-#     x = (x | (x << S[0])) & B[0]
-#     y = (y | (y << S[0])) & B[0]
+    if np.any(parent_resolution < 0) or np.any(parent_resolution > resolution):
+        raise ValueError("Invalid resolution")
 
-#     print('escalar', 'x', x, 'y', y)
+    return (
+        (cells & ~(0x1F << 52))
+        | (parent_resolution << 52)
+        | (0xFFFFFFFFFFFFF >> (parent_resolution << 1))
+    )
 
-#     # -- | (mode << 59) | (mode_dep << 57)
-#     return HEADER | (1 << 59) | (z << 52) | ((x | (y << 1)) >> 12) | (FOOTER >> (z * 2))
 
-# def tiles_to_cells(tiles, resolution):
-#     """Convert tiles into cells.
+def cells_to_children(cells, children_resolution):
+    """Compute the children cells for a specific resolution.
 
-#     Parameters
-#     ----------
-#     tiles : np.ndarray
+    Parameters
+    ----------
+    cells : np.ndarray
+    children_resolution : int
 
-#     Returns
-#     -------
-#     np.ndarray
-#     """
-#     if tiles is None:
-#         return None
-    
-#     print('tiles ptts', tiles, resolution)
+    Returns
+    -------
+    np.ndarray
+        Children cells.
 
-#     HEADER = 0x4000000000000000
-#     FOOTER = 0xFFFFFFFFFFFFF
-#     B = np.array([
-#         0x5555555555555555,
-#         0x3333333333333333,
-#         0x0F0F0F0F0F0F0F0F,
-#         0x00FF00FF00FF00FF,
-#         0x0000FFFF0000FFFF,
-#         0x00000000FFFFFFFF,
-#     ])
-#     S = np.array([1, 2, 4, 8, 16])
+    Raises
+    ------
+    ValueError
+        If the children resolution is not valid.
+    """
+    cells_resolution = (cells >> 52) & 0x1F
+    if np.unique(cells_resolution).size > 1:
+        raise ValueError("Cells have different resolutions")
 
-#     x = tiles[:, 0] << (32 - resolution)
-#     y = tiles[:, 1] << (32 - resolution)
+    resolution = cells_resolution[0]
 
-#     x = (x | (x << S[4])) & B[4]
-#     y = (y | (y << S[4])) & B[4]
+    if (
+        children_resolution < 0
+        or children_resolution > 26
+        or children_resolution <= resolution
+    ):
+        raise ValueError("Invalid resolution")
 
-#     x = (x | (x << S[3])) & B[3]
-#     y = (y | (y << S[3])) & B[3]
+    resolution_diff = children_resolution - resolution
+    block_range = 1 << (resolution_diff << 1)
+    block_shift = 52 - (children_resolution << 1)
 
-#     x = (x | (x << S[2])) & B[2]
-#     y = (y | (y << S[2])) & B[2]
+    child_base = (cells & ~(0x1F << 52)) | (children_resolution << 52)
+    child_base = child_base & ~((block_range - 1) << block_shift)
 
-#     x = (x | (x << S[1])) & B[1]
-#     y = (y | (y << S[1])) & B[1]
+    children = child_base[:, np.newaxis] | (np.arange(block_range, dtype=child_base.dtype) << block_shift)
 
-#     x = (x | (x << S[0])) & B[0]
-#     y = (y | (y << S[0])) & B[0]
+    return children
 
-#     # print('x', x, 'y', y)
-
-#     res = HEADER | (1 << 59) | (resolution << 52) | ((x | (y << 1)) >> 12) | (FOOTER >> (resolution * 2))
-#     # print(res.dtype, res)
-#     return res
-
-# def tiles_to_cells(tiles, resolution):
-#     """Convert tiles into cells."""
-#     if tiles is None:
-#         return None
-
-#     HEADER = 0x4000000000000000
-#     FOOTER = 0xFFFFFFFFFFFFF
-#     B = np.array([
-#         0x5555555555555555,
-#         0x3333333333333333,
-#         0x0F0F0F0F0F0F0F0F,
-#         0x00FF00FF00FF00FF,
-#         0x0000FFFF0000FFFF,
-#         0x00000000FFFFFFFF,
-#     ], dtype=np.uint64)
-#     S = np.array([1, 2, 4, 8, 16], dtype=np.uint8)
-
-#     x = np.uint64(tiles[:, 0]) << np.uint64(32 - resolution)
-#     y = np.uint64(tiles[:, 1]) << np.uint64(32 - resolution)
-
-#     for i in range(5):
-#         x = (x | (x << np.uint64(S[i]))) & B[i]
-#         y = (y | (y << np.uint64(S[i]))) & B[i]
-
-#     res = HEADER | (1 << 59) | (resolution << 52) | ((x | (y << 1)) >> 12) | (FOOTER >> (resolution * 2))
-#     print('tiles_to_cells', res)
-#     return res
 
 def tiles_to_cells(x, y, zoom):
     """
@@ -273,56 +290,44 @@ def tiles_to_cells(x, y, zoom):
     return 0x4000000000000000 | (1 << 59) | (zoom << 52) | ((x | (y << 1)) >> 12) | (0xFFFFFFFFFFFFF >> (zoom * 2))
 
 
-def cell_to_tile(cell):
-    """Convert a cell into a tile.
+def cells_to_tiles(cells):
+    """Convert cells into tiles.
 
     Parameters
     ----------
-    cell : int
+    cells : np.ndarray
 
     Returns
     -------
-    tile: tuple (x, y, z)
+    tiles : np.ndarray
     """
-    HEADER = 0x4000000000000000
-    FOOTER = 0xFFFFFFFFFFFFF
-    B = [
-        0x5555555555555555,
-        0x3333333333333333,
-        0x0F0F0F0F0F0F0F0F,
-        0x00FF00FF00FF00FF,
-        0x0000FFFF0000FFFF,
-        0x00000000FFFFFFFF,
-    ]
-    S = [1, 2, 4, 8, 16]
-
-    z = cell >> 52 & 31
-    q = (cell & FOOTER) << 12
+    z = (cells >> 52) & 31
+    q = (cells & 0xFFFFFFFFFFFFF) << 12
     x = q
     y = q >> 1
 
-    x = x & B[0]
-    y = y & B[0]
+    x = x & 0x5555555555555555
+    y = y & 0x5555555555555555
 
-    x = (x | (x >> S[0])) & B[1]
-    y = (y | (y >> S[0])) & B[1]
+    x = (x | (x >> 1)) & 0x3333333333333333
+    y = (y | (y >> 1)) & 0x3333333333333333
 
-    x = (x | (x >> S[1])) & B[2]
-    y = (y | (y >> S[1])) & B[2]
+    x = (x | (x >> 2)) & 0x0F0F0F0F0F0F0F0F
+    y = (y | (y >> 2)) & 0x0F0F0F0F0F0F0F0F
 
-    x = (x | (x >> S[2])) & B[3]
-    y = (y | (y >> S[2])) & B[3]
+    x = (x | (x >> 4)) & 0x00FF00FF00FF00FF
+    y = (y | (y >> 4)) & 0x00FF00FF00FF00FF
 
-    x = (x | (x >> S[3])) & B[4]
-    y = (y | (y >> S[3])) & B[4]
+    x = (x | (x >> 8)) & 0x0000FFFF0000FFFF
+    y = (y | (y >> 8)) & 0x0000FFFF0000FFFF
 
-    x = (x | (x >> S[4])) & B[5]
-    y = (y | (y >> S[4])) & B[5]
+    x = (x | (x >> 16)) & 0x00000000FFFFFFFF
+    y = (y | (y >> 16)) & 0x00000000FFFFFFFF
 
     x = x >> (32 - z)
     y = y >> (32 - z)
 
-    return (x, y, z)
+    return np.column_stack((x, y, z))
 
 
 def points_to_tile_fractions(longitudes, latitudes, resolution):
@@ -355,21 +360,14 @@ def points_to_tile_fractions(longitudes, latitudes, resolution):
 
 
 if __name__ == "__main__":
-    # lons, lats = np.array([1.2]), np.array([-0.6])
-    lons, lats = np.array([-6, -6.5, 0, 12, 1.4, -1.2]), np.array([36.5, 37.1, 42, -25.1, -1.5, -0.6])
+    lons = np.array([-6.0, -6.5, 0.0, 12, 1.4, -1.2])
+    lats = np.array([36.5, 37.1, 42, -25.1, -1.5, -0.6])
     zoom = 22
-    res = points_to_cells(lons, lats, zoom)
-    res2 = points_to_tile_fractions(lons, lats, zoom)
-    print('res', res)
-    print('res2', res2)
+    ressult_v = points_to_cells(lons, lats, zoom)
+    print('Vectorized function result:', ressult_v)
 
-    import quadbin
-    results = []
-    results2= []
+    result_s = []
     for lon, lat in zip(lons, lats):
-        result = quadbin.point_to_cell(lon, lat, zoom)
-        result2 = quadbin.utils.point_to_tile_fraction(lon, lat, zoom)
-        results.append(result)
-        results2.append(result2)
-    print('result', results)
-    print('result2', results2)
+        res = quadbin.point_to_cell(lon, lat, zoom)
+        result_s.append(res)
+    print('Scalar function result:', result_s)

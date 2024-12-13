@@ -1,25 +1,31 @@
 import concurrent.futures
 import gc
+import json
+import math
 import numpy as np
 import os
 import pandas as pd
 import pyproj
 import rasterio
+import re
 import rio_cogeo
-import math
 import shutil
 import sys
 import traceback
 import uuid
-import json
-import re
+
+import quadbin
 
 from datetime import datetime, timezone
-from quadbin_vectorized import points_to_cells, cell_to_tile
+from quadbin_vectorized import (
+    points_to_cells, tiles_to_cells, cells_to_tiles, cells_to_children
+)
 from google.cloud import bigquery, storage
 from google.cloud.storage import transfer_manager
 
-from raster_loader.io.common import get_nodata_value, rasterio_metadata, is_valid_raster_dataset
+from raster_loader.io.common import (
+    get_nodata_value, rasterio_metadata, is_valid_raster_dataset
+)
 from raster_loader import __version__
 
 
@@ -84,11 +90,11 @@ def get_raster_dataset_info(file_path, overview_level):
     return raster_to_4326_transformer, resolution, windows
 
 
-def process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder, overview_level=None):
+def process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder,
+                              overview_level=None, max_workers=None):
     transformer, resolution, windows = get_raster_dataset_info(file_path, overview_level)
-    print('||||||||||||||||||||||||||')
     print(f"Processing raster with resolution {resolution}")
-    with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers or os.cpu_count()) as executor:
         futures = []
         for idx, chunk in enumerate(range(0, len(windows), chunk_size)):
             max_chunk_size = min(chunk + chunk_size, len(windows))
@@ -108,7 +114,7 @@ def process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder, ov
         except Exception as err:
             print(f"An error occurred: {err} - {future}")
             traceback.print_exc()
-    
+
     return total_rows_to_upload
 
 
@@ -125,14 +131,13 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
         # All windows from all bands have the same shape
         bl_width, bl_height = raster_src.block_shapes[0]
         src_width, src_height = raster_src.width, raster_src.height
-        print(f"Block shape: {bl_width, bl_height} - Source shape: {src_width, src_height}")
         bl_width = min(bl_width, src_width)
         bl_height = min(bl_height, src_height)
+        print(f"Block shape: {bl_width, bl_height} - Source shape: {src_width, src_height}")
 
         x, y = transformer.transform(
             *(raster_src.transform * (col_offs + bl_width * 0.5, row_offs + bl_height * 0.5))
         )
-        print(np.column_stack((x, y)))
 
         blocks = points_to_cells(x, y, resolution)
 
@@ -143,19 +148,10 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
 
         no_data_value = get_nodata_value(raster_src)
 
-        row_offs_max = row_offs.max()
-        col_offs_max = col_offs.max()
-        row_offs_min = row_offs.min()
-        col_offs_min = col_offs.min()
-        # window_for_array = rasterio.windows.Window.from_slices((row_offs_min, row_offs_max + bl_height), (col_offs_min, col_offs_max + bl_width))
         window_for_array = rasterio.windows.union([win for _, win in windows])
-        # print(rasterio.windows.bounds(window_for_array, raster_transform))
-        print('####', (row_offs_min, row_offs_max), (col_offs_min, col_offs_max))
-        print(window_for_array)
-        print(raster_df.shape)
-        print(rasterio.windows.bounds(windows[0][1], raster_src.transform), windows[0])
+
         window_for_array_bounds = rasterio.windows.bounds(window_for_array, raster_src.transform)
-        print('------------------', window_for_array_bounds)
+        print(f"Window bounds: {window_for_array_bounds}")
         window_transform = rasterio.transform.from_bounds(*window_for_array_bounds, window_for_array.width, window_for_array.height)
         print(window_transform)
         raster_df["wins_array"] = raster_df.apply(
@@ -170,9 +166,13 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
         for band, band_name in bands_info:
             print(f"Processing band {band_name}")
             raster_arr = raster_src.read(band, window=window_for_array, boundless=True)
+            print(f"Shape: {raster_arr.shape}, DType: {raster_arr.dtype}, Size: {raster_arr.nbytes / 1024 / 1024} MB")
+            # if no_data_value is not None and np.all(raster_arr == no_data_value):
+            #     del raster_arr
+            #     gc.collect()
+            #     continue
             # print(raster_arr.__array_interface__)
-            # print(raster_src.profile)
-            print('@@@', raster_arr.shape, raster_arr.dtype, raster_arr.nbytes/1024/1024)
+
             if raster_arr.size == 0:
                 continue
             raster_df[band_name] = raster_df.apply(
@@ -195,21 +195,17 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
             axis=1
         )]
 
-        pd.set_option('display.width', None)
-        pd.set_option('display.max_colwidth', None)
-        print(raster_df[['block', 'wins_array', 'wa_row_off', 'wa_col_off']].tail())
+        if raster_df.shape[0] > 0:
+            raster_df.drop(columns=columns_to_drop, inplace=True)
+            raster_df.reset_index(drop=True, inplace=True)
 
-        raster_df.drop(columns=columns_to_drop, inplace=True)
-        raster_df.reset_index(drop=True, inplace=True)
+            out_file_name = f"raster_{f'ov{overview_level}' if overview_level is not None else ''}ch{chunk_id}.parquet"
+            out_file_path = os.path.join(data_folder, out_file_name)
+            print(f'Writing parquet file: {out_file_path}')
+            raster_df.to_parquet(
+                out_file_path, index=None, row_group_size=1000, engine="pyarrow", compression="snappy"
+            )
 
-        out_file_name = f"raster_{f'ov{overview_level}' if overview_level is not None else ''}ch{chunk_id}.parquet"
-        out_file_path = os.path.join(data_folder, out_file_name)
-        print(f'Writing parquet file: {out_file_path}')
-        raster_df.to_parquet(
-            out_file_path, index=None, row_group_size=1000, engine="pyarrow", compression="snappy"
-        )
-
-        # print(raster_df.head())
         print(raster_df.shape)
         rows_to_upload = raster_df.shape[0]
         del raster_df
@@ -217,8 +213,85 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
         return rows_to_upload
 
 
+def prepare_overview_windows(file_path, overview_index):
+    raster_info = rio_cogeo.cog_info(file_path).model_dump()
+    with rasterio.open(file_path) as raster_dataset:
+        is_valid_raster_dataset(raster_dataset)
+
+        block_width, block_height, resolution = get_resolution_and_block_sizes(
+            raster_dataset, raster_info
+        )
+        raster_crs = raster_dataset.crs.to_string()
+
+        raster_to_4326_transformer = pyproj.Transformer.from_crs(
+            raster_crs, "EPSG:4326", always_xy=True
+        )
+        # raster_crs must be 3857
+        pixels_to_raster_transform = raster_dataset.transform
+
+        # overview_factors = raster_dataset.overviews(1)
+        (block_width, block_height) = raster_dataset.block_shapes[0]
+
+        # for overview_index in range(0, len(overview_factors)):
+        # results are crs 4326, so x = long, y = lat
+        min_base_tile_lng, min_base_tile_lat = raster_to_4326_transformer.transform(
+            *(pixels_to_raster_transform * (block_width * 0.5, block_height * 0.5))
+        )
+        max_base_tile_lng, max_base_tile_lat = raster_to_4326_transformer.transform(
+            *(
+                pixels_to_raster_transform
+                * (
+                    raster_dataset.width - block_width * 0.5,
+                    raster_dataset.height - block_height * 0.5,
+                )
+            )
+        )
+        # quadbin cell at base resolution
+        min_base_tile = quadbin.point_to_cell(
+            min_base_tile_lng, min_base_tile_lat, resolution
+        )
+        min_base_x, min_base_y, _z = quadbin.cell_to_tile(min_base_tile)
+
+        # quadbin cell at overview resolution (quadbin_tile -> quadbin_cell)
+        min_tile = quadbin.point_to_cell(
+            min_base_tile_lng, min_base_tile_lat, resolution - overview_index - 1
+        )
+        max_tile = quadbin.point_to_cell(
+            max_base_tile_lng, max_base_tile_lat, resolution - overview_index - 1
+        )
+        min_x, min_y, min_z = quadbin.cell_to_tile(min_tile)
+        max_x, max_y, _z = quadbin.cell_to_tile(max_tile)
+
+        windows = []
+        blocks = []
+        for tile_x in range(min_x, max_x + 1):
+            for tile_y in range(min_y, max_y + 1):
+                cell = quadbin.tile_to_cell((tile_x, tile_y, min_z))
+                children = quadbin.cell_to_children(cell, resolution)
+                # children x,y,z tuples (tiles)
+                children_tiles = [quadbin.cell_to_tile(child) for child in children]
+                child_xs = [child[0] for child in children_tiles]
+                child_ys = [child[1] for child in children_tiles]
+                min_child_x, max_child_x = min(child_xs), max(child_xs)
+                min_child_y, max_child_y = min(child_ys), max(child_ys)
+                # factor = overview_factors[overview_index]
+
+                # tile_window for current overview
+                tile_window = rasterio.windows.Window(
+                    col_off=block_width * (min_child_x - min_base_x),
+                    row_off=block_height * (min_child_y - min_base_y),
+                    width=(max_child_x - min_child_x + 1)
+                    * block_width,  # should equal block_width * factor
+                    height=(max_child_y - min_child_y + 1)
+                    * block_height,  # should equal block_width * factor
+                )
+                windows.append(tile_window)
+                blocks.append(cell)
+
+        return blocks, windows
+
 # def prepare_overview_windows(file_path: str):
-#     raster_info = rio_cogeo.cog_info(file_path).dict()
+#     raster_info = rio_cogeo.cog_info(file_path).model_dump()
 #     with rasterio.open(file_path) as raster_dataset:
 #         block_width, block_height, resolution = get_resolution_and_block_sizes(
 #             raster_dataset, raster_info
@@ -249,26 +322,32 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
 #                     )
 #                 )
 #             )
-#             min_base_tile = points_to_cells(
-#                 np.array([min_base_tile_lng]), np.array([min_base_tile_lat]), resolution
-#             )[0]
-#             min_base_x, min_base_y, _z = cell_to_tile(min_base_tile)
+#             min_base_tile = quadbin.point_to_cell(
+#                 min_base_tile_lng, min_base_tile_lat, resolution
+#             )
+#             min_base_x, min_base_y, _z = quadbin.cell_to_tile(min_base_tile)
 
-#             min_tile = points_to_cells(
-#                 np.array([min_base_tile_lng]), np.array([min_base_tile_lat]), resolution - overview_index - 1
-#             )[0]
-#             max_tile = points_to_cells(
-#                 np.array([max_base_tile_lng]), np.array([max_base_tile_lat]), resolution - overview_index - 1
-#             )[0]
-#             min_x, min_y, min_z = cell_to_tile(min_tile)
-#             max_x, max_y, _z = cell_to_tile(max_tile)
+#             # quadbin cell at overview resolution (quadbin_tile -> quadbin_cell)
+#             min_tile = quadbin.point_to_cell(
+#                 min_base_tile_lng, min_base_tile_lat, resolution - overview_index - 1
+#             )
+#             max_tile = quadbin.point_to_cell(
+#                 max_base_tile_lng, max_base_tile_lat, resolution - overview_index - 1
+#             )
+#             min_x, min_y, min_z = quadbin.cell_to_tile(min_tile)
+#             max_x, max_y, _z = quadbin.cell_to_tile(max_tile)
 
-#             tile_xs, tile_ys = np.meshgrid(np.arange(min_x, max_x + 1), np.arange(min_y, max_y + 1))
+#             tile_xs, tile_ys = np.meshgrid(
+#                 np.arange(min_x, max_x + 1),
+#                 np.arange(min_y, max_y + 1)
+#             )
 #             tile_xs = tile_xs.flatten()
 #             tile_ys = tile_ys.flatten()
 
-#             children = points_to_cells(tile_xs, tile_ys, resolution)
-#             children_tiles = np.column_stack(cell_to_tile(children))
+#             children = cells_to_children(
+#                 tiles_to_cells(tile_xs, tile_ys, min_z), resolution
+#             )
+#             children_tiles = cells_to_tiles(children)
 #             child_xs = children_tiles[:, 0]
 #             child_ys = children_tiles[:, 1]
 #             min_child_x, max_child_x = child_xs.min(), child_xs.max()
@@ -277,22 +356,24 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
 
 #             tile_windows = [
 #                 rasterio.windows.Window(
-#                     col_off=block_width * (min_child_x - min_base_x),
-#                     row_off=block_height * (min_child_y - min_base_y),
-#                     width=(max_child_x - min_child_x + 1) * block_width,
-#                     height=(max_child_y - min_child_y + 1) * block_height,
+#                     col_off=int(block_width * (min_child_x - min_base_x)),
+#                     row_off=int(block_height * (min_child_y - min_base_y)),
+#                     width=int((max_child_x - min_child_x + 1) * block_width),
+#                     height=int((max_child_y - min_child_y + 1) * block_height),
 #                 )
 #                 for min_child_x, min_child_y, max_child_x, max_child_y in zip(
 #                     child_xs, child_ys, child_xs + factor, child_ys + factor
 #                 )
 #             ]
 
-#             overview_data.extend([
-#                 {"block": quadbin.tile_to_cell((tile_x, tile_y, min_z)), "window": tile_window}
-#                 for tile_x, tile_y, tile_window in zip(tile_xs, tile_ys, tile_windows)
-#             ])
+#             print(tile_windows)
 
-#         return pd.DataFrame(overview_data)
+        #     overview_data.extend([
+        #         {"block": quadbin.tile_to_cell((tile_x, tile_y, min_z)), "window": tile_window}
+        #         for tile_x, tile_y, tile_window in zip(tile_xs, tile_ys, tile_windows)
+        #     ])
+
+        # return pd.DataFrame(overview_data)
 
 
 def upload_to_gcs(bucket_name, source_file_name, destination_blob_name):
@@ -377,39 +458,71 @@ def add_metadata_to_bigquery_table(output_table, metadata):
         print("Metadata inserted successfully.")
 
 
-if __name__ == "__main__":
-    chunk_size = 1000
-    # file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
-    # file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
-    # band, band_name = ([1], ["band_1"])
-    # file_path = "/home/cayetano/Downloads/raster/output_5band_cog.tif"
-    # band, band_name = ([1, 2], ["band_1", "band_2"])
-    file_path = "/home/cayetano/Downloads/raster/blended_output_cog.tif"
-    band, band_name = ([1, 2, 3], ["band_1", "band_2", "band_3"])
-
+def prepare_outputs(table_id_sufix):
     time_now = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     upload_id = f"{time_now}_{uuid.uuid4().hex.replace('-', '')}"
-    data_folder = f"/tmp/raster_parquet_data/{upload_id}/"
-    if os.path.exists(data_folder):
-        shutil.rmtree(data_folder)
-    os.makedirs(data_folder)
+
+    output_data_folder = f"/tmp/raster_parquet_data/{upload_id}/"
+    if os.path.exists(output_data_folder):
+        shutil.rmtree(output_data_folder)
+    os.makedirs(output_data_folder)
+
+    output_table = f"{table_id_sufix}_{upload_id}"
+    output_bucket_folder = f'raster_parquet/{upload_id}/'
+
+    return output_data_folder, output_table, output_bucket_folder
+
+
+if __name__ == "__main__":
+    # # Test case 1: medium size raster, 1 band (Byte)
+    # chunk_size = 1000
+    # max_workers = None
+    # file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
+    # band, band_name = ([1], ["band_1"])
+
+    # # Test case 2: big raster, 3 bands (Byte)
+    # chunk_size = 1000
+    # max_workers = None
+    # file_path = "/home/cayetano/Downloads/raster/blended_output_cog.tif"
+    # band, band_name = ([1, 2, 3], ["band_1", "band_2", "band_3"])
+
+    # # Test case 3: big raster, 2 bands (Float32)
+    # chunk_size = 1000
+    # max_workers = 8
+    # file_path = "/home/cayetano/Downloads/raster/output_5band_cog.tif"
+    # band, band_name = ([1, 2], ["band_1", "band_2"])
+
+    # # Test case 5 small raster, 1 band (Byte)
+    chunk_size = 1000
+    max_workers = None
+    file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
+    band, band_name = ([1], ["band_1"])
+
+    # # Test case 6: big sparse raster, 1 band (Byte). 30m resolution, entire world
+    # chunk_size = 1000
+    # max_workers = 8
+    # file_path = "/home/cayetano/Downloads/raster/discreteloss_2023_COG.tif"
+    # band, band_name = ([1], ["band_1"])
+
+    bucket_name = "cayetanobv-data"
+    table_id_sufix = "cartobq.cayetanobv_raster.raster_parquet_test"
+
+    data_folder, output_table, bucket_folder = prepare_outputs(table_id_sufix)
 
     bands_info = list(zip(band, band_name))
 
     metadata = rasterio_metadata(file_path, bands_info, band_rename_function)
 
-    # overviews = get_raster_overviews(file_path)
-    # print(overviews)
-    # for ov_idx, overview in enumerate(overviews):
-    #     print(f"Processing overview [{ov_idx}] - level {overview}")
-    #     process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder, overview_level=ov_idx)
+    overviews = get_raster_overviews(file_path)
+    print(f'Processing overviews: {overviews}')
+    for ov_idx, overview in enumerate(overviews):
+        print(f"Processing overview [{ov_idx}] - level {overview}")
+        # process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder, overview_level=ov_idx)
+        wins_ov = prepare_overview_windows(file_path, ov_idx)
+        print(wins_ov)
 
-    process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder)
+    # process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder, max_workers=max_workers)
 
-    bucket_name = "cayetanobv-data"
-    table_id_sufix = "cartobq.cayetanobv_raster.raster_parquet_test"
-    output_table = f"{table_id_sufix}_{upload_id}"
-    bucket_folder = f'raster_parquet/{upload_id}/'
-    upload_parquets_to_bigquery(data_folder, bucket_name, bucket_folder, output_table, bands_info)
+    # upload_parquets_to_bigquery(data_folder, bucket_name, bucket_folder, output_table, bands_info)
 
-    add_metadata_to_bigquery_table(output_table, metadata)
+    # add_metadata_to_bigquery_table(output_table, metadata)
