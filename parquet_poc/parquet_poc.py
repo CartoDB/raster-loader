@@ -444,13 +444,13 @@ if __name__ == "__main__":
     file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
     band, band_name = ([1], ["band_1"])
 
-    # # Test case 2: big raster, 3 bands (Byte). gs://carto-ps-raster-data-examples/geotiff/blended_output_cog.tif
+    # # Test case 2: big raster (3.5GB), 3 bands (Byte). gs://carto-ps-raster-data-examples/geotiff/blended_output_cog.tif
     # chunk_size = 1000
     # max_workers = None
     # file_path = "/home/cayetano/Downloads/raster/blended_output_cog.tif"
     # band, band_name = ([1, 2, 3], ["band_1", "band_2", "band_3"])
 
-    # # Test case 3: big raster, 2 bands (Float32)
+    # # Test case 3: big raster (8.5GB), 2 bands (Float32). gs://carto-ps-raster-data-examples/geotiff/output_5band_cog.tif
     # chunk_size = 1000
     # max_workers = 8
     # file_path = "/home/cayetano/Downloads/raster/output_5band_cog.tif"
