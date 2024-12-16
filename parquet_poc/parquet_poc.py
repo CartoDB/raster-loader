@@ -92,13 +92,20 @@ def get_raster_dataset_info(file_path, overview_level):
 
         print(f"Total windows: {len(windows)}")
 
-    return raster_to_4326_transformer, resolution, windows, overview_blocks, overview_transform
+    return {
+        "transformer": raster_to_4326_transformer,
+        "resolution": resolution,
+        "windows": windows,
+        "overview_blocks": overview_blocks,
+        "overview_transform": overview_transform,
+    }
 
 
 def process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder,
                               overview_level=None, max_workers=None):
-    transformer, resolution, windows, overview_blocks, overview_transform = get_raster_dataset_info(file_path, overview_level)
-    print(f"Processing raster with resolution {resolution}")
+    r_info = get_raster_dataset_info(file_path, overview_level)
+    windows = r_info["windows"]
+    print(f'Processing raster with resolution {r_info["resolution"]}')
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers or os.cpu_count()) as executor:
         futures = []
         for idx, chunk in enumerate(range(0, len(windows), chunk_size)):
@@ -106,10 +113,10 @@ def process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder,
             print(f"Processing chunk {idx} [{chunk} to {max_chunk_size} of {len(windows)} rows]")
             futures.append(executor.submit(
                 raster_to_parquet,
-                file_path, idx, bands_info, data_folder, transformer,
-                resolution, windows[chunk:max_chunk_size], overview_level,
-                overview_blocks=overview_blocks[chunk:max_chunk_size] if overview_level is not None else None,
-                overview_transform=overview_transform
+                file_path, idx, bands_info, data_folder, r_info["transformer"],
+                r_info["resolution"], windows[chunk:max_chunk_size], overview_level,
+                overview_blocks=r_info["overview_blocks"][chunk:max_chunk_size] if overview_level is not None else None,
+                overview_transform=r_info["overview_transform"]
             ))
 
     total_rows_to_upload = 0
@@ -191,13 +198,11 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
             print(f"Processing band {band_name}")
             raster_arr = raster_src.read(band, window=window_for_array, boundless=True)
             print(f"Shape: {raster_arr.shape}, DType: {raster_arr.dtype}, Size: {raster_arr.nbytes / 1024 / 1024} MB")
-            # if no_data_value is not None and np.all(raster_arr == no_data_value):
-            #     del raster_arr
-            #     gc.collect()
-            #     continue
             # print(raster_arr.__array_interface__)
 
             if raster_arr.size == 0:
+                del raster_arr
+                gc.collect()
                 continue
             raster_df[band_name] = raster_df.apply(
                 lambda row: raster_arr[
@@ -304,7 +309,7 @@ def prepare_overview_windows(file_path, overview_index):
         heights = np.full_like(row_offs, block_height)
 
         windows = [
-            rasterio.windows.Window(col_off, row_off, width, height)
+            rasterio.windows.Window(int(col_off), int(row_off), int(width), int(height))
             for col_off, row_off, width, height in zip(col_offs, row_offs, widths, heights)
         ]
 
@@ -421,10 +426,10 @@ def prepare_outputs(table_id_sufix):
 
 if __name__ == "__main__":
     # # Test case 1: medium size raster, 1 band (Byte)
-    chunk_size = 1000
-    max_workers = None
-    file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
-    band, band_name = ([1], ["band_1"])
+    # chunk_size = 1000
+    # max_workers = None
+    # file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
+    # band, band_name = ([1], ["band_1"])
 
     # # Test case 2: big raster, 3 bands (Byte)
     # chunk_size = 1000
@@ -439,10 +444,10 @@ if __name__ == "__main__":
     # band, band_name = ([1, 2], ["band_1", "band_2"])
 
     # # Test case 5 small raster, 1 band (Byte)
-    # chunk_size = 10000
-    # max_workers = None
-    # file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
-    # band, band_name = ([1], ["band_1"])
+    chunk_size = 10000
+    max_workers = None
+    file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
+    band, band_name = ([1], ["band_1"])
 
     # # Test case 6: big sparse raster, 1 band (Byte). 30m resolution, entire world
     # chunk_size = 1000
@@ -464,9 +469,10 @@ if __name__ == "__main__":
     for ov_idx, overview in enumerate(overviews):
         if ov_idx == len(overviews) - 1:
             continue  # Skip the min level of zoom. TODO: fix the overview calculation for this level
-        print(f"Processing overview [{ov_idx}] - level {overview}")
+        print(f"\nProcessing overview [{ov_idx}] - level {overview}")
         process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder, overview_level=ov_idx)
 
+    print("\nProcessing base resolution")
     process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder, max_workers=max_workers)
 
     upload_parquets_to_bigquery(data_folder, bucket_name, bucket_folder, output_table, bands_info)
