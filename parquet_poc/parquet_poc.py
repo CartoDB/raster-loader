@@ -76,7 +76,6 @@ def get_raster_dataset_info(file_path, overview_level):
     raster_info = rio_cogeo.cog_info(file_path).model_dump()
 
     with rasterio.open(file_path, overview_level=overview_level) as raster_src:
-    # with rasterio.open(file_path) as raster_src:
         print(f"Processing raster with overview level {overview_level} - {raster_src.shape}")
         raster_crs = raster_src.crs.to_string()
         raster_to_4326_transformer = pyproj.Transformer.from_crs(
@@ -99,7 +98,7 @@ def get_raster_dataset_info(file_path, overview_level):
 def process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder,
                               overview_level=None, max_workers=None):
     transformer, resolution, windows, overview_blocks, overview_transform = get_raster_dataset_info(file_path, overview_level)
-    print(f"Processing raster with resolution {resolution}", "-----------------------------------------------------------------------------------------------")
+    print(f"Processing raster with resolution {resolution}")
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers or os.cpu_count()) as executor:
         futures = []
         for idx, chunk in enumerate(range(0, len(windows), chunk_size)):
@@ -130,8 +129,6 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
                       resolution, windows, overview_level=None, overview_blocks=None,
                       overview_transform=None):
     with rasterio.open(file_path, overview_level=overview_level) as raster_src:
-    # with rasterio.open(file_path) as raster_src:
-
         # All windows from all bands have the same shape
         bl_width, bl_height = raster_src.block_shapes[0]
         src_width, src_height = raster_src.width, raster_src.height
@@ -495,6 +492,8 @@ if __name__ == "__main__":
     overviews = get_raster_overviews(file_path)
     print(f'Processing overviews: {overviews}')
     for ov_idx, overview in enumerate(overviews):
+        if ov_idx == len(overviews) - 1:
+            continue  # Skip the min level of zoom. Pending to fix the overview calculation
         print(f"Processing overview [{ov_idx}] - level {overview}")
         process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder, overview_level=ov_idx)
 
