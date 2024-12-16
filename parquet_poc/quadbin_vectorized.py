@@ -200,8 +200,6 @@ def cells_to_parent(cells, parent_resolution):
     """
     resolution = get_resolution(cells)
     parent_resolution = np.full_like(resolution, parent_resolution)
-    print(parent_resolution)
-    print(parent_resolution.dtype, resolution.dtype, cells.dtype)
 
     if np.any(parent_resolution < 0) or np.any(parent_resolution > resolution):
         raise ValueError("Invalid resolution")
@@ -235,7 +233,7 @@ def cells_to_children(cells, children_resolution):
     if np.unique(cells_resolution).size > 1:
         raise ValueError("Cells have different resolutions")
 
-    resolution = cells_resolution[0]
+    resolution = int(cells_resolution[0])
 
     if (
         children_resolution < 0
@@ -248,7 +246,7 @@ def cells_to_children(cells, children_resolution):
     block_range = 1 << (resolution_diff << 1)
     block_shift = 52 - (children_resolution << 1)
 
-    child_base = (cells & ~(0x1F << 52)) | (children_resolution << 52)
+    child_base = (cells.astype('int64') & ~(0x1F << 52)) | (children_resolution << 52)
     child_base = child_base & ~((block_range - 1) << block_shift)
 
     children = child_base[:, np.newaxis] | (np.arange(block_range, dtype=child_base.dtype) << block_shift)
@@ -263,9 +261,8 @@ def tiles_to_cells(x, y, zoom):
     in CARTO Analytics Toolbox (AT):
         https://github.com/CartoDB/analytics-toolbox-core
     """
-
-    x = x << (32 - zoom)
-    y = y << (32 - zoom)
+    x = x.astype('uint64') << (32 - zoom)
+    y = y.astype('uint64') << (32 - zoom)
 
     # interleaved1
     x = (x | (x << 16)) & 0x0000FFFF0000FFFF

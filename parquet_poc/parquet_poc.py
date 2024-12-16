@@ -128,6 +128,10 @@ def process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder,
         except Exception as err:
             print(f"An error occurred: {err} - {future}")
             traceback.print_exc()
+        # finally:
+        #     # Clean up memory
+        #     del future
+        #     gc.collect()
 
     return total_rows_to_upload
 
@@ -179,6 +183,7 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
             "block": blocks,
             "win_bounds": windows_bounds
         })
+        # print(f'Raster Dataframe memory usage: {raster_df.memory_usage().sum() / 1024 / 1024} MB')
 
         raster_df["wins_array"] = raster_df.apply(
             lambda row: rasterio.windows.from_bounds(*row["win_bounds"], window_transform).round(), axis=1
@@ -187,13 +192,16 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
         raster_df["wa_col_off"] = raster_df["wins_array"].apply(lambda win: win.col_off)
         # print('NaN rows', raster_df[raster_df.isna()].count())
         raster_df.dropna(inplace=True)
+        # print(f'Raster Dataframe memory usage: {raster_df.memory_usage().sum() / 1024 / 1024} MB')
 
-        if overview_level == 5:
-            pd.set_option('display.max_columns', None)
-            pd.set_option('max_colwidth', None)
-            print(raster_df.head())
+        # if overview_level == 5:
+        #     pd.set_option('display.max_columns', None)
+        #     pd.set_option('max_colwidth', None)
+        #     print(raster_df.head())
 
-        columns_to_drop = ["win_bounds", "wins_array", "wa_row_off", "wa_col_off"]
+        # raster_df.drop(columns=["wins_array", "win_bounds"], inplace=True)
+        columns_to_drop = ["wins_array", "win_bounds", "wa_row_off", "wa_col_off"]
+        # print(f'Raster Dataframe memory usage: {raster_df.memory_usage().sum() / 1024 / 1024} MB')
         for band, band_name in bands_info:
             print(f"Processing band {band_name}")
             raster_arr = raster_src.read(band, window=window_for_array, boundless=True)
@@ -216,13 +224,16 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
                 lambda row: np.all(row[band_name] == no_data_value)
                 or row[band_name].size == 0, axis=1
             )
+            # print(f'Raster Dataframe memory usage: {raster_df.memory_usage().sum() / 1024 / 1024} MB')
             raster_df[band_name] = raster_df.apply(lambda row: array_to_bytes(row[band_name])(), axis=1)
+            # print(f'Raster Dataframe memory usage: {raster_df.memory_usage().sum() / 1024 / 1024} MB')
             del raster_arr
             gc.collect()
         raster_df = raster_df[~raster_df.apply(
             lambda row: all(row[f"{band_name}_empty"] for _, band_name in bands_info),
             axis=1
         )]
+        # print(f'Raster Dataframe memory usage: {raster_df.memory_usage().sum() / 1024 / 1024} MB')
 
         if raster_df.shape[0] > 0:
             raster_df.drop(columns=columns_to_drop, inplace=True)
@@ -234,7 +245,7 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
             raster_df.to_parquet(
                 out_file_path, index=None, row_group_size=1000, engine="pyarrow", compression="snappy"
             )
-
+        # print(f'Raster Dataframe memory usage: {raster_df.memory_usage().sum() / 1024 / 1024} MB')
         print(raster_df.shape)
         rows_to_upload = raster_df.shape[0]
         del raster_df
@@ -286,6 +297,30 @@ def prepare_overview_windows(file_path, overview_index):
         )
         min_x, min_y, min_z = quadbin.cell_to_tile(min_tile)
         max_x, max_y, _z = quadbin.cell_to_tile(max_tile)
+
+        factor = overview_factors[overview_index]
+
+        # cells = []
+        # windows = []
+        # for tile_x in range(min_x, max_x + 1):
+        #     for tile_y in range(min_y, max_y + 1):
+        #         cell = quadbin.tile_to_cell((tile_x, tile_y, min_z))
+        #         children = quadbin.cell_to_children(cell, resolution)
+        #         # children x,y,z tuples (tiles)
+        #         children_tiles = [quadbin.cell_to_tile(child) for child in children]
+        #         child_xs = [child[0] for child in children_tiles]
+        #         child_ys = [child[1] for child in children_tiles]
+        #         min_child_x, max_child_x = min(child_xs), max(child_xs)
+        #         min_child_y, max_child_y = min(child_ys), max(child_ys)
+        #         # tile_window for current overview
+        #         tile_window = rasterio.windows.Window(
+        #             col_off=block_width * (min_child_x - min_base_x) // factor,
+        #             row_off=block_height * (min_child_y - min_base_y) // factor,
+        #             width=block_width,
+        #             height=block_height,
+        #         )
+        #         windows.append(tile_window)
+        #         cells.append(cell)
 
         tile_xs, tile_ys = np.meshgrid(
             np.arange(min_x, max_x + 1),
@@ -381,7 +416,7 @@ def upload_parquets_to_bigquery(data_folder, bucket_name, bucket_folder, output_
         else:
             print("Uploaded {} to GCS bucket [{}].".format(file_name, bucket_name))
 
-    print(f"Uploading parquet files to BigQuery table {output_table}")
+    print(f"Moving parquet files from GCS to BigQuery table {output_table}")
     upload_parquet_from_gcs(bucket_name, os.path.join(bucket_folder, '*.parquet'), output_table, bands_info)
 
 
@@ -426,10 +461,10 @@ def prepare_outputs(table_id_sufix):
 
 if __name__ == "__main__":
     # # Test case 1: medium size raster, 1 band (Byte)
-    # chunk_size = 1000
-    # max_workers = None
-    # file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
-    # band, band_name = ([1], ["band_1"])
+    chunk_size = 1000
+    max_workers = None
+    file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
+    band, band_name = ([1], ["band_1"])
 
     # # Test case 2: big raster, 3 bands (Byte)
     # chunk_size = 1000
@@ -444,10 +479,10 @@ if __name__ == "__main__":
     # band, band_name = ([1, 2], ["band_1", "band_2"])
 
     # # Test case 5 small raster, 1 band (Byte)
-    chunk_size = 10000
-    max_workers = None
-    file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
-    band, band_name = ([1], ["band_1"])
+    # chunk_size = 10000
+    # max_workers = None
+    # file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
+    # band, band_name = ([1], ["band_1"])
 
     # # Test case 6: big sparse raster, 1 band (Byte). 30m resolution, entire world
     # chunk_size = 1000
