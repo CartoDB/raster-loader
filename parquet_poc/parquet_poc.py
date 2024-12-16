@@ -158,7 +158,7 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
         windows_bounds = [rasterio.windows.bounds(win, transform) for win in windows]
         print(windows_bounds[0], '..............')
         window_for_array = rasterio.windows.union(windows)
-        
+
         print(f"Window for array: {window_for_array}")
 
         window_for_array_bounds = rasterio.windows.bounds(window_for_array, transform)
@@ -308,36 +308,6 @@ def prepare_overview_windows(file_path, overview_index):
             for col_off, row_off, width, height in zip(col_offs, row_offs, widths, heights)
         ]
 
-        # windows = []
-        # blocks = []
-        # for tile_x in range(min_x, max_x + 1):
-        #     for tile_y in range(min_y, max_y + 1):
-        #         cell = quadbin.tile_to_cell((tile_x, tile_y, min_z))
-        #         children = quadbin.cell_to_children(cell, resolution)
-        #         # children x,y,z tuples (tiles)
-        #         children_tiles = [quadbin.cell_to_tile(child) for child in children]
-        #         child_xs = [child[0] for child in children_tiles]
-        #         child_ys = [child[1] for child in children_tiles]
-        #         min_child_x, max_child_x = min(child_xs), max(child_xs)
-        #         min_child_y, max_child_y = min(child_ys), max(child_ys)
-        #         factor = overview_factors[overview_index]
-
-        #         # tile_window for current overview
-        #         tile_window = rasterio.windows.Window(
-        #             col_off=(block_width * (min_child_x - min_base_x)) // factor,
-        #             row_off=block_height * (min_child_y - min_base_y) // factor,
-        #             width=block_width,  # should equal block_width * factor
-        #             height=block_height,  # should equal block_width * factor
-        #             # col_off=block_width * (min_child_x - min_base_x),
-        #             # row_off=block_height * (min_child_y - min_base_y),
-        #             # width=(max_child_x - min_child_x + 1)
-        #             # * block_width,  # should equal block_width * factor
-        #             # height=(max_child_y - min_child_y + 1)
-        #             # * block_height,  # should equal block_width * factor
-        #         )
-        #         windows.append(tile_window)
-        #         blocks.append(cell)
-
         # Affine transform from first window (upper, left)
         ov_transform = rasterio.transform.Affine(
             raster_dataset.transform[0] * factor,
@@ -451,10 +421,10 @@ def prepare_outputs(table_id_sufix):
 
 if __name__ == "__main__":
     # # Test case 1: medium size raster, 1 band (Byte)
-    # chunk_size = 1000
-    # max_workers = None
-    # file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
-    # band, band_name = ([1], ["band_1"])
+    chunk_size = 1000
+    max_workers = None
+    file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
+    band, band_name = ([1], ["band_1"])
 
     # # Test case 2: big raster, 3 bands (Byte)
     # chunk_size = 1000
@@ -469,10 +439,10 @@ if __name__ == "__main__":
     # band, band_name = ([1, 2], ["band_1", "band_2"])
 
     # # Test case 5 small raster, 1 band (Byte)
-    chunk_size = 10000
-    max_workers = None
-    file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
-    band, band_name = ([1], ["band_1"])
+    # chunk_size = 10000
+    # max_workers = None
+    # file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
+    # band, band_name = ([1], ["band_1"])
 
     # # Test case 6: big sparse raster, 1 band (Byte). 30m resolution, entire world
     # chunk_size = 1000
@@ -493,7 +463,7 @@ if __name__ == "__main__":
     print(f'Processing overviews: {overviews}')
     for ov_idx, overview in enumerate(overviews):
         if ov_idx == len(overviews) - 1:
-            continue  # Skip the min level of zoom. Pending to fix the overview calculation
+            continue  # Skip the min level of zoom. TODO: fix the overview calculation for this level
         print(f"Processing overview [{ov_idx}] - level {overview}")
         process_raster_to_parquet(file_path, chunk_size, bands_info, data_folder, overview_level=ov_idx)
 
