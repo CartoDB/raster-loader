@@ -300,28 +300,6 @@ def prepare_overview_windows(file_path, overview_index):
 
         factor = overview_factors[overview_index]
 
-        # cells = []
-        # windows = []
-        # for tile_x in range(min_x, max_x + 1):
-        #     for tile_y in range(min_y, max_y + 1):
-        #         cell = quadbin.tile_to_cell((tile_x, tile_y, min_z))
-        #         children = quadbin.cell_to_children(cell, resolution)
-        #         # children x,y,z tuples (tiles)
-        #         children_tiles = [quadbin.cell_to_tile(child) for child in children]
-        #         child_xs = [child[0] for child in children_tiles]
-        #         child_ys = [child[1] for child in children_tiles]
-        #         min_child_x, max_child_x = min(child_xs), max(child_xs)
-        #         min_child_y, max_child_y = min(child_ys), max(child_ys)
-        #         # tile_window for current overview
-        #         tile_window = rasterio.windows.Window(
-        #             col_off=block_width * (min_child_x - min_base_x) // factor,
-        #             row_off=block_height * (min_child_y - min_base_y) // factor,
-        #             width=block_width,
-        #             height=block_height,
-        #         )
-        #         windows.append(tile_window)
-        #         cells.append(cell)
-
         tile_xs, tile_ys = np.meshgrid(
             np.arange(min_x, max_x + 1),
             np.arange(min_y, max_y + 1)
@@ -460,13 +438,13 @@ def prepare_outputs(table_id_sufix):
 
 
 if __name__ == "__main__":
-    # # Test case 1: medium size raster, 1 band (Byte)
+    # # Test case 1: medium size raster, 1 band (Byte). gs://carto-ps-raster-data-examples/geotiff/blended_output_cog.tif
     chunk_size = 1000
     max_workers = None
     file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
     band, band_name = ([1], ["band_1"])
 
-    # # Test case 2: big raster, 3 bands (Byte)
+    # # Test case 2: big raster, 3 bands (Byte). gs://carto-ps-raster-data-examples/geotiff/blended_output_cog.tif
     # chunk_size = 1000
     # max_workers = None
     # file_path = "/home/cayetano/Downloads/raster/blended_output_cog.tif"
@@ -478,13 +456,13 @@ if __name__ == "__main__":
     # file_path = "/home/cayetano/Downloads/raster/output_5band_cog.tif"
     # band, band_name = ([1, 2], ["band_1", "band_2"])
 
-    # # Test case 5 small raster, 1 band (Byte)
+    # # Test case 5 small raster, 1 band (Byte). gs://carto-ps-raster-data-examples/geotiff/corelogic_wind/20211201_forensic_wind_banded_cog.tif
     # chunk_size = 10000
     # max_workers = None
     # file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
     # band, band_name = ([1], ["band_1"])
 
-    # # Test case 6: big sparse raster, 1 band (Byte). 30m resolution, entire world
+    # # Test case 6: big sparse raster, 1 band (Byte). 30m resolution, entire world. gs://carto-ps-raster-data-examples/geotiff/discreteloss_2023_COG.tif
     # chunk_size = 1000
     # max_workers = 8
     # file_path = "/home/cayetano/Downloads/raster/discreteloss_2023_COG.tif"
