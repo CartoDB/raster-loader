@@ -21,6 +21,7 @@ pip install -U raster-loader
 
 pip install -U raster-loader"[bigquery]"
 pip install -U raster-loader"[snowflake]"
+pip install -U raster-loader"[databricks]"
 ```
 
 ### Installing from source
@@ -30,6 +31,7 @@ git clone https://github.com/cartodb/raster-loader
 cd raster-loader
 pip install .
 ```
+
 
 ## Usage
 
@@ -149,6 +151,19 @@ project.
 
 [ROADMAP.md](ROADMAP.md) contains a list of features and improvements planned for future
 versions of Raster Loader.
+
+### Installing for Development
+
+```
+make init
+source env/bin/activate
+```
+
+Doing `which carto` should return something like `/my/local/filesystem/raster-loader/eenv/bin/carto` instead of the system-wide installation.  
+
+The `-e` flag passed to the `pip install` program will set the project and its dependencies in development mode. Changes to the project files
+will be reflected in the `carto` command immedietly without the need to re-run any setup steps.
+
 
 ## Releasing
 
