@@ -23,7 +23,7 @@ class IncompatibleRasterException(Exception):
             "You can make your raster compatible "
             "by converting it using the following command:\n"
             "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible "
-            "-co COMPRESS=DEFLATE -co OVERVIEWS=IGNORE_EXISTING -co ADD_ALPHA=NO"
+            "-co COMPRESS=DEFLATE -co OVERVIEWS=IGNORE_EXISTING -co ADD_ALPHA=NO "
             "-co RESAMPLING=NEAREST -co BLOCKSIZE=512 "
             "<input_raster>.tif <output_raster>.tif"
         )
