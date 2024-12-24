@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import click
 from functools import wraps, partial
 
-from raster_loader.utils import get_default_table_name
+from raster_loader.utils import get_default_table_name, check_private_key
 from raster_loader.io.snowflake import SnowflakeConnection
 
 
@@ -37,6 +37,18 @@ def snowflake(args=None):
 @click.option(
     "--token",
     help="An access token to authenticate with.",
+    required=False,
+    default=None,
+)
+@click.option(
+    "--private-key-path",
+    help="The path to the private key file. (PEM format)",
+    required=False,
+    default=None,
+)
+@click.option(
+    "--private-key-passphrase",
+    help="The passphrase for the private key.",
     required=False,
     default=None,
 )
@@ -104,6 +116,8 @@ def upload(
     username,
     password,
     token,
+    private_key_path,
+    private_key_passphrase,
     role,
     file_path,
     file_url,
@@ -125,12 +139,20 @@ def upload(
         get_block_dims,
     )
 
-    if (token is None and (username is None or password is None)) or all(
-        v is not None for v in [token, username, password]
-    ):
+    if (
+        token is None
+        and (username is None or password is None)
+        and private_key_path is None
+    ) or all(v is not None for v in [token, username, password, private_key_path]):
         raise ValueError(
-            "Either --token or --username and --password must be provided."
+            "Either --token or --private-key-path or --username and --password"
+            " must be provided."
         )
+
+    if private_key_path is not None:
+        check_private_key(private_key_path, private_key_passphrase)
+        if username is None:
+            raise ValueError("--username must be provided when using a private key.")
 
     if file_path is None and file_url is None:
         raise ValueError("Either --file_path or --file_url must be provided.")
@@ -160,6 +182,8 @@ def upload(
     connector = SnowflakeConnection(
         username=username,
         password=password,
+        private_key_path=private_key_path,
+        private_key_passphrase=private_key_passphrase,
         token=token,
         account=account,
         database=database,
@@ -217,24 +241,58 @@ def upload(
     required=False,
     default=None,
 )
+@click.option(
+    "--private-key-path",
+    help="The path to the private key file. (PEM format)",
+    required=False,
+    default=None,
+)
+@click.option(
+    "--private-key-passphrase",
+    help="The passphrase for the private key.",
+    required=False,
+    default=None,
+)
 @click.option("--role", help="The role to use for the file upload.", default=None)
 @click.option("--database", help="The name of the database.", required=True)
 @click.option("--schema", help="The name of the schema.", required=True)
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
-def describe(account, username, password, token, role, database, schema, table, limit):
+def describe(
+    account,
+    username,
+    password,
+    token,
+    private_key_path,
+    private_key_passphrase,
+    role,
+    database,
+    schema,
+    table,
+    limit,
+):
 
-    if (token is None and (username is None or password is None)) or all(
-        v is not None for v in [token, username, password]
-    ):
+    if (
+        token is None
+        and (username is None or password is None)
+        and private_key_path is None
+    ) or all(v is not None for v in [token, username, password, private_key_path]):
         raise ValueError(
-            "Either --token or --username and --password must be provided."
+            "Either --token or --private-key-path or --username and --password"
+            " must be provided."
         )
+
+    if private_key_path is not None:
+        check_private_key(private_key_path, private_key_passphrase)
+        if username is None:
+            raise ValueError("--username must be provided when using a private key.")
 
     fqn = f"{database}.{schema}.{table}"
     connector = SnowflakeConnection(
         username=username,
         password=password,
+        private_key_path=private_key_path,
+        private_key_passphrase=private_key_passphrase,
         token=token,
         account=account,
         database=database,

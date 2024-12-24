@@ -33,15 +33,37 @@ else:
 
 
 class SnowflakeConnection(DataWarehouseConnection):
-    def __init__(self, username, password, account, database, schema, token, role):
+    def __init__(
+        self,
+        username,
+        password,
+        account,
+        database,
+        schema,
+        token,
+        private_key_path,
+        private_key_passphrase,
+        role,
+    ):
         if not _has_snowflake:
             import_error_snowflake()
 
         # TODO: Write a proper static factory for this
-        if token is None:
+        if token is not None:
             self.client = snowflake.connector.connect(
+                authenticator="oauth",
+                token=token,
+                account=account,
+                database=database.upper(),
+                schema=schema.upper(),
+                role=role.upper() if role is not None else None,
+            )
+        elif private_key_path is not None:
+            self.client = snowflake.connector.connect(
+                authenticator="snowflake_jwt",
                 user=username,
-                password=password,
+                private_key_file=private_key_path,
+                private_key_file_pwd=private_key_passphrase,
                 account=account,
                 database=database.upper(),
                 schema=schema.upper(),
@@ -49,8 +71,8 @@ class SnowflakeConnection(DataWarehouseConnection):
             )
         else:
             self.client = snowflake.connector.connect(
-                authenticator="oauth",
-                token=token,
+                user=username,
+                password=password,
                 account=account,
                 database=database.upper(),
                 schema=schema.upper(),
