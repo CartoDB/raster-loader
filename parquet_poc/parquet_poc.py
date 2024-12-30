@@ -103,7 +103,7 @@ def get_raster_dataset_info(file_path, overview_level):
 
 
 def process_raster_to_parquet(file_path, chunk_id, bands_info, data_folder,
-                              overview_level=None, max_workers=None):
+                              overview_level=None, max_workers=None, compress=False):
     r_info = get_raster_dataset_info(file_path, overview_level)
     windows = r_info["windows"]
     print(f'Processing raster with resolution {r_info["resolution"]}')
@@ -117,7 +117,8 @@ def process_raster_to_parquet(file_path, chunk_id, bands_info, data_folder,
                 file_path, idx, bands_info, data_folder, r_info["transformer"],
                 r_info["resolution"], windows[chunk:max_chunk_size], overview_level,
                 overview_blocks=r_info["overview_blocks"][chunk:max_chunk_size] if overview_level is not None else None,
-                overview_transform=r_info["overview_transform"]
+                overview_transform=r_info["overview_transform"],
+                compress=compress
             ))
 
     total_rows_to_upload = 0
@@ -139,13 +140,13 @@ def process_raster_to_parquet(file_path, chunk_id, bands_info, data_folder,
 
 def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
                       resolution, windows, overview_level=None, overview_blocks=None,
-                      overview_transform=None):
+                      overview_transform=None, compress=False):
     with rasterio.open(file_path, overview_level=overview_level) as raster_src:
         # All windows from all bands have the same shape
         bl_width, bl_height = raster_src.block_shapes[0]
         src_width, src_height = raster_src.width, raster_src.height
-        bl_width = min(bl_width, src_width)
-        bl_height = min(bl_height, src_height)
+        # bl_width = min(bl_width, src_width)
+        # bl_height = min(bl_height, src_height)
         print(f"Block shape: {bl_width, bl_height} - Source shape: {src_width, src_height}")
 
         no_data_value = get_nodata_value(raster_src)
@@ -227,7 +228,16 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
             )
             # print(f'Raster Dataframe memory usage: {raster_df.memory_usage().sum() / 1024 / 1024} MB')
             # raster_df[band_name] = raster_df.apply(lambda row: zlib.compress(array_to_bytes(row[band_name])(), level=9, wbits=31), axis=1)
-            raster_df[band_name] = raster_df.apply(lambda row: array_to_bytes(row[band_name])(), axis=1)
+            if compress:
+                raster_df[band_name] = raster_df.apply(
+                    lambda row: zlib.compress(array_to_bytes(row[band_name])(), level=9, wbits=31), 
+                    axis=1
+                )
+            else:
+                raster_df[band_name] = raster_df.apply(
+                    lambda row: array_to_bytes(row[band_name])(), 
+                    axis=1
+                )
             # print(f'Raster Dataframe memory usage: {raster_df.memory_usage().sum() / 1024 / 1024} MB')
             del raster_arr
             gc.collect()
@@ -439,7 +449,7 @@ def prepare_outputs(table_id_sufix):
     return output_data_folder, output_table, output_bucket_folder
 
 
-def process_raster_data(file_path, chunk_size, bands_info, data_folder, max_workers=None):
+def process_raster_data(file_path, chunk_size, bands_info, data_folder, max_workers=None, compress=False):
     """Process raster data including overviews and base resolution into parquet files.
     
     Args:
@@ -448,19 +458,22 @@ def process_raster_data(file_path, chunk_size, bands_info, data_folder, max_work
         bands_info (list): List of tuples containing band information (band, band_name)
         data_folder (str): Output folder for parquet files
         max_workers (int, optional): Maximum number of worker processes
+        compress (bool, optional): Whether to compress the band data using zlib. Defaults to False.
     """
     overviews = get_raster_overviews(file_path)
     print(f'Processing overviews: {overviews}')
     
     # Process overviews except the minimum zoom level
-    for ov_idx, overview in enumerate(overviews[:-1]):  # Skip last overview
+    # for ov_idx, overview in enumerate(overviews[:-1]):  # Skip last overview
+    for ov_idx, overview in enumerate(overviews):
         print(f"\nProcessing overview [{ov_idx}] - level {overview}")
         process_raster_to_parquet(
             file_path, 
             chunk_size, 
             bands_info, 
             data_folder, 
-            overview_level=ov_idx
+            overview_level=ov_idx,
+            compress=compress
         )
 
     # Process base resolution
@@ -470,14 +483,14 @@ def process_raster_data(file_path, chunk_size, bands_info, data_folder, max_work
         chunk_size, 
         bands_info, 
         data_folder, 
-        max_workers=max_workers
+        max_workers=max_workers,
+        compress=compress
     )
 
 
-def main(file_path, table_id_sufix, chunk_size, band, band_name, 
-         bucket_name, max_workers=None):
+def main(file_path, table_id_sufix, chunk_size, band, band_name,
+         bucket_name, max_workers=None, compress=False):
     """Main function to process raster data and upload to BigQuery.
-    
     Args:
         file_path (str): Path to the input raster file
         table_id_sufix (str): Suffix for the BigQuery table ID
@@ -486,60 +499,61 @@ def main(file_path, table_id_sufix, chunk_size, band, band_name,
         band_name (list): List of band names
         bucket_name (str): GCS bucket name
         max_workers (int, optional): Maximum number of worker processes
+        compress (bool, optional): Whether to compress the band data using zlib. Defaults to False.
     """
     data_folder, output_table, bucket_folder = prepare_outputs(table_id_sufix)
     bands_info = list(zip(band, band_name))
     print(f'Bands info: {bands_info}')
-    
+
     # Get metadata using default band rename function
     metadata = rasterio_metadata(file_path, bands_info, lambda band_name: band_name)
-    
+
     # Process raster data
-    process_raster_data(file_path, chunk_size, bands_info, data_folder, max_workers)
-    
+    process_raster_data(file_path, chunk_size, bands_info, data_folder, max_workers, compress)
+
     # Upload to BigQuery
     upload_parquets_to_bigquery(data_folder, bucket_name, bucket_folder, output_table, bands_info)
     add_metadata_to_bigquery_table(output_table, metadata)
 
 
 if __name__ == "__main__":
-    # # Test case 1: medium size raster, 1 band (Byte). gs://carto-ps-raster-data-examples/geotiff/blended_output_cog.tif
+    # Test case 1: medium size raster, 1 band (Byte). gs://carto-ps-raster-data-examples/geotiff/blended_output_cog.tif
     # chunk_size = 1000
     # max_workers = None
     # file_path = "/home/cayetano/Downloads/raster/classification_germany_cog.tif"
     # band, band_name = ([1], ["band_1"])
 
-    # # Test case 2: big raster (3.5GB), 3 bands (Byte). gs://carto-ps-raster-data-examples/geotiff/blended_output_cog.tif
+    # Test case 2: big raster (3.5GB), 3 bands (Byte). gs://carto-ps-raster-data-examples/geotiff/blended_output_cog.tif
     # chunk_size = 1000
     # max_workers = None
     # file_path = "/home/cayetano/Downloads/raster/blended_output_cog.tif"
     # band, band_name = ([1, 2, 3], ["band_1", "band_2", "band_3"])
 
-    # # Test case 3: big raster (8.5GB), 2 bands (Float32). gs://carto-ps-raster-data-examples/geotiff/output_5band_cog.tif
+    # Test case 3: big raster (8.5GB), 2 bands (Float32). gs://carto-ps-raster-data-examples/geotiff/output_5band_cog.tif
     # chunk_size = 1000
     # max_workers = 8
     # file_path = "/home/cayetano/Downloads/raster/output_5band_cog.tif"
     # band, band_name = ([1, 2], ["band_1", "band_2"])
 
-    # # Test case 5 small raster, 1 band (Byte). gs://carto-ps-raster-data-examples/geotiff/corelogic_wind/20211201_forensic_wind_banded_cog.tif
+    # Test case 5: small raster, 1 band (Byte). gs://carto-ps-raster-data-examples/geotiff/corelogic_wind/20211201_forensic_wind_banded_cog.tif
     chunk_size = 10000
     max_workers = None
     file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
     band, band_name = ([1], ["band_1"])
 
-    # # Test case 6: big sparse raster, 1 band (Byte). 30m resolution, entire world. gs://carto-ps-raster-data-examples/geotiff/discreteloss_2023_COG.tif
+    # Test case 6: big sparse raster, 1 band (Byte). 30m resolution, entire world. gs://carto-ps-raster-data-examples/geotiff/discreteloss_2023_COG.tif
     # chunk_size = 1000
     # max_workers = 8
     # file_path = "/home/cayetano/Downloads/raster/discreteloss_2023_COG.tif"
     # band, band_name = ([1], ["band_1"])
 
-    # # Test case 7: big raster, 1 band (3.3GB, Byte). gs://carto-ps-raster-data-examples/geotiff/usda_usda_us_aggriculture_cog.tif
+    # Test case 7: big raster, 1 band (3.3GB, Byte). gs://carto-ps-raster-data-examples/geotiff/usda_usda_us_aggriculture_cog.tif
     # chunk_size = 5000
     # max_workers = None
     # file_path = "/home/cayetano/Downloads/raster/usda_usda_us_aggriculture_cog.tif"
     # band, band_name = ([1], ["band_1"])
-    
-    # # Test case 7: big raster, 1 band (3.3GB, Byte). gs://carto-ps-raster-data-examples/geotiff/Public_flood_flood_prone_areas_global_cog.tif
+
+    # Test case 8: big raster, 1 band (3.3GB, Byte). gs://carto-ps-raster-data-examples/geotiff/Public_flood_flood_prone_areas_global_cog.tif
     # chunk_size = 1000
     # max_workers = None
     # file_path = "/home/cayetano/Downloads/raster/Public_flood_flood_prone_areas_global_cog.tif"
@@ -547,5 +561,6 @@ if __name__ == "__main__":
 
     bucket_name = "cayetanobv-data"
     table_id_sufix = "cartobq.cayetanobv_raster.raster_parquet_test"
+    compress = False  # Set to True to enable zlib compression
 
-    main(file_path, table_id_sufix, chunk_size, band, band_name, bucket_name, max_workers)
+    main(file_path, table_id_sufix, chunk_size, band, band_name, bucket_name, max_workers, compress)
