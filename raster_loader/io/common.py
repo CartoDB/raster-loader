@@ -185,7 +185,6 @@ def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
         return None
 
 
-
 def rasterio_metadata(
     file_path: str,
     bands_info: List[Tuple[int, str]],
@@ -424,7 +423,12 @@ def sample_not_masked_values(
             )
             if not raster_is_masked:
                 for band in bands:
-                    not_masked_samples[band].append(sample[band - 1])
+                    band_sample = sample[band - 1]
+                    is_valid_sample = not (
+                        np.isinf(band_sample) or np.isnan(band_sample)
+                    )
+                    if is_valid_sample:
+                        not_masked_samples[band].append(band_sample)
 
         iterations += 1
 
@@ -507,8 +511,14 @@ def raster_band_approx_stats(
     _sum = 0
     sum_squares = 0
     if count > 0:
-        _sum = int(np.sum(samples_band))
-        sum_squares = int(np.sum(np.array(samples_band) ** 2))
+        try:
+            _sum = int(np.sum(samples_band))
+        except (OverflowError, ValueError):
+            _sum = 0
+        try:
+            sum_squares = int(np.sum(np.array(samples_band) ** 2))
+        except (OverflowError, ValueError):
+            sum_squares = 0
 
     if basic_stats:
         quantiles = None
