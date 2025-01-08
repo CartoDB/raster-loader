@@ -60,6 +60,12 @@ def bigquery(args=None):
     "--chunk_size", help="The number of blocks to upload in each chunk.", default=10000
 )
 @click.option(
+    "--compress",
+    help="Compress band data using zlib.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
     "--overwrite",
     help="Overwrite existing data in the table if it already exists.",
     default=False,
@@ -100,6 +106,7 @@ def upload(
     band,
     band_name,
     chunk_size,
+    compress,
     overwrite=False,
     append=False,
     cleanup_on_failure=False,
@@ -177,6 +184,7 @@ def upload(
         cleanup_on_failure=cleanup_on_failure,
         exact_stats=exact_stats,
         basic_stats=basic_stats,
+        compress=compress,
     )
 
     click.echo("Raster file uploaded to Google BigQuery")

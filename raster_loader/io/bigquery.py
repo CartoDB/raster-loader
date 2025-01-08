@@ -132,7 +132,12 @@ class BigQueryConnection(DataWarehouseConnection):
                         exit()
 
             metadata = rasterio_metadata(
-                file_path, bands_info, self.band_rename_function, exact_stats, basic_stats
+                file_path, 
+                bands_info, 
+                self.band_rename_function, 
+                exact_stats, 
+                basic_stats,
+                compress=compress
             )
 
             overviews_records_gen = rasterio_overview_to_records(
