@@ -181,7 +181,8 @@ def test_snowflake_credentials_validation(*args, **kwargs):
     )
     assert result.exit_code == 1
     assert (
-        "Either --token or --username and --password must be provided." in result.output
+        "Either (--token) or (--username and --private-key-path) or"
+        " (--username and --password) must be provided." in result.output
     )
 
     result = runner.invoke(
@@ -213,7 +214,8 @@ def test_snowflake_credentials_validation(*args, **kwargs):
     )
     assert result.exit_code == 1
     assert (
-        "Either --token or --username and --password must be provided." in result.output
+        "Either (--token) or (--username and --private-key-path) or"
+        " (--username and --password) must be provided." in result.output
     )
 
 

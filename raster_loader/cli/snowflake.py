@@ -141,14 +141,24 @@ def upload(
         get_block_dims,
     )
 
-    if (
-        token is None
-        and (username is None or password is None)
-        and private_key_path is None
-    ) or all(v is not None for v in [token, username, password, private_key_path]):
+    if not (
+        (token is not None and username is None)
+        or (
+            token is None
+            and username is not None
+            and password is not None
+            and private_key_path is None
+        )
+        or (
+            token is None
+            and username is not None
+            and password is None
+            and private_key_path is not None
+        )
+    ):
         raise ValueError(
-            "Either --token or --private-key-path or --username and --password"
-            " must be provided."
+            "Either (--token) or (--username and --private-key-path) or"
+            " (--username and --password) must be provided."
         )
 
     if private_key_path is not None:
@@ -277,14 +287,24 @@ def describe(
     limit,
 ):
 
-    if (
-        token is None
-        and (username is None or password is None)
-        and private_key_path is None
-    ) or all(v is not None for v in [token, username, password, private_key_path]):
+    if not (
+        (token is not None and username is None)
+        or (
+            token is None
+            and username is not None
+            and password is not None
+            and private_key_path is None
+        )
+        or (
+            token is None
+            and username is not None
+            and password is None
+            and private_key_path is not None
+        )
+    ):
         raise ValueError(
-            "Either --token or --private-key-path or --username and --password"
-            " must be provided."
+            "Either (--token) or (--username and --private-key-path) or"
+            " (--username and --password) must be provided."
         )
 
     if private_key_path is not None:
