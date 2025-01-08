@@ -53,6 +53,7 @@ def snowflake(args=None):
     default=None,
 )
 @click.option("--role", help="The role to use for the file upload.", default=None)
+@click.option("--warehouse", help="Name of the default warehouse to use.", default=None)
 @click.option(
     "--file_path", help="The path to the raster file.", required=False, default=None
 )
@@ -119,6 +120,7 @@ def upload(
     private_key_path,
     private_key_passphrase,
     role,
+    warehouse,
     file_path,
     file_url,
     database,
@@ -189,6 +191,7 @@ def upload(
         database=database,
         schema=schema,
         role=role,
+        warehouse=warehouse,
     )
 
     source = file_path if is_local_file else file_url
@@ -254,6 +257,7 @@ def upload(
     default=None,
 )
 @click.option("--role", help="The role to use for the file upload.", default=None)
+@click.option("--warehouse", help="Name of the default warehouse to use.", default=None)
 @click.option("--database", help="The name of the database.", required=True)
 @click.option("--schema", help="The name of the schema.", required=True)
 @click.option("--table", help="The name of the table.", required=True)
@@ -266,6 +270,7 @@ def describe(
     private_key_path,
     private_key_passphrase,
     role,
+    warehouse,
     database,
     schema,
     table,
@@ -298,6 +303,7 @@ def describe(
         database=database,
         schema=schema,
         role=role,
+        warehouse=warehouse,
     )
     df = connector.get_records(fqn, limit)
     print(f"Table: {fqn}")

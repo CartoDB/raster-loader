@@ -44,6 +44,7 @@ class SnowflakeConnection(DataWarehouseConnection):
         private_key_path,
         private_key_passphrase,
         role,
+        warehouse,
     ):
         if not _has_snowflake:
             import_error_snowflake()
@@ -57,6 +58,7 @@ class SnowflakeConnection(DataWarehouseConnection):
                 database=database.upper(),
                 schema=schema.upper(),
                 role=role.upper() if role is not None else None,
+                warehouse=warehouse,
             )
         elif private_key_path is not None:
             self.client = snowflake.connector.connect(
@@ -68,6 +70,7 @@ class SnowflakeConnection(DataWarehouseConnection):
                 database=database.upper(),
                 schema=schema.upper(),
                 role=role.upper() if role is not None else None,
+                warehouse=warehouse,
             )
         else:
             self.client = snowflake.connector.connect(
@@ -77,6 +80,7 @@ class SnowflakeConnection(DataWarehouseConnection):
                 database=database.upper(),
                 schema=schema.upper(),
                 role=role.upper() if role is not None else None,
+                warehouse=warehouse,
             )
 
     def band_rename_function(self, band_name: str):
