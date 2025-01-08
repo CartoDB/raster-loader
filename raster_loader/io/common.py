@@ -3,6 +3,7 @@ import numpy as np
 import pyproj
 import shapely
 import sys
+import zlib
 
 from raster_loader._version import __version__
 from collections import Counter
@@ -105,6 +106,7 @@ def array_to_record(
     resolution: int,
     window: rasterio.windows.Window,
     no_data_value: float = None,
+    compress: bool = False,
 ) -> dict:
     row_off = window.row_off
     col_off = window.col_off
@@ -125,6 +127,10 @@ def array_to_record(
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
     else:
         arr_bytes = np.ascontiguousarray(arr).tobytes()
+
+    # Apply compression if requested
+    if compress:
+        arr_bytes = zlib.compress(arr_bytes, level=6, wbits=31)
 
     record = {
         band_rename_function("block"): block,
