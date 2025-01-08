@@ -451,10 +451,22 @@ def sample_not_masked_values(
 
 def most_common_approx(samples: List[Union[int, float]]) -> Dict[int, int]:
     """Compute the most common values in a list of int samples."""
-    counts = np.bincount(samples)
+    print("Computing most common values...")
+
+    samples_array = np.array(samples)
+    min_val = int(np.floor(samples_array.min()))
+    max_val = int(np.ceil(samples_array.max()))
+
+    # +2 allows to include max_val in the last bin
+    bins = np.arange(min_val, max_val + 2)
+
+    counts, bin_edges = np.histogram(samples_array, bins=bins)
+
     nth = min(DEFAULT_MAX_MOST_COMMON, len(counts))
+    counts = np.bincount(samples)
     idx = np.argpartition(counts, -nth)[-nth:]
-    return dict([(int(i), int(counts[i])) for i in idx if counts[i] > 0])
+
+    return {int(bin_edges[i]): int(counts[i]) for i in idx if counts[i] > 0}
 
 
 def compute_quantiles(data: List[Union[int, float]], cast_function: Callable) -> dict:
