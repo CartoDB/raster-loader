@@ -191,7 +191,6 @@ def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
         return None
 
 
-
 def rasterio_metadata(
     file_path: str,
     bands_info: List[Tuple[int, str]],
