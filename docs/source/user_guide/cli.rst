@@ -152,6 +152,31 @@ Or, with band names:
      --band_name red \
      --band_name green
 
+You can enable compression of the band data using the ``--compress`` flag. This uses gzip compression which can significantly reduce storage size:
+
+.. code-block:: bash
+
+   carto bigquery upload \
+     --file_path /path/to/my/raster/file.tif \
+     --project my-gcp-project \
+     --dataset my-bigquery-dataset \
+     --table my-bigquery-table \
+     --compress
+
+The same works for Snowflake:
+
+.. code-block:: bash
+
+   carto snowflake upload \
+     --file_path /path/to/my/raster/file.tif \
+     --database my-snowflake-database \
+     --schema my-snowflake-schema \
+     --table my-snowflake-table \
+     --account my-snowflake-account \
+     --username my-snowflake-user \
+     --password my-snowflake-password \
+     --compress
+
 .. seealso::
    See the :ref:`cli_details` for a full list of options.
 

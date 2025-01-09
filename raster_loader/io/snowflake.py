@@ -180,6 +180,7 @@ class SnowflakeConnection(DataWarehouseConnection):
         cleanup_on_failure: bool = False,
         exact_stats: bool = False,
         basic_stats: bool = False,
+        compress: bool = False,
     ) -> bool:
         def band_rename_function(x):
             return x.upper()
@@ -214,11 +215,13 @@ class SnowflakeConnection(DataWarehouseConnection):
                 file_path,
                 band_rename_function,
                 bands_info,
+                compress=compress,
             )
             windows_records_gen = rasterio_windows_to_records(
                 file_path,
                 band_rename_function,
                 bands_info,
+                compress=compress,
             )
 
             records_gen = chain(overviews_records_gen, windows_records_gen)
