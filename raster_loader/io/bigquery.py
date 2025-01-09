@@ -109,6 +109,7 @@ class BigQueryConnection(DataWarehouseConnection):
         cleanup_on_failure: bool = False,
         exact_stats: bool = False,
         basic_stats: bool = False,
+        compress: bool = False,
     ):
         """Write a raster file to a BigQuery table."""
         print("Loading raster file to BigQuery...")
@@ -131,19 +132,26 @@ class BigQueryConnection(DataWarehouseConnection):
                         exit()
 
             metadata = rasterio_metadata(
-                file_path, bands_info, self.band_rename_function, exact_stats, basic_stats
+                file_path,
+                bands_info,
+                self.band_rename_function,
+                exact_stats,
+                basic_stats,
+                compress=compress,
             )
 
             overviews_records_gen = rasterio_overview_to_records(
                 file_path,
                 self.band_rename_function,
-                bands_info
+                bands_info,
+                compress=compress,
             )
 
             windows_records_gen = rasterio_windows_to_records(
                 file_path,
                 self.band_rename_function,
                 bands_info,
+                compress=compress,
             )
             records_gen = chain(overviews_records_gen, windows_records_gen)
 
@@ -244,6 +252,7 @@ class BigQueryConnection(DataWarehouseConnection):
                 self.delete_table(fqn)
 
             import traceback
+
             print(traceback.print_exc())
             raise IOError("Error uploading to BigQuery: {}".format(e))
 

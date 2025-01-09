@@ -1,4 +1,4 @@
-VENV=env
+VENV ?= env
 DIST=dist
 BUILD=build
 BIN=$(VENV)/bin

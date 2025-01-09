@@ -83,3 +83,15 @@ This function returns a DataFrame with some samples from the raster table on Big
     See the :ref:`api_reference` for more details.
 
 .. _`GCP documentation`: https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key
+
+To enable compression of the band data, which can significantly reduce storage size, use the ``compress`` parameter:
+
+.. code-block:: python
+
+    connector.upload_raster(
+        file_path = 'path/to/raster.tif',
+        fqn = 'database.schema.tablename',
+        compress = True  # Enable gzip compression of band data
+    )
+
+The compression information will be stored in the metadata of the table, and the data will be automatically decompressed when reading it back.
