@@ -130,7 +130,7 @@ def array_to_record(
 
     # Apply compression if requested
     if compress:
-        arr_bytes = zlib.compress(arr_bytes, level=3, wbits=31)
+        arr_bytes = zlib.compress(arr_bytes, level=6, wbits=31)
 
     record = {
         band_rename_function("block"): block,
