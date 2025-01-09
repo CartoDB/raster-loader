@@ -170,6 +170,7 @@ def upload(
     click.echo("Dataset: {}".format(dataset))
     click.echo("Table: {}".format(table))
     click.echo("Number of Records Per BigQuery Append: {}".format(chunk_size))
+    click.echo("Compress: {}".format(compress))
 
     click.echo("Uploading Raster to BigQuery")
 

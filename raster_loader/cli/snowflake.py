@@ -194,6 +194,7 @@ def upload(
     click.echo("Schema: {}".format(schema))
     click.echo("Table: {}".format(table))
     click.echo("Number of Records Per Snowflake Append: {}".format(chunk_size))
+    click.echo("Compress: {}".format(compress))
 
     click.echo("Uploading Raster to Snowflake")
 

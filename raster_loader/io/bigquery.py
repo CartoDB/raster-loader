@@ -132,12 +132,12 @@ class BigQueryConnection(DataWarehouseConnection):
                         exit()
 
             metadata = rasterio_metadata(
-                file_path, 
-                bands_info, 
-                self.band_rename_function, 
-                exact_stats, 
+                file_path,
+                bands_info,
+                self.band_rename_function,
+                exact_stats,
                 basic_stats,
-                compress=compress
+                compress=compress,
             )
 
             overviews_records_gen = rasterio_overview_to_records(
@@ -252,6 +252,7 @@ class BigQueryConnection(DataWarehouseConnection):
                 self.delete_table(fqn)
 
             import traceback
+
             print(traceback.print_exc())
             raise IOError("Error uploading to BigQuery: {}".format(e))
 
