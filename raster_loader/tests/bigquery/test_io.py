@@ -756,6 +756,6 @@ def test_rasterio_to_bigquery_with_compression(*args, **kwargs):
     success = connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
-        compress=True
+        compress=True,
     )
     assert success

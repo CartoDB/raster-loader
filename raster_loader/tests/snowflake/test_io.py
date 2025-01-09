@@ -680,7 +680,9 @@ def test_append_with_different_resolution(*args, **kwargs):
     return_value=False,
 )
 @patch("raster_loader.io.snowflake.ask_yes_no_question", return_value=True)
-@patch("raster_loader.io.snowflake.SnowflakeConnection.write_metadata", return_value=None)
+@patch(
+    "raster_loader.io.snowflake.SnowflakeConnection.write_metadata", return_value=None
+)
 @patch(
     "raster_loader.io.snowflake.SnowflakeConnection.get_metadata",
     return_value={
@@ -723,6 +725,6 @@ def test_rasterio_to_snowflake_with_compression(*args, **kwargs):
     success = connector.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
-        compress=True
+        compress=True,
     )
     assert success
