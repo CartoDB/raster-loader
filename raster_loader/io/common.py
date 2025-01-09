@@ -97,6 +97,21 @@ def get_default_nodata_value(dtype: str) -> float:
         raise ValueError(f"Unsupported data type: {dtype}")
 
 
+# For Python <=3.10 compatibility (handling wbits parameter)
+# TODO: Remove this once we drop support for Python < 3.11
+if sys.version_info < (3, 11):
+
+    def compress_bytes(arr_bytes):
+        compressed = zlib.compress(arr_bytes, level=6)
+        # Add gzip header corresponding to wbits=31
+        return b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03" + compressed
+
+else:
+
+    def compress_bytes(arr_bytes):
+        return zlib.compress(arr_bytes, level=6, wbits=31)
+
+
 def array_to_record(
     arr: np.ndarray,
     value_field: str,
@@ -129,8 +144,7 @@ def array_to_record(
         arr_bytes = np.ascontiguousarray(arr).tobytes()
 
     # Apply compression if requested
-    if compress:
-        arr_bytes = zlib.compress(arr_bytes, level=6, wbits=31)
+    arr_bytes = compress_bytes(arr_bytes) if compress else arr_bytes
 
     record = {
         band_rename_function("block"): block,
