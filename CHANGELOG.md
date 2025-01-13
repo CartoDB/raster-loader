@@ -6,13 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+
+## [0.10.1] 2025-01-13
+
+<small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/57d55999704fb003da2947db65d5617e27c5c104...HEAD)</small>
+
+### Added
+
+-   Snowflake key pair authentication support (#158)
+
+<!-- insertion marker -->
+
 ## [0.10.0] 2025-01-10
 
 <small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.9.2...HEAD)</small>
 
 ### Added
 
-- add new option: compression (#160) ([c46dd51](https://github.com/CartoDB/raster-loader/commit/c46dd51bf53847e21de7550e5b826be1a6cda3eb) by Cayetano Benavent).
+-   add new option: compression (#160) ([c46dd51](https://github.com/CartoDB/raster-loader/commit/c46dd51bf53847e21de7550e5b826be1a6cda3eb) by Cayetano Benavent).
 
 ## [0.9.2] 2024-12-11
 
