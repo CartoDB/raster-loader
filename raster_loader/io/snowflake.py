@@ -33,21 +33,24 @@ else:
 
 
 class SnowflakeConnection(DataWarehouseConnection):
-    def __init__(self, username, password, account, database, schema, token, role):
+    def __init__(
+        self,
+        username,
+        password,
+        account,
+        database,
+        schema,
+        token,
+        private_key_path,
+        private_key_passphrase,
+        role,
+        warehouse,
+    ):
         if not _has_snowflake:
             import_error_snowflake()
 
         # TODO: Write a proper static factory for this
-        if token is None:
-            self.client = snowflake.connector.connect(
-                user=username,
-                password=password,
-                account=account,
-                database=database.upper(),
-                schema=schema.upper(),
-                role=role.upper() if role is not None else None,
-            )
-        else:
+        if token is not None:
             self.client = snowflake.connector.connect(
                 authenticator="oauth",
                 token=token,
@@ -55,6 +58,29 @@ class SnowflakeConnection(DataWarehouseConnection):
                 database=database.upper(),
                 schema=schema.upper(),
                 role=role.upper() if role is not None else None,
+                warehouse=warehouse,
+            )
+        elif private_key_path is not None:
+            self.client = snowflake.connector.connect(
+                authenticator="snowflake_jwt",
+                user=username,
+                private_key_file=private_key_path,
+                private_key_file_pwd=private_key_passphrase,
+                account=account,
+                database=database.upper(),
+                schema=schema.upper(),
+                role=role.upper() if role is not None else None,
+                warehouse=warehouse,
+            )
+        else:
+            self.client = snowflake.connector.connect(
+                user=username,
+                password=password,
+                account=account,
+                database=database.upper(),
+                schema=schema.upper(),
+                role=role.upper() if role is not None else None,
+                warehouse=warehouse,
             )
 
     def band_rename_function(self, band_name: str):

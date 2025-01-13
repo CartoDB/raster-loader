@@ -37,6 +37,22 @@ def get_default_table_name(base_path: str, band):
     return re.sub(r"[^a-zA-Z0-9_-]", "_", table)
 
 
+def check_private_key(private_key_path: str, private_key_passphrase: str):
+    # Check that the private key file exists
+    if not os.path.exists(private_key_path):
+        raise ValueError(f"Private key file {private_key_path} not found")
+
+    with open(private_key_path, "r") as f:
+        private_key = f.read()
+        if (
+            private_key.startswith("-----BEGIN ENCRYPTED PRIVATE KEY-----")
+            and private_key_passphrase is None
+        ):
+            raise ValueError(
+                "The private key file is encrypted. Please provide a passphrase."
+            )
+
+
 # Modify the __init__ so that self.line = "" instead of None
 def new_init(
     self, message, category, filename, lineno, file=None, line=None, source=None
