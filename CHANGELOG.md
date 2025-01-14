@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
-## Unreleased
+## [0.10.2] 2025-01-14
 
 <small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.10.1...HEAD)</small>
 
