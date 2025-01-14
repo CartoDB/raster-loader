@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
+## [0.10.2] 2025-01-14
+
+<small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.10.1...HEAD)</small>
+
+### Fixed
+
+- Fix: OverflowError error when casting approx sum to integer ([46cab53](https://github.com/CartoDB/raster-loader/commit/46cab53bbf71a86a7df784922956eb03f9dbb327) by Roberto Antolín).
+- Fix: Compute approximate most common negative values ([f9f5ff5](https://github.com/CartoDB/raster-loader/commit/f9f5ff5010b1aea0d13afbea6d1869d4094fa7d7) by Roberto Antolín).
+
 ## [0.10.1] 2025-01-13
 
 <small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/57d55999704fb003da2947db65d5617e27c5c104...HEAD)</small>
