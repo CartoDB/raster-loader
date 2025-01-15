@@ -117,6 +117,12 @@ def snowflake(args=None):
     is_flag=True,
     default=False,
 )
+@click.option(
+    "--compression-level",
+    help="Compression level (1-9, higher = better compression but slower)",
+    type=int,
+    default=6,
+)
 @catch_exception()
 def upload(
     account,

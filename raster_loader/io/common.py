@@ -101,15 +101,15 @@ def get_default_nodata_value(dtype: str) -> float:
 # TODO: Remove this once we drop support for Python < 3.11
 if sys.version_info < (3, 11):
 
-    def compress_bytes(arr_bytes):
-        compressed = zlib.compress(arr_bytes, level=6)
+    def compress_bytes(arr_bytes, level=6):
+        compressed = zlib.compress(arr_bytes, level=level)
         # Add gzip header corresponding to wbits=31
         return b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03" + compressed
 
 else:
 
-    def compress_bytes(arr_bytes):
-        return zlib.compress(arr_bytes, level=6, wbits=31)
+    def compress_bytes(arr_bytes, level=6):
+        return zlib.compress(arr_bytes, level=level, wbits=31)
 
 
 def array_to_record(

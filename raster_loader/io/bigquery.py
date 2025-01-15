@@ -110,6 +110,7 @@ class BigQueryConnection(DataWarehouseConnection):
         exact_stats: bool = False,
         basic_stats: bool = False,
         compress: bool = False,
+        compression_level: int = 6,
     ):
         """Write a raster file to a BigQuery table."""
         print("Loading raster file to BigQuery...")

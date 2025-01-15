@@ -207,7 +207,9 @@ class SnowflakeConnection(DataWarehouseConnection):
         exact_stats: bool = False,
         basic_stats: bool = False,
         compress: bool = False,
+        compression_level: int = 6,
     ) -> bool:
+        """Write a raster file to a Snowflake table."""
         def band_rename_function(x):
             return x.upper()
 
