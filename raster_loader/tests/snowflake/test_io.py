@@ -778,6 +778,7 @@ def test_rasterio_to_snowflake_with_compression(*args, **kwargs):
         "num_pixels": 1,
     },
 )
+@patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
 def test_rasterio_to_snowflake_with_compression_level(*args, **kwargs):
     table_name = "test_mosaic_compressed".upper()
     connector = mocks.MockSnowflakeConnection()
