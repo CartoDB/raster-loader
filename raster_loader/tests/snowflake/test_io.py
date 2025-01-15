@@ -785,6 +785,6 @@ def test_rasterio_to_snowflake_with_compression_level(*args, **kwargs):
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
         compress=True,
-        compression_level=3
+        compression_level=3,
     )
     assert success

@@ -815,6 +815,6 @@ def test_rasterio_to_bigquery_with_compression_level(*args, **kwargs):
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
         compress=True,
-        compression_level=3
+        compression_level=3,
     )
     assert success
