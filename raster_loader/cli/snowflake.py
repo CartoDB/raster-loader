@@ -147,6 +147,7 @@ def upload(
     cleanup_on_failure=False,
     exact_stats=False,
     basic_stats=False,
+    compression_level=6,
 ):
     from raster_loader.io.common import (
         get_number_of_blocks,
@@ -253,6 +254,7 @@ def upload(
         exact_stats=exact_stats,
         basic_stats=basic_stats,
         compress=compress,
+        compression_level=compression_level,
     )
 
     click.echo("Raster file uploaded to Snowflake")
