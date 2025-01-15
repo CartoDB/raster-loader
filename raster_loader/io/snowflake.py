@@ -245,12 +245,14 @@ class SnowflakeConnection(DataWarehouseConnection):
                 band_rename_function,
                 bands_info,
                 compress=compress,
+                compression_level=compression_level,
             )
             windows_records_gen = rasterio_windows_to_records(
                 file_path,
                 band_rename_function,
                 bands_info,
                 compress=compress,
+                compression_level=compression_level,
             )
 
             records_gen = chain(overviews_records_gen, windows_records_gen)
