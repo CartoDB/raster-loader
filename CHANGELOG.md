@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
+## [0.10.3] 2025-01-17
+
+<small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.10.2...v0.10.3)</small>
+
+### Fixed
+
+- fix: most_common_approx duplicated counts definition ([1415d3d](https://github.com/CartoDB/raster-loader/commit/1415d3d2731bd0a1f35054846c598b7f3a839115) by cayetanobv).
+
+### Added
+
+- add new option: compression level (#162) ([fc45f68](https://github.com/CartoDB/raster-loader/commit/fc45f68415929b780d69311e51cef7e954ae87ac) by Cayetano Benavent).
+
 ## [0.10.2] 2025-01-14
 
 <small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.10.1...HEAD)</small>
