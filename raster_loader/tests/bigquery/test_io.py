@@ -759,3 +759,62 @@ def test_rasterio_to_bigquery_with_compression(*args, **kwargs):
         compress=True,
     )
     assert success
+
+
+@patch(
+    "raster_loader.io.bigquery.BigQueryConnection.check_if_table_exists",
+    return_value=True,
+)
+@patch("raster_loader.io.bigquery.BigQueryConnection.delete_table", return_value=None)
+@patch(
+    "raster_loader.io.bigquery.BigQueryConnection.check_if_table_is_empty",
+    return_value=False,
+)
+@patch("raster_loader.io.bigquery.ask_yes_no_question", return_value=True)
+@patch("raster_loader.io.bigquery.BigQueryConnection.delete_table", return_value=None)
+@patch("raster_loader.io.bigquery.BigQueryConnection.write_metadata", return_value=None)
+@patch("raster_loader.io.bigquery.BigQueryConnection.update_labels", return_value=None)
+@patch(
+    "raster_loader.io.bigquery.BigQueryConnection.get_metadata",
+    return_value={
+        "bounds": [0, 0, 0, 0],
+        "block_resolution": 5,
+        "nodata": 0,
+        "block_width": 256,
+        "block_height": 256,
+        "compression": "gzip",
+        "bands": [
+            {
+                "type": "uint8",
+                "name": "band_1",
+                "colorinterp": "red",
+                "stats": {
+                    "min": 0.0,
+                    "max": 255.0,
+                    "mean": 28.66073989868164,
+                    "stddev": 41.5693439511935,
+                    "count": 100000,
+                    "sum": 2866073.989868164,
+                    "sum_squares": 1e15,
+                    "approximated_stats": False,
+                    "top_values": [1, 2, 3],
+                    "version": "0.0.3",
+                },
+                "nodata": "0",
+                "colortable": None,
+            }
+        ],
+        "num_blocks": 1,
+        "num_pixels": 1,
+    },
+)
+def test_rasterio_to_bigquery_with_compression_level(*args, **kwargs):
+    table_name = "test_mosaic_compressed"
+    connector = mocks.MockBigQueryConnection()
+    success = connector.upload_raster(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        f"{BQ_PROJECT_ID}.{BQ_DATASET_ID}.{table_name}",
+        compress=True,
+        compression_level=3,
+    )
+    assert success

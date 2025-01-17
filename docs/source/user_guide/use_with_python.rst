@@ -91,7 +91,8 @@ To enable compression of the band data, which can significantly reduce storage s
     connector.upload_raster(
         file_path = 'path/to/raster.tif',
         fqn = 'database.schema.tablename',
-        compress = True  # Enable gzip compression of band data
+        compress = True,  # Enable gzip compression of band data
+        compression_level = 3  # Optional: Set compression level (1-9, default=6)
     )
 
 The compression information will be stored in the metadata of the table, and the data will be automatically decompressed when reading it back.

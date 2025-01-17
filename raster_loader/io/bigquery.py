@@ -110,6 +110,7 @@ class BigQueryConnection(DataWarehouseConnection):
         exact_stats: bool = False,
         basic_stats: bool = False,
         compress: bool = False,
+        compression_level: int = 6,
     ):
         """Write a raster file to a BigQuery table."""
         print("Loading raster file to BigQuery...")
@@ -145,6 +146,7 @@ class BigQueryConnection(DataWarehouseConnection):
                 self.band_rename_function,
                 bands_info,
                 compress=compress,
+                compression_level=compression_level,
             )
 
             windows_records_gen = rasterio_windows_to_records(
@@ -152,6 +154,7 @@ class BigQueryConnection(DataWarehouseConnection):
                 self.band_rename_function,
                 bands_info,
                 compress=compress,
+                compression_level=compression_level,
             )
             records_gen = chain(overviews_records_gen, windows_records_gen)
 

@@ -728,3 +728,64 @@ def test_rasterio_to_snowflake_with_compression(*args, **kwargs):
         compress=True,
     )
     assert success
+
+
+@patch(
+    "raster_loader.io.snowflake.SnowflakeConnection.check_if_table_exists",
+    return_value=True,
+)
+@patch("raster_loader.io.snowflake.SnowflakeConnection.delete_table", return_value=None)
+@patch(
+    "raster_loader.io.snowflake.SnowflakeConnection.check_if_table_is_empty",
+    return_value=False,
+)
+@patch("raster_loader.io.snowflake.ask_yes_no_question", return_value=True)
+@patch(
+    "raster_loader.io.snowflake.SnowflakeConnection.write_metadata", return_value=None
+)
+@patch(
+    "raster_loader.io.snowflake.SnowflakeConnection.get_metadata",
+    return_value={
+        "bounds": [0, 0, 0, 0],
+        "block_resolution": 5,
+        "nodata": 0,
+        "block_width": 256,
+        "block_height": 256,
+        "compression": "gzip",
+        "bands": [
+            {
+                "type": "uint8",
+                "name": "BAND_1",
+                "colorinterp": "red",
+                "stats": {
+                    "min": 0.0,
+                    "max": 255.0,
+                    "mean": 28.66073989868164,
+                    "stddev": 41.5693439511935,
+                    "count": 100000,
+                    "sum": 2866073.989868164,
+                    "sum_squares": 1e15,
+                    "approximated_stats": False,
+                    "top_values": [1, 2, 3],
+                    "version": "0.0.3",
+                },
+                "nodata": "0",
+                "colorinterp": "red",
+                "colortable": None,
+            }
+        ],
+        "num_blocks": 1,
+        "num_pixels": 1,
+    },
+)
+@patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
+def test_rasterio_to_snowflake_with_compression_level(*args, **kwargs):
+    table_name = "test_mosaic_compressed".upper()
+    connector = mocks.MockSnowflakeConnection()
+    success = connector.upload_raster(
+        os.path.join(fixtures_dir, "mosaic_cog.tif"),
+        f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
+        compress=True,
+        compression_level=3,
+    )
+    assert success

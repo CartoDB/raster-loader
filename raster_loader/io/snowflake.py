@@ -207,7 +207,10 @@ class SnowflakeConnection(DataWarehouseConnection):
         exact_stats: bool = False,
         basic_stats: bool = False,
         compress: bool = False,
+        compression_level: int = 6,
     ) -> bool:
+        """Write a raster file to a Snowflake table."""
+
         def band_rename_function(x):
             return x.upper()
 
@@ -242,12 +245,14 @@ class SnowflakeConnection(DataWarehouseConnection):
                 band_rename_function,
                 bands_info,
                 compress=compress,
+                compression_level=compression_level,
             )
             windows_records_gen = rasterio_windows_to_records(
                 file_path,
                 band_rename_function,
                 bands_info,
                 compress=compress,
+                compression_level=compression_level,
             )
 
             records_gen = chain(overviews_records_gen, windows_records_gen)

@@ -117,6 +117,12 @@ def snowflake(args=None):
     is_flag=True,
     default=False,
 )
+@click.option(
+    "--compression-level",
+    help="Compression level (1-9, higher = better compression but slower)",
+    type=int,
+    default=6,
+)
 @catch_exception()
 def upload(
     account,
@@ -141,6 +147,7 @@ def upload(
     cleanup_on_failure=False,
     exact_stats=False,
     basic_stats=False,
+    compression_level=6,
 ):
     from raster_loader.io.common import (
         get_number_of_blocks,
@@ -247,6 +254,7 @@ def upload(
         exact_stats=exact_stats,
         basic_stats=basic_stats,
         compress=compress,
+        compression_level=compression_level,
     )
 
     click.echo("Raster file uploaded to Snowflake")
