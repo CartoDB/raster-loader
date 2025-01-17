@@ -492,7 +492,6 @@ def most_common_approx(samples: List[Union[int, float]]) -> Dict[int, int]:
     counts, bin_edges = np.histogram(samples_array, bins=bins)
 
     nth = min(DEFAULT_MAX_MOST_COMMON, len(counts))
-    counts = np.bincount(samples)
     idx = np.argpartition(counts, -nth)[-nth:]
 
     return {int(bin_edges[i]): int(counts[i]) for i in idx if counts[i] > 0}
