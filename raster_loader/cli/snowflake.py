@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import click
 from functools import wraps, partial
 
-from raster_loader.utils import get_default_table_name
+from raster_loader.utils import get_default_table_name, check_private_key
 from raster_loader.io.snowflake import SnowflakeConnection
 
 
@@ -40,7 +40,20 @@ def snowflake(args=None):
     required=False,
     default=None,
 )
+@click.option(
+    "--private-key-path",
+    help="The path to the private key file. (PEM format)",
+    required=False,
+    default=None,
+)
+@click.option(
+    "--private-key-passphrase",
+    help="The passphrase for the private key.",
+    required=False,
+    default=None,
+)
 @click.option("--role", help="The role to use for the file upload.", default=None)
+@click.option("--warehouse", help="Name of the default warehouse to use.", default=None)
 @click.option(
     "--file_path", help="The path to the raster file.", required=False, default=None
 )
@@ -93,10 +106,22 @@ def snowflake(args=None):
     is_flag=True,
 )
 @click.option(
-    "--all_stats",
-    help="Compute all statistics including quantiles and most frequent values.",
+    "--basic_stats",
+    help="Compute basic stats and omit quantiles and most frequent values.",
     required=False,
     is_flag=True,
+)
+@click.option(
+    "--compress",
+    help="Compress band data using zlib.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--compression-level",
+    help="Compression level (1-9, higher = better compression but slower)",
+    type=int,
+    default=6,
 )
 @catch_exception()
 def upload(
@@ -104,7 +129,10 @@ def upload(
     username,
     password,
     token,
+    private_key_path,
+    private_key_passphrase,
     role,
+    warehouse,
     file_path,
     file_url,
     database,
@@ -113,11 +141,13 @@ def upload(
     band,
     band_name,
     chunk_size,
+    compress,
     overwrite=False,
     append=False,
     cleanup_on_failure=False,
     exact_stats=False,
-    all_stats=False,
+    basic_stats=False,
+    compression_level=6,
 ):
     from raster_loader.io.common import (
         get_number_of_blocks,
@@ -125,12 +155,30 @@ def upload(
         get_block_dims,
     )
 
-    if (token is None and (username is None or password is None)) or all(
-        v is not None for v in [token, username, password]
+    if not (
+        (token is not None and username is None)
+        or (
+            token is None
+            and username is not None
+            and password is not None
+            and private_key_path is None
+        )
+        or (
+            token is None
+            and username is not None
+            and password is None
+            and private_key_path is not None
+        )
     ):
         raise ValueError(
-            "Either --token or --username and --password must be provided."
+            "Either (--token) or (--username and --private-key-path) or"
+            " (--username and --password) must be provided."
         )
+
+    if private_key_path is not None:
+        check_private_key(private_key_path, private_key_passphrase)
+        if username is None:
+            raise ValueError("--username must be provided when using a private key.")
 
     if file_path is None and file_url is None:
         raise ValueError("Either --file_path or --file_url must be provided.")
@@ -160,11 +208,14 @@ def upload(
     connector = SnowflakeConnection(
         username=username,
         password=password,
+        private_key_path=private_key_path,
+        private_key_passphrase=private_key_passphrase,
         token=token,
         account=account,
         database=database,
         schema=schema,
         role=role,
+        warehouse=warehouse,
     )
 
     source = file_path if is_local_file else file_url
@@ -187,6 +238,7 @@ def upload(
     click.echo("Schema: {}".format(schema))
     click.echo("Table: {}".format(table))
     click.echo("Number of Records Per Snowflake Append: {}".format(chunk_size))
+    click.echo("Compress: {}".format(compress))
 
     click.echo("Uploading Raster to Snowflake")
 
@@ -200,7 +252,9 @@ def upload(
         append=append,
         cleanup_on_failure=cleanup_on_failure,
         exact_stats=exact_stats,
-        all_stats=all_stats,
+        basic_stats=basic_stats,
+        compress=compress,
+        compression_level=compression_level,
     )
 
     click.echo("Raster file uploaded to Snowflake")
@@ -217,29 +271,76 @@ def upload(
     required=False,
     default=None,
 )
+@click.option(
+    "--private-key-path",
+    help="The path to the private key file. (PEM format)",
+    required=False,
+    default=None,
+)
+@click.option(
+    "--private-key-passphrase",
+    help="The passphrase for the private key.",
+    required=False,
+    default=None,
+)
 @click.option("--role", help="The role to use for the file upload.", default=None)
+@click.option("--warehouse", help="Name of the default warehouse to use.", default=None)
 @click.option("--database", help="The name of the database.", required=True)
 @click.option("--schema", help="The name of the schema.", required=True)
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
-def describe(account, username, password, token, role, database, schema, table, limit):
+def describe(
+    account,
+    username,
+    password,
+    token,
+    private_key_path,
+    private_key_passphrase,
+    role,
+    warehouse,
+    database,
+    schema,
+    table,
+    limit,
+):
 
-    if (token is None and (username is None or password is None)) or all(
-        v is not None for v in [token, username, password]
+    if not (
+        (token is not None and username is None)
+        or (
+            token is None
+            and username is not None
+            and password is not None
+            and private_key_path is None
+        )
+        or (
+            token is None
+            and username is not None
+            and password is None
+            and private_key_path is not None
+        )
     ):
         raise ValueError(
-            "Either --token or --username and --password must be provided."
+            "Either (--token) or (--username and --private-key-path) or"
+            " (--username and --password) must be provided."
         )
+
+    if private_key_path is not None:
+        check_private_key(private_key_path, private_key_passphrase)
+        if username is None:
+            raise ValueError("--username must be provided when using a private key.")
 
     fqn = f"{database}.{schema}.{table}"
     connector = SnowflakeConnection(
         username=username,
         password=password,
+        private_key_path=private_key_path,
+        private_key_passphrase=private_key_passphrase,
         token=token,
         account=account,
         database=database,
         schema=schema,
         role=role,
+        warehouse=warehouse,
     )
     df = connector.get_records(fqn, limit)
     print(f"Table: {fqn}")

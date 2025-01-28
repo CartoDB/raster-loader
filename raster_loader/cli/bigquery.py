@@ -60,6 +60,12 @@ def bigquery(args=None):
     "--chunk_size", help="The number of blocks to upload in each chunk.", default=10000
 )
 @click.option(
+    "--compress",
+    help="Compress band data using zlib.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
     "--overwrite",
     help="Overwrite existing data in the table if it already exists.",
     default=False,
@@ -84,10 +90,16 @@ def bigquery(args=None):
     is_flag=True,
 )
 @click.option(
-    "--all_stats",
-    help="Compute all statistics including quantiles and most frequent values.",
+    "--basic_stats",
+    help="Compute basic stats and omit quantiles and most frequent values.",
     required=False,
     is_flag=True,
+)
+@click.option(
+    "--compression-level",
+    help="Compression level (1-9, higher = better compression but slower)",
+    type=int,
+    default=6,
 )
 @catch_exception()
 def upload(
@@ -100,11 +112,13 @@ def upload(
     band,
     band_name,
     chunk_size,
+    compress,
     overwrite=False,
     append=False,
     cleanup_on_failure=False,
     exact_stats=False,
-    all_stats=False,
+    basic_stats=False,
+    compression_level=6,
 ):
     from raster_loader.io.common import (
         get_number_of_blocks,
@@ -163,6 +177,7 @@ def upload(
     click.echo("Dataset: {}".format(dataset))
     click.echo("Table: {}".format(table))
     click.echo("Number of Records Per BigQuery Append: {}".format(chunk_size))
+    click.echo("Compress: {}".format(compress))
 
     click.echo("Uploading Raster to BigQuery")
 
@@ -176,7 +191,9 @@ def upload(
         append=append,
         cleanup_on_failure=cleanup_on_failure,
         exact_stats=exact_stats,
-        all_stats=all_stats,
+        basic_stats=basic_stats,
+        compress=compress,
+        compression_level=compression_level,
     )
 
     click.echo("Raster file uploaded to Google BigQuery")

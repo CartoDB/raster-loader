@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
+## [0.10.3] 2025-01-17
+
+<small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.10.2...v0.10.3)</small>
+
+### Fixed
+
+- fix: most_common_approx duplicated counts definition ([1415d3d](https://github.com/CartoDB/raster-loader/commit/1415d3d2731bd0a1f35054846c598b7f3a839115) by cayetanobv).
+
+### Added
+
+- add new option: compression level (#162) ([fc45f68](https://github.com/CartoDB/raster-loader/commit/fc45f68415929b780d69311e51cef7e954ae87ac) by Cayetano Benavent).
+
+## [0.10.2] 2025-01-14
+
+<small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.10.1...HEAD)</small>
+
+### Fixed
+
+- Fix: OverflowError error when casting approx sum to integer ([46cab53](https://github.com/CartoDB/raster-loader/commit/46cab53bbf71a86a7df784922956eb03f9dbb327) by Roberto Antolín).
+- Fix: Compute approximate most common negative values ([f9f5ff5](https://github.com/CartoDB/raster-loader/commit/f9f5ff5010b1aea0d13afbea6d1869d4094fa7d7) by Roberto Antolín).
+
+## [0.10.1] 2025-01-13
+
+<small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/57d55999704fb003da2947db65d5617e27c5c104...HEAD)</small>
+
+### Added
+
+-   Snowflake key pair authentication support (#158)
+
+<!-- insertion marker -->
+
+## [0.10.0] 2025-01-10
+
+<small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.9.2...HEAD)</small>
+
+### Added
+
+-   add new option: compression (#160) ([c46dd51](https://github.com/CartoDB/raster-loader/commit/c46dd51bf53847e21de7550e5b826be1a6cda3eb) by Cayetano Benavent).
+
+## [0.9.2] 2024-12-11
+
+<small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.9.1...HEAD)</small>
+
+### Added
+
+-   Add: Compute top values only for integer bands ([6c10cc0](https://github.com/CartoDB/raster-loader/commit/6c10cc025f5691f7841beee560437fb591bddfe9) by Roberto Antolín).
+
+### Fixed
+
+-   Fix: Tackle degenerate case of stdev computation ([b112c80](https://github.com/CartoDB/raster-loader/commit/b112c80be7d7c1adfd08f651b43dc591fd54a2ef) by Roberto Antolín).
+-   Fix: Get count stats from shape of raster band ([c066a30](https://github.com/CartoDB/raster-loader/commit/c066a307ee116598c54ea4871d563f79deebad0b) by Roberto Antolín).
+-   Fix: Raise error when 0 non-masked samples due to sparse rasters ([dfd89ae](https://github.com/CartoDB/raster-loader/commit/dfd89aef27726a3217843022769600315d8e5b6f) by Roberto Antolín).
+
+### Changed
+
+-   Change '--all_stats' flag to '--basic_stats' ([2cb89cc](https://github.com/CartoDB/raster-loader/pull/156/commits/2cb89cca30eb15189c876760c026074e262cc10f) by Roberto Antolín).
+
+## [0.9.1] 2024-11-26
+
+### Fixed
+
+-   fix: changed default no data for byte data type ([06ad98f](https://github.com/CartoDB/raster-loader/commit/06ad98f3723c44ce847f475887cdca084c6ca571) by volaya).
+
+## [0.9.0](https://github.com/CartoDB/raster-loader/releases/tag/v0.9.0) - 2024-11-04
+
+<small>[Compare with first commit](https://github.com/CartoDB/raster-loader/compare/167c3d69359f9b3abb49a3c1c5aa6249f76c0992...v0.9.0)</small>
+
 ## [0.9.0](https://github.com/CartoDB/raster-loader/releases/tag/0.9.0) - 2024-11-04
 
 ### Added

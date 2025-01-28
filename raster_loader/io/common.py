@@ -3,6 +3,7 @@ import numpy as np
 import pyproj
 import shapely
 import sys
+import zlib
 
 from raster_loader._version import __version__
 from collections import Counter
@@ -96,6 +97,21 @@ def get_default_nodata_value(dtype: str) -> float:
         raise ValueError(f"Unsupported data type: {dtype}")
 
 
+# For Python <=3.10 compatibility (handling wbits parameter)
+# TODO: Remove this once we drop support for Python < 3.11
+if sys.version_info < (3, 11):
+
+    def compress_bytes(arr_bytes, level=6):
+        compressed = zlib.compress(arr_bytes, level=level)
+        # Add gzip header corresponding to wbits=31
+        return b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03" + compressed
+
+else:
+
+    def compress_bytes(arr_bytes, level=6):
+        return zlib.compress(arr_bytes, level=level, wbits=31)
+
+
 def array_to_record(
     arr: np.ndarray,
     value_field: str,
@@ -104,7 +120,9 @@ def array_to_record(
     geotransform: Affine,
     resolution: int,
     window: rasterio.windows.Window,
-    no_data_value: float = None
+    no_data_value: float = None,
+    compress: bool = False,
+    compression_level: int = 6,
 ) -> dict:
     row_off = window.row_off
     col_off = window.col_off
@@ -125,6 +143,9 @@ def array_to_record(
         arr_bytes = np.ascontiguousarray(arr.byteswap()).tobytes()
     else:
         arr_bytes = np.ascontiguousarray(arr).tobytes()
+
+    # Apply compression if requested
+    arr_bytes = compress_bytes(arr_bytes, compression_level) if compress else arr_bytes
 
     record = {
         band_rename_function("block"): block,
@@ -162,9 +183,23 @@ def get_resolution_and_block_sizes(
     return block_width, block_height, resolution
 
 
+def get_color_name(raster_dataset: rasterio.io.DatasetReader, band: int) -> str:
+    try:
+        # There is [an issue](https://github.com/OSGeo/gdal/issues/1928)
+        # in gdal with the same error message that we see in this line:
+        #   "Failed to compute statistics, no valid pixels found in sampling."
+        #
+        # It seems to be an error with cropped rasters.
+        band_colorinterp = raster_dataset.colorinterp[band - 1].name
+    except Exception:
+        band_colorinterp = None
+
+    return band_colorinterp
+
+
 def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
     try:
-        if raster_dataset.colorinterp[band - 1].name == "palette":
+        if get_color_name(raster_dataset, band) == "palette":
             return raster_dataset.colormap(band)
         return None
     except ValueError:
@@ -176,7 +211,8 @@ def rasterio_metadata(
     bands_info: List[Tuple[int, str]],
     band_rename_function: Callable,
     exact_stats: bool = False,
-    all_stats: bool = False,
+    basic_stats: bool = False,
+    compress: bool = False,
 ):
     """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
@@ -190,6 +226,9 @@ def rasterio_metadata(
     metadata = {}
     width = raster_info["Profile"]["Width"]
     height = raster_info["Profile"]["Height"]
+
+    # Add compression info to metadata
+    metadata["compression"] = "gzip" if compress else None
 
     with rasterio.open(file_path) as raster_dataset:
         raster_crs = raster_dataset.crs.to_string()
@@ -228,23 +267,14 @@ def rasterio_metadata(
                     "User is encourage to compute approximate statistics instead.",
                     UserWarning,
                 )
-                stats = raster_band_stats(raster_dataset, band, all_stats)
+                stats = raster_band_stats(raster_dataset, band, basic_stats)
             else:
                 print("Computing approximate stats...")
                 stats = raster_band_approx_stats(
-                    raster_dataset, samples, band, all_stats
+                    raster_dataset, samples, band, basic_stats
                 )
 
-            try:
-                # There is [an issue](https://github.com/OSGeo/gdal/issues/1928)
-                # in gdal with the same error message that we see in this line:
-                #   "Failed to compute statistics, no valid pixels found in sampling."
-                #
-                # It seems to be an error with cropped rasters.
-                band_colorinterp = raster_dataset.colorinterp[band - 1].name
-            except Exception:
-                band_colorinterp = None
-
+            band_colorinterp = get_color_name(raster_dataset, band)
             if band_colorinterp == "alpha":
                 band_nodata = "0"
             else:
@@ -302,7 +332,7 @@ def rasterio_metadata(
 
 def get_alpha_band(raster_dataset: rasterio.io.DatasetReader):
     for band in raster_dataset.indexes:
-        if raster_dataset.colorinterp[band - 1].name == "alpha":
+        if get_color_name(raster_dataset, band) == "alpha":
             return band
     return None
 
@@ -380,6 +410,7 @@ def sample_not_masked_values(
     raster_dataset: rasterio.io.DatasetReader, n_samples: int
 ) -> Samples:
     """Compute quantiles for a raster dataset band."""
+
     def not_enough_samples():
         return (
             len(not_masked_samples[1]) < n_samples
@@ -397,7 +428,7 @@ def sample_not_masked_values(
 
     iterations = 0
 
-    print('Sampling raster...')
+    print("Sampling raster...")
     rng = np.random.default_rng()
     while not_enough_samples():
         x = rng.uniform(west, east, n_samples)
@@ -417,11 +448,23 @@ def sample_not_masked_values(
             )
             if not raster_is_masked:
                 for band in bands:
-                    not_masked_samples[band].append(sample[band - 1])
+                    band_sample = sample[band - 1]
+                    is_valid_sample = not (
+                        np.isinf(band_sample) or np.isnan(band_sample)
+                    )
+                    if is_valid_sample:
+                        not_masked_samples[band].append(band_sample)
 
         iterations += 1
 
     if len(not_masked_samples[1]) < n_samples:
+        if len(not_masked_samples[1]) == 0:
+            raise ValueError(
+                "The data is very sparse and no non-masked samples were collected.\n"
+                "Please, consider to use the --exact_stats option to compute exact "
+                "stats"
+            )
+
         warnings.warn(
             "The data is very sparse and there are not enough non-masked samples.\n"
             f"Only {len(not_masked_samples[1])} samples were collected and "
@@ -437,15 +480,24 @@ def sample_not_masked_values(
 
 def most_common_approx(samples: List[Union[int, float]]) -> Dict[int, int]:
     """Compute the most common values in a list of int samples."""
-    counts = np.bincount(samples)
+    print("Computing most common values...")
+
+    samples_array = np.array(samples)
+    min_val = int(np.floor(samples_array.min()))
+    max_val = int(np.ceil(samples_array.max()))
+
+    # +2 allows to include max_val in the last bin
+    bins = np.arange(min_val, max_val + 2)
+
+    counts, bin_edges = np.histogram(samples_array, bins=bins)
+
     nth = min(DEFAULT_MAX_MOST_COMMON, len(counts))
     idx = np.argpartition(counts, -nth)[-nth:]
-    return dict([(int(i), int(counts[i])) for i in idx if counts[i] > 0])
+
+    return {int(bin_edges[i]): int(counts[i]) for i in idx if counts[i] > 0}
 
 
-def compute_quantiles(
-    data: List[Union[int, float]], cast_function: Callable
-) -> dict:
+def compute_quantiles(data: List[Union[int, float]], cast_function: Callable) -> dict:
     """Compute quantiles for a raster dataset band."""
     print("Computing quantiles...")
     quantiles = [
@@ -471,7 +523,7 @@ def raster_band_approx_stats(
     raster_dataset: rasterio.io.DatasetReader,
     samples: Samples,
     band: int,
-    all_stats: bool,
+    basic_stats: bool,
 ) -> dict:
     """Get approximate statistics for a raster band."""
 
@@ -483,13 +535,19 @@ def raster_band_approx_stats(
     _sum = 0
     sum_squares = 0
     if count > 0:
-        _sum = int(np.sum(samples_band))
-        sum_squares = int(np.sum(np.array(samples_band) ** 2))
+        try:
+            _sum = int(np.sum(samples_band))
+        except (OverflowError, ValueError):
+            _sum = 0
+        try:
+            sum_squares = int(np.sum(np.array(samples_band) ** 2))
+        except (OverflowError, ValueError):
+            sum_squares = 0
 
-    quantiles = None
-    most_common = None
-    if all_stats:
-
+    if basic_stats:
+        quantiles = None
+        most_common = None
+    else:
         quantiles = compute_quantiles(samples_band, int)
 
         most_common = dict()
@@ -552,11 +610,11 @@ def read_raster_band(raster_dataset: rasterio.io.DatasetReader, band: int) -> np
 
 
 def raster_band_stats(
-    raster_dataset: rasterio.io.DatasetReader, band: int, all_stats: bool
+    raster_dataset: rasterio.io.DatasetReader, band: int, basic_stats: bool
 ) -> dict:
     """Get statistics for a raster band."""
 
-    print('Computing stats for band {0}...'.format(band))
+    print("Computing stats for band {0}...".format(band))
 
     _stats = get_stats(raster_dataset, band)
     _min = _stats.min
@@ -564,35 +622,33 @@ def raster_band_stats(
     _mean = _stats.mean
     _std = _stats.std
 
-    count = math.prod(_stats.shape)
+    raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
+
+    count = math.prod(raster_band.shape)
     if is_masked_band(raster_dataset, band):
-        count = np.count_nonzero(_stats.mask is False)
+        count = np.count_nonzero(raster_band.mask is False)
 
     _sum = _mean * count
-    sum_squares = count * _std ** 2 + _mean ** 2
+    sum_squares = count * _std**2 + _mean**2
 
-    quantiles = None
-    most_common = None
-    if all_stats:
-        raster_band = read_raster_band(raster_dataset=raster_dataset, band=band)
+    print("Removing masked data...")
+    qdata = raster_band.compressed()
 
-        print("Removing masked data...")
-        qdata = raster_band.compressed()
-
+    if basic_stats:
+        quantiles = None
+        most_common = None
+    else:
         casting_function = (
             int if np.issubdtype(raster_band.dtype, np.integer) else float
         )
 
         quantiles = compute_quantiles(qdata, casting_function)
 
-        print("Computing most commons values...")
-        warnings.warn(
-            "Most common values are meant for categorical data. "
-            "Computing them for float bands can be meaningless."
-        )
-        most_common = Counter(qdata).most_common(100)
-        most_common.sort(key=lambda x: x[1], reverse=True)
-        most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
+        if casting_function == int:
+            print("Computing most commons values...")
+            most_common = Counter(qdata).most_common(100)
+            most_common.sort(key=lambda x: x[1], reverse=True)
+            most_common = dict([(casting_function(x[0]), x[1]) for x in most_common])
 
     version = ".".join(__version__.split(".")[:3])
 
@@ -666,7 +722,9 @@ def rasterio_overview_to_records(
     #  raster_dataset: rasterio.io.DatasetReader,
     file_path: str,
     band_rename_function: Callable,
-    bands_info: List[Tuple[int, str]]
+    bands_info: List[Tuple[int, str]],
+    compress: bool = False,
+    compression_level: int = 6,
 ) -> Iterable:
     raster_info = rio_cogeo.cog_info(file_path).dict()
     with rasterio.open(file_path) as raster_dataset:
@@ -772,7 +830,9 @@ def rasterio_overview_to_records(
                             pixels_to_raster_transform,
                             resolution - overview_index - 1,
                             tile_window,
-                            no_data_value
+                            no_data_value,
+                            compress=compress,
+                            compression_level=compression_level,
                         )
                         if newrecord:
                             record.update(newrecord)
@@ -785,6 +845,8 @@ def rasterio_windows_to_records(
     file_path: str,
     band_rename_function: Callable,
     bands_info: List[Tuple[int, str]],
+    compress: bool = False,
+    compression_level: int = 6,
 ) -> Iterable:
     invalid_names = [
         name for _, name in bands_info if name and name.lower() in ["block", "metadata"]
@@ -830,7 +892,9 @@ def rasterio_windows_to_records(
                     pixels_to_raster_transform,
                     resolution,
                     window,
-                    no_data_value
+                    no_data_value,
+                    compress=compress,
+                    compression_level=compression_level,
                 )
 
                 # add the new columns generated by array_t
@@ -868,9 +932,7 @@ def is_valid_raster_dataset(raster_dataset: rasterio.io.DatasetReader) -> bool:
         raise ValueError("Invalid block shapes: must be equal for all bands")
 
     if not is_valid_overview_indexes(raster_dataset.overviews(1)):
-        raise ValueError(
-            "Invalid overview factors: must be consecutive powers of 2"
-        )
+        raise ValueError("Invalid overview factors: must be consecutive powers of 2")
 
     return True
 
@@ -993,7 +1055,10 @@ def update_metadata(metadata, old_metadata):
             stdev = math.sqrt(old_stats["stddev"] ** 2 + new_stats["stddev"] ** 2)
         else:
             mean = _sum / count
-            stdev = math.sqrt(sum_squares / count - mean * mean)
+            try:
+                stdev = math.sqrt(sum_squares / count - mean * mean)
+            except ValueError:
+                stdev = math.sqrt(old_stats["stddev"] ** 2 + new_stats["stddev"] ** 2)
 
         approximated_stats = (
             old_stats["approximated_stats"] or new_stats["approximated_stats"]
@@ -1017,10 +1082,10 @@ def update_metadata(metadata, old_metadata):
             "count": count,
             "mean": mean,
             "stddev": stdev,
-            'quantiles': None,
-            'top_values': top_values,
-            'version': version,
-            'approximated_stats': approximated_stats,
+            "quantiles": None,
+            "top_values": top_values,
+            "version": version,
+            "approximated_stats": approximated_stats,
         }
 
 
