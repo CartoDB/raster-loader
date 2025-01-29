@@ -230,12 +230,12 @@ def raster_to_parquet(file_path, chunk_id, bands_info, data_folder, transformer,
             # raster_df[band_name] = raster_df.apply(lambda row: zlib.compress(array_to_bytes(row[band_name])(), level=9, wbits=31), axis=1)
             if compress:
                 raster_df[band_name] = raster_df.apply(
-                    lambda row: zlib.compress(array_to_bytes(row[band_name])(), level=9, wbits=31), 
+                    lambda row: zlib.compress(array_to_bytes(row[band_name])(), level=6, wbits=31), 
                     axis=1
                 )
             else:
                 raster_df[band_name] = raster_df.apply(
-                    lambda row: array_to_bytes(row[band_name])(), 
+                    lambda row: array_to_bytes(row[band_name])(),
                     axis=1
                 )
             # print(f'Raster Dataframe memory usage: {raster_df.memory_usage().sum() / 1024 / 1024} MB')
@@ -506,7 +506,7 @@ def main(file_path, table_id_sufix, chunk_size, band, band_name,
     print(f'Bands info: {bands_info}')
 
     # Get metadata using default band rename function
-    metadata = rasterio_metadata(file_path, bands_info, lambda band_name: band_name)
+    metadata = rasterio_metadata(file_path, bands_info, lambda band_name: band_name, compress=compress)
 
     # Process raster data
     process_raster_data(file_path, chunk_size, bands_info, data_folder, max_workers, compress)
@@ -536,10 +536,10 @@ if __name__ == "__main__":
     # band, band_name = ([1, 2], ["band_1", "band_2"])
 
     # Test case 5: small raster, 1 band (Byte). gs://carto-ps-raster-data-examples/geotiff/corelogic_wind/20211201_forensic_wind_banded_cog.tif
-    chunk_size = 10000
-    max_workers = None
-    file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
-    band, band_name = ([1], ["band_1"])
+    # chunk_size = 10000
+    # max_workers = None
+    # file_path = "/home/cayetano/Downloads/raster/corelogic/202112geotiffs/cog/20211201_forensic_wind_banded_cog.tif"
+    # band, band_name = ([1], ["band_1"])
 
     # Test case 6: big sparse raster, 1 band (Byte). 30m resolution, entire world. gs://carto-ps-raster-data-examples/geotiff/discreteloss_2023_COG.tif
     # chunk_size = 1000
@@ -558,9 +558,15 @@ if __name__ == "__main__":
     # max_workers = None
     # file_path = "/home/cayetano/Downloads/raster/Public_flood_flood_prone_areas_global_cog.tif"
     # band, band_name = ([1], ["band_1"])
+    
+    # Test case 9: big raster, 1 band (1.1GB, Float32). gs://carto-ps-raster-data-examples/geotiff/
+    chunk_size = 1000
+    max_workers = None
+    file_path = "/home/cayetano/Downloads/raster/US_WF_Risk_Score_v3_2dec_cog.tif"
+    band, band_name = ([1], ["band_1"])
 
     bucket_name = "cayetanobv-data"
     table_id_sufix = "cartobq.cayetanobv_raster.raster_parquet_test"
-    compress = False  # Set to True to enable zlib compression
+    compress = True  # Set to True to enable zlib compression
 
     main(file_path, table_id_sufix, chunk_size, band, band_name, bucket_name, max_workers, compress)
