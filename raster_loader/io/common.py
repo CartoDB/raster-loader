@@ -989,6 +989,12 @@ def check_metadata_is_compatible(metadata, old_metadata):
             f"({metadata['bands']} != {old_metadata['bands']})."
         )
 
+    if metadata.get("compression") != old_metadata.get("compression"):
+        raise ValueError(
+            "Cannot append records to a table with different compression."
+            f"({metadata.get('compression')} != {old_metadata.get('compression')})."
+        )
+
 
 def update_metadata(metadata, old_metadata):
     """Update a metadata object, combining it with another existing metadata object
