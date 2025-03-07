@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
+## [0.10.4] 2025-03-07
+
+### Fixed
+
+- Fix band nodata value (#167) ([2bf9bb5](https://github.com/CartoDB/raster-loader/commit/2bf9bb594a4e3eabcf5c7245cae8ad22f6cee156) by Juan Ramón).
+
 ## [0.10.3] 2025-01-17
 
 <small>[Compare with latest](https://github.com/CartoDB/raster-loader/compare/v0.10.2...v0.10.3)</small>
