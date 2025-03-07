@@ -16,6 +16,14 @@ def import_error_snowflake():  # pragma: no cover
     raise ImportError(msg)
 
 
+def import_error_databricks():
+    raise ImportError(
+        "The databricks-connect and databricks-sql-connector packages are required. "
+        "Please install them with: "
+        "pip install databricks-connect databricks-sql-connector"
+    )
+
+
 class IncompatibleRasterException(Exception):
     def __init__(self):
         self.message = (
