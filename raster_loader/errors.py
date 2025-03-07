@@ -16,6 +16,14 @@ def import_error_snowflake():  # pragma: no cover
     raise ImportError(msg)
 
 
+def import_error_databricks():
+    raise ImportError(
+        "The databricks-connect and databricks-sql-connector packages are required. "
+        "Please install them with: "
+        "pip install databricks-connect databricks-sql-connector"
+    )
+
+
 class IncompatibleRasterException(Exception):
     def __init__(self):
         self.message = (
@@ -23,7 +31,7 @@ class IncompatibleRasterException(Exception):
             "You can make your raster compatible "
             "by converting it using the following command:\n"
             "gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible "
-            "-co COMPRESS=DEFLATE -co OVERVIEWS=IGNORE_EXISTING -co ADD_ALPHA=NO"
+            "-co COMPRESS=DEFLATE -co OVERVIEWS=IGNORE_EXISTING -co ADD_ALPHA=NO "
             "-co RESAMPLING=NEAREST -co BLOCKSIZE=512 "
             "<input_raster>.tif <output_raster>.tif"
         )
