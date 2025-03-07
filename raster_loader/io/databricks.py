@@ -108,8 +108,6 @@ class DatabricksConnection(DataWarehouseConnection):
                 spark_df.repartition(200)
                 .write.format("delta")
                 .mode(write_mode)
-                .option("mergeSchema", "true")
-                .option("dataChange", "true")
                 .saveAsTable(fqn)
             )
 
