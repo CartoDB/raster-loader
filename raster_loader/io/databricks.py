@@ -18,7 +18,6 @@ from raster_loader.io.common import (
 from typing import Iterable, List, Tuple
 
 try:
-    from databricks import sql as databricks_sql
     from databricks.connect import DatabricksSession
 except ImportError:  # pragma: no cover
     _has_databricks = False
@@ -29,32 +28,24 @@ from raster_loader.io.datawarehouse import DataWarehouseConnection
 
 
 class DatabricksConnection(DataWarehouseConnection):
-    def __init__(
-        self, server_hostname, http_path, access_token, cluster_id, parallelism=1000
-    ):
+    def __init__(self, server_hostname, access_token, cluster_id, parallelism=200):
         # Validate required parameters
         if not server_hostname:
             raise ValueError("server_hostname cannot be null or empty")
-        if not http_path:
-            raise ValueError("http_path cannot be null or empty")
         if not access_token:
             raise ValueError("access_token cannot be null or empty")
         if not cluster_id:
             raise ValueError("cluster_id cannot be null or empty")
-
         if not _has_databricks:
             import_error_databricks()
 
+        # Normalize server_hostname by removing any 'https://' prefix
         self.server_hostname = server_hostname.replace("https://", "")
-        self.http_path = http_path
         self.access_token = access_token
         self.cluster_id = cluster_id
         self.parallelism = parallelism
-        self.connection = None
-        self.cursor = None
 
         try:
-            # Add 'https://' prefix for Spark connection
             self.spark = DatabricksSession.builder.remote(
                 host=f"https://{self.server_hostname}",
                 token=access_token,
@@ -64,24 +55,21 @@ class DatabricksConnection(DataWarehouseConnection):
             print(f"Error initializing Spark session: {e}")
             raise
 
-    def _ensure_connection(self):
-        if self.connection is None:
-            self.connection = databricks_sql.connect(
-                server_hostname=self.server_hostname,
-                http_path=self.http_path,
-                access_token=self.access_token,
-            )
-            self.cursor = self.connection.cursor()
+    def execute(self, query: str) -> list:
+        """Execute a SQL query and return results as a list of rows"""
+        try:
+            return self.spark.sql(query).collect()
+        except Exception as e:
+            print(f"Error executing query: {e}")
+            raise
 
-    def execute(self, sql_query):
-        self._ensure_connection()
-        self.cursor.execute(sql_query)
-        return self.cursor.fetchall()
-
-    def execute_to_dataframe(self, sql_query):
-        self._ensure_connection()
-        self.cursor.execute(sql_query)
-        return pd.DataFrame(self.cursor.fetchall())
+    def execute_to_dataframe(self, query: str) -> "pd.DataFrame":
+        """Execute a SQL query and return results as a pandas DataFrame"""
+        try:
+            return self.spark.sql(query).toPandas()
+        except Exception as e:
+            print(f"Error executing query: {e}")
+            raise
 
     def quote(self, q):
         if isinstance(q, str):
@@ -271,11 +259,6 @@ class DatabricksConnection(DataWarehouseConnection):
 
             print(traceback.print_exc())
             raise IOError("Error uploading to Databricks: {}".format(e))
-        finally:
-            if self.cursor:
-                self.cursor.close()
-            if self.connection:
-                self.connection.close()
 
         print("Done.")
         return True

@@ -32,16 +32,9 @@ def databricks(args=None):
 
 @databricks.command(help="Upload a raster file to Databricks.")
 @click.option(
-    "--server-hostname",
-    help="The Server Hostname value for your cluster or SQL warehouse.",
-    required=True,
+    "--server-hostname", help="The Databricks workspace hostname.", required=True
 )
-@click.option("--token", help="The Databricks personal access token.", required=True)
-@click.option(
-    "--http-path",
-    help="The HTTP Path value for your cluster or SQL warehouse.",
-    required=True,
-)
+@click.option("--token", help="The Databricks access token.", required=True)
 @click.option(
     "--cluster-id",
     help="The Databricks cluster ID for Spark operations.",
@@ -126,7 +119,6 @@ def databricks(args=None):
 def upload(
     server_hostname,
     token,
-    http_path,
     cluster_id,
     file_path,
     file_url,
@@ -178,7 +170,6 @@ def upload(
 
     connector = DatabricksConnection(
         server_hostname=server_hostname,
-        http_path=http_path,
         access_token=token,
         cluster_id=cluster_id,
     )
@@ -230,16 +221,9 @@ def upload(
 
 @databricks.command(help="Load and describe a table from Databricks")
 @click.option(
-    "--server-hostname",
-    help="The Server Hostname value for your cluster or SQL warehouse.",
-    required=True,
+    "--server-hostname", help="The Databricks workspace hostname.", required=True
 )
-@click.option("--token", help="The Databricks personal access token.", required=True)
-@click.option(
-    "--http-path",
-    help="The HTTP Path value for your cluster or SQL warehouse.",
-    required=True,
-)
+@click.option("--token", help="The Databricks access token.", required=True)
 @click.option(
     "--cluster-id",
     help="The Databricks cluster ID for Spark operations.",
@@ -252,20 +236,18 @@ def upload(
 def describe(
     server_hostname,
     token,
-    http_path,
     cluster_id,
     catalog,
     schema,
     table,
     limit,
 ):
-    fqn = f"`{catalog}`.`{schema}`.`{table}`"
     connector = DatabricksConnection(
         server_hostname=server_hostname,
-        http_path=http_path,
         access_token=token,
         cluster_id=cluster_id,
     )
+    fqn = f"`{catalog}`.`{schema}`.`{table}`"
 
     df = connector.execute_to_dataframe(f"SELECT * FROM {fqn} LIMIT {limit}")
     print(f"Table: {fqn}")

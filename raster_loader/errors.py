@@ -18,9 +18,12 @@ def import_error_snowflake():  # pragma: no cover
 
 def import_error_databricks():
     raise ImportError(
-        "The databricks-connect and databricks-sql-connector packages are required. "
-        "Please install them with: "
-        "pip install databricks-connect databricks-sql-connector"
+        "The databricks-connect package is required and must match your "
+        "Databricks Runtime version. "
+        "For example, if your cluster uses DBR 15.1, install: "
+        "pip install databricks-connect==15.1 "
+        "You can find your cluster's DBR version in the Databricks UI "
+        "under Compute > Your Cluster > Configuration > Databricks Runtime version."
     )
 
 
