@@ -1,7 +1,6 @@
 import json
 import pandas as pd
 import rasterio
-import os
 
 from itertools import chain
 from raster_loader.errors import import_error_databricks, IncompatibleRasterException
@@ -30,25 +29,36 @@ from raster_loader.io.datawarehouse import DataWarehouseConnection
 
 
 class DatabricksConnection(DataWarehouseConnection):
-    def __init__(self, server_hostname, http_path, access_token, cluster_id=None):
+    def __init__(
+        self, server_hostname, http_path, access_token, cluster_id, parallelism=1000
+    ):
+        # Validate required parameters
+        if not server_hostname:
+            raise ValueError("server_hostname cannot be null or empty")
+        if not http_path:
+            raise ValueError("http_path cannot be null or empty")
+        if not access_token:
+            raise ValueError("access_token cannot be null or empty")
+        if not cluster_id:
+            raise ValueError("cluster_id cannot be null or empty")
+
         if not _has_databricks:
             import_error_databricks()
 
-        self.server_hostname = server_hostname
+        self.server_hostname = server_hostname.replace("https://", "")
         self.http_path = http_path
         self.access_token = access_token
+        self.cluster_id = cluster_id
+        self.parallelism = parallelism
         self.connection = None
         self.cursor = None
 
-        # Initialize Spark session with cluster_id
         try:
+            # Add 'https://' prefix for Spark connection
             self.spark = DatabricksSession.builder.remote(
-                host=f"https://{server_hostname}",
+                host=f"https://{self.server_hostname}",
                 token=access_token,
-                cluster_id=cluster_id
-                or os.getenv(
-                    "DATABRICKS_CLUSTER_ID"
-                ),  # Try environment variable if not provided
+                cluster_id=cluster_id,
             ).getOrCreate()
         except Exception as e:
             print(f"Error initializing Spark session: {e}")
@@ -89,7 +99,7 @@ class DatabricksConnection(DataWarehouseConnection):
         records: Iterable,
         fqn: str,
         overwrite: bool = False,
-        parallelism: int = 200,
+        parallelism: int = 1000,
     ):
         records_list = []
         for record in records:
@@ -128,7 +138,7 @@ class DatabricksConnection(DataWarehouseConnection):
         fqn: str,
         bands_info: List[Tuple[int, str]] = None,
         chunk_size: int = None,
-        parallelism: int = 200,
+        parallelism: int = 1000,
         overwrite: bool = False,
         append: bool = False,
         cleanup_on_failure: bool = False,

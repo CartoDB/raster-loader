@@ -31,9 +31,17 @@ def databricks(args=None):
 
 
 @databricks.command(help="Upload a raster file to Databricks.")
-@click.option("--url", help="The Databricks workspace URL.", required=True)
-@click.option("--token", help="The Databricks access token.", required=True)
-@click.option("--http-path", help="The HTTP path for the SQL warehouse.", required=True)
+@click.option(
+    "--server-hostname",
+    help="The Server Hostname value for your cluster or SQL warehouse.",
+    required=True,
+)
+@click.option("--token", help="The Databricks personal access token.", required=True)
+@click.option(
+    "--http-path",
+    help="The HTTP Path value for your cluster or SQL warehouse.",
+    required=True,
+)
 @click.option(
     "--cluster-id",
     help="The Databricks cluster ID for Spark operations.",
@@ -69,7 +77,7 @@ def databricks(args=None):
 @click.option(
     "--parallelism",
     help="Number of partitions when uploading each chunk.",
-    default=200,
+    default=1000,
     type=int,
 )
 @click.option(
@@ -116,7 +124,7 @@ def databricks(args=None):
 )
 @catch_exception()
 def upload(
-    url,
+    server_hostname,
     token,
     http_path,
     cluster_id,
@@ -169,7 +177,7 @@ def upload(
         )
 
     connector = DatabricksConnection(
-        server_hostname=url.replace("https://", ""),
+        server_hostname=server_hostname,
         http_path=http_path,
         access_token=token,
         cluster_id=cluster_id,
@@ -221,9 +229,17 @@ def upload(
 
 
 @databricks.command(help="Load and describe a table from Databricks")
-@click.option("--url", help="The Databricks workspace URL.", required=True)
-@click.option("--token", help="The Databricks access token.", required=True)
-@click.option("--http-path", help="The HTTP path for the SQL warehouse.", required=True)
+@click.option(
+    "--server-hostname",
+    help="The Server Hostname value for your cluster or SQL warehouse.",
+    required=True,
+)
+@click.option("--token", help="The Databricks personal access token.", required=True)
+@click.option(
+    "--http-path",
+    help="The HTTP Path value for your cluster or SQL warehouse.",
+    required=True,
+)
 @click.option(
     "--cluster-id",
     help="The Databricks cluster ID for Spark operations.",
@@ -234,7 +250,7 @@ def upload(
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(
-    url,
+    server_hostname,
     token,
     http_path,
     cluster_id,
@@ -245,7 +261,7 @@ def describe(
 ):
     fqn = f"`{catalog}`.`{schema}`.`{table}`"
     connector = DatabricksConnection(
-        server_hostname=url.replace("https://", ""),
+        server_hostname=server_hostname,
         http_path=http_path,
         access_token=token,
         cluster_id=cluster_id,
