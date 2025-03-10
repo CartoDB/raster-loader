@@ -67,6 +67,12 @@ def databricks(args=None):
     "--chunk_size", help="The number of blocks to upload in each chunk.", default=10000
 )
 @click.option(
+    "--parallelism",
+    help="Number of partitions when uploading each chunk.",
+    default=200,
+    type=int,
+)
+@click.option(
     "--overwrite",
     help="Overwrite existing data in the table if it already exists.",
     default=False,
@@ -122,6 +128,7 @@ def upload(
     band,
     band_name,
     chunk_size,
+    parallelism,
     compress,
     overwrite=False,
     append=False,
@@ -188,6 +195,7 @@ def upload(
     click.echo("Schema: {}".format(schema))
     click.echo("Table: {}".format(table))
     click.echo("Number of Records Per Databricks Append: {}".format(chunk_size))
+    click.echo("Parallelism: {}".format(parallelism))
     click.echo("Compress: {}".format(compress))
 
     click.echo("Uploading Raster to Databricks")
@@ -198,6 +206,7 @@ def upload(
         fqn,
         bands_info,
         chunk_size,
+        parallelism,
         overwrite=overwrite,
         append=append,
         cleanup_on_failure=cleanup_on_failure,

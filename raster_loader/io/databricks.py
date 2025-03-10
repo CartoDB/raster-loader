@@ -84,7 +84,13 @@ class DatabricksConnection(DataWarehouseConnection):
         parts = name.replace("`", "").split(".")
         return ".".join(f"`{part}`" for part in parts)
 
-    def upload_records(self, records: Iterable, fqn: str, overwrite: bool = False):
+    def upload_records(
+        self,
+        records: Iterable,
+        fqn: str,
+        overwrite: bool = False,
+        parallelism: int = 200,
+    ):
         records_list = []
         for record in records:
             if "metadata" in record:
@@ -102,10 +108,10 @@ class DatabricksConnection(DataWarehouseConnection):
             # Convert Pandas DataFrame to Spark DataFrame
             spark_df = self.spark.createDataFrame(data_df)
 
-            # Write to Delta table with corrected settings
+            # Write to Delta table
             write_mode = "overwrite" if overwrite else "append"
             (
-                spark_df.repartition(200)
+                spark_df.repartition(parallelism)
                 .write.format("delta")
                 .mode(write_mode)
                 .saveAsTable(fqn)
@@ -122,6 +128,7 @@ class DatabricksConnection(DataWarehouseConnection):
         fqn: str,
         bands_info: List[Tuple[int, str]] = None,
         chunk_size: int = None,
+        parallelism: int = 200,
         overwrite: bool = False,
         append: bool = False,
         cleanup_on_failure: bool = False,
@@ -189,7 +196,7 @@ class DatabricksConnection(DataWarehouseConnection):
             total_blocks = number_of_blocks + number_of_overview_tiles
 
             if chunk_size is None:
-                success = self.upload_records(records_gen, fqn, overwrite)
+                success = self.upload_records(records_gen, fqn, overwrite, parallelism)
                 if not success:
                     raise IOError("Error uploading to Databricks.")
             else:
@@ -207,7 +214,7 @@ class DatabricksConnection(DataWarehouseConnection):
 
                     for records in batched(records_gen, chunk_size):
                         ret = self.upload_records(
-                            records, fqn, overwrite and isFirstBatch
+                            records, fqn, overwrite and isFirstBatch, parallelism
                         )
 
                         num_records = len(records)
