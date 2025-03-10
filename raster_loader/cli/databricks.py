@@ -242,14 +242,14 @@ def describe(
     table,
     limit,
 ):
+    fqn = f"`{catalog}`.`{schema}`.`{table}`"
     connector = DatabricksConnection(
         server_hostname=server_hostname,
         access_token=token,
         cluster_id=cluster_id,
     )
-    fqn = f"`{catalog}`.`{schema}`.`{table}`"
 
-    df = connector.execute_to_dataframe(f"SELECT * FROM {fqn} LIMIT {limit}")
+    df = connector.get_records(fqn, limit)
     print(f"Table: {fqn}")
     print(f"Number of rows: {len(df)}")
     print(f"Number of columns: {len(df.columns)}")
