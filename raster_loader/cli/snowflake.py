@@ -205,7 +205,7 @@ def upload(
             file_path if is_local_file else urlparse(file_url).path, band
         )
 
-    connector = SnowflakeConnection(
+    connection = SnowflakeConnection(
         username=username,
         password=password,
         private_key_path=private_key_path,
@@ -243,7 +243,7 @@ def upload(
     click.echo("Uploading Raster to Snowflake")
 
     fqn = f"{database}.{schema}.{table}"
-    connector.upload_raster(
+    connection.upload_raster(
         source,
         fqn,
         bands_info,
@@ -330,7 +330,7 @@ def describe(
             raise ValueError("--username must be provided when using a private key.")
 
     fqn = f"{database}.{schema}.{table}"
-    connector = SnowflakeConnection(
+    connection = SnowflakeConnection(
         username=username,
         password=password,
         private_key_path=private_key_path,
@@ -342,7 +342,7 @@ def describe(
         role=role,
         warehouse=warehouse,
     )
-    df = connector.get_records(fqn, limit)
+    df = connection.get_records(fqn, limit)
     print(f"Table: {fqn}")
     print(f"Number of rows: {len(df)}")
     print(f"Number of columns: {len(df.columns)}")

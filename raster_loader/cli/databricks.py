@@ -168,7 +168,7 @@ def upload(
             file_path if is_local_file else urlparse(file_url).path, band
         )
 
-    connector = DatabricksConnection(
+    connection = DatabricksConnection(
         server_hostname=server_hostname,
         access_token=token,
         cluster_id=cluster_id,
@@ -200,7 +200,7 @@ def upload(
     click.echo("Uploading Raster to Databricks")
 
     fqn = f"`{catalog}`.`{schema}`.`{table}`"
-    connector.upload_raster(
+    connection.upload_raster(
         source,
         fqn,
         bands_info,
@@ -243,13 +243,13 @@ def describe(
     limit,
 ):
     fqn = f"`{catalog}`.`{schema}`.`{table}`"
-    connector = DatabricksConnection(
+    connection = DatabricksConnection(
         server_hostname=server_hostname,
         access_token=token,
         cluster_id=cluster_id,
     )
 
-    df = connector.get_records(fqn, limit)
+    df = connection.get_records(fqn, limit)
     print(f"Table: {fqn}")
     print(f"Number of rows: {len(df)}")
     print(f"Number of columns: {len(df.columns)}")

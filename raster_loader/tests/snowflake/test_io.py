@@ -50,7 +50,7 @@ def test_rasterio_to_snowflake_with_raster_default_band_name():
     table_name = "test_mosaic_1".upper()
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
-    connector = SnowflakeConnection(
+    connection = SnowflakeConnection(
         username=SF_USERNAME,
         password=SF_PASSWORD,
         account=SF_ACCOUNT,
@@ -60,13 +60,13 @@ def test_rasterio_to_snowflake_with_raster_default_band_name():
         token=None,
     )
 
-    connector.upload_raster(
+    connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         fqn,
         overwrite=True,
     )
 
-    result = connector.get_records(fqn, 20)
+    result = connection.get_records(fqn, 20)
 
     expected_dataframe = pd.read_pickle(
         os.path.join(fixtures_dir, "expected_default_column.pkl")
@@ -100,7 +100,7 @@ def test_rasterio_to_snowflake_appending_rows():
     table_name = "test_mosaic_append_rows".upper()
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
-    connector = SnowflakeConnection(
+    connection = SnowflakeConnection(
         username=SF_USERNAME,
         password=SF_PASSWORD,
         account=SF_ACCOUNT,
@@ -110,13 +110,13 @@ def test_rasterio_to_snowflake_appending_rows():
         token=None,
     )
 
-    connector.upload_raster(
+    connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog_1_1.tif"),
         fqn,
         overwrite=True,
     )
 
-    result = connector.get_records(fqn, 20)
+    result = connection.get_records(fqn, 20)
 
     metadata = json.loads([x for x in list(result.METADATA) if x][0])
 
@@ -142,13 +142,13 @@ def test_rasterio_to_snowflake_appending_rows():
         "num_pixels": 65536,
     }
 
-    connector.upload_raster(
+    connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog_1_2.tif"),
         fqn,
         append=True,
     )
 
-    result = connector.get_records(fqn, 20)
+    result = connection.get_records(fqn, 20)
 
     metadata = json.loads([x for x in list(result.METADATA) if x][0])
 
@@ -184,7 +184,7 @@ def test_rasterio_to_snowflake_with_raster_custom_band_column():
     table_name = "test_mosaic_custom_band_column_1".upper()
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
-    connector = SnowflakeConnection(
+    connection = SnowflakeConnection(
         username=SF_USERNAME,
         password=SF_PASSWORD,
         account=SF_ACCOUNT,
@@ -194,14 +194,14 @@ def test_rasterio_to_snowflake_with_raster_custom_band_column():
         token=None,
     )
 
-    connector.upload_raster(
+    connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         fqn,
         overwrite=True,
         bands_info=[(1, "customband")],
     )
 
-    result = connector.get_records(fqn, 20)
+    result = connection.get_records(fqn, 20)
 
     # sort value because return query can vary the order of rows
     result = result.sort_values("BLOCK")
@@ -238,7 +238,7 @@ def test_rasterio_to_snowflake_with_raster_multiple_default():
     table_name = "test_mosaic_multiple_default_bands".upper()
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
-    connector = SnowflakeConnection(
+    connection = SnowflakeConnection(
         username=SF_USERNAME,
         password=SF_PASSWORD,
         account=SF_ACCOUNT,
@@ -248,14 +248,14 @@ def test_rasterio_to_snowflake_with_raster_multiple_default():
         token=None,
     )
 
-    connector.upload_raster(
+    connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         fqn,
         overwrite=True,
         bands_info=[(1, None), (2, None)],
     )
 
-    result = connector.get_records(fqn, 20)
+    result = connection.get_records(fqn, 20)
 
     # sort value because return query can vary the order of rows
     result = result.sort_values("BLOCK")
@@ -297,7 +297,7 @@ def test_rasterio_to_snowflake_with_raster_multiple_custom():
     table_name = "test_mosaic_multiple_custom_bands".upper()
     fqn = f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}"
 
-    connector = SnowflakeConnection(
+    connection = SnowflakeConnection(
         username=SF_USERNAME,
         password=SF_PASSWORD,
         account=SF_ACCOUNT,
@@ -307,14 +307,14 @@ def test_rasterio_to_snowflake_with_raster_multiple_custom():
         token=None,
     )
 
-    connector.upload_raster(
+    connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         fqn,
         overwrite=True,
         bands_info=[(1, "custom_band_1"), (2, "custom_band_2")],
     )
 
-    result = connector.get_records(fqn, 20)
+    result = connection.get_records(fqn, 20)
 
     # sort value because return query can vary the order of rows
     result = result.sort_values("BLOCK")
@@ -354,10 +354,10 @@ def test_rasterio_to_snowflake_with_raster_multiple_custom():
 @patch("raster_loader.io.snowflake.ask_yes_no_question", return_value=False)
 def test_rasterio_to_table_wrong_band_name_metadata(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
     with pytest.raises(IOError):
-        connector.upload_raster(
+        connection.upload_raster(
             os.path.join(fixtures_dir, "mosaic_cog.tif"),
             f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
             overwrite=True,
@@ -368,10 +368,10 @@ def test_rasterio_to_table_wrong_band_name_metadata(*args, **kwargs):
 @patch("raster_loader.io.snowflake.ask_yes_no_question", return_value=False)
 def test_rasterio_to_table_wrong_band_name_block(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
     with pytest.raises(IOError):
-        connector.upload_raster(
+        connection.upload_raster(
             os.path.join(fixtures_dir, "mosaic_cog.tif"),
             f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
             overwrite=True,
@@ -387,9 +387,9 @@ def test_rasterio_to_table_wrong_band_name_block(*args, **kwargs):
 @patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
 def test_rasterio_to_table(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
-    success = connector.upload_raster(
+    success = connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
     )
@@ -414,9 +414,9 @@ def test_rasterio_to_table(*args, **kwargs):
 @patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
 def test_rasterio_to_table_overwrite(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
-    success = connector.upload_raster(
+    success = connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
         overwrite=True,
@@ -471,9 +471,9 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
 @patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
 def test_rasterio_to_table_is_not_empty_append(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
-    success = connector.upload_raster(
+    success = connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
     )
@@ -492,10 +492,10 @@ def test_rasterio_to_table_is_not_empty_append(*args, **kwargs):
 @patch("raster_loader.io.snowflake.ask_yes_no_question", return_value=False)
 def test_rasterio_to_table_is_not_empty_dont_append(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
     with pytest.raises(SystemExit):
-        connector.upload_raster(
+        connection.upload_raster(
             os.path.join(fixtures_dir, "mosaic.tif"),
             f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
         )
@@ -509,10 +509,10 @@ def test_rasterio_to_table_is_not_empty_dont_append(*args, **kwargs):
 @patch("raster_loader.io.snowflake.ask_yes_no_question", return_value=True)
 def test_rasterio_to_table_uploading_error(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
     with pytest.raises(IOError):
-        connector.upload_raster(
+        connection.upload_raster(
             os.path.join(fixtures_dir, "mosaic.tif"),
             f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
         )
@@ -530,10 +530,10 @@ def test_rasterio_to_table_uploading_error(*args, **kwargs):
 )
 def test_rasterio_to_table_keyboard_interrupt(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
     with pytest.raises(KeyboardInterrupt):
-        connector.upload_raster(
+        connection.upload_raster(
             os.path.join(fixtures_dir, "mosaic_cog.tif"),
             f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
         )
@@ -546,9 +546,9 @@ def test_rasterio_to_table_keyboard_interrupt(*args, **kwargs):
 @patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
 def test_rasterio_to_table_with_chunk_size(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
-    success = connector.upload_raster(
+    success = connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
         chunk_size=10000,
@@ -564,9 +564,9 @@ def test_rasterio_to_table_with_chunk_size(*args, **kwargs):
 @patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
 def test_rasterio_to_table_with_one_chunk_size(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
-    success = connector.upload_raster(
+    success = connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
         chunk_size=1,
@@ -581,10 +581,10 @@ def test_rasterio_to_table_with_one_chunk_size(*args, **kwargs):
 )
 def test_rasterio_to_table_invalid_raster(*args, **kwargs):
     table_name = "test_mosaic_custom_band_column_1"
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
 
     with pytest.raises(OSError):
-        connector.upload_raster(
+        connection.upload_raster(
             os.path.join(fixtures_dir, "mosaic.tif"),
             f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
             chunk_size=10000,
@@ -638,8 +638,8 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
 @patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
 def test_rasterio_to_snowflake_valid_raster(*args, **kwargs):
     table_name = "test_mosaic_valid_raster".upper()
-    connector = mocks.MockSnowflakeConnection()
-    success = connector.upload_raster(
+    connection = mocks.MockSnowflakeConnection()
+    success = connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
     )
@@ -662,9 +662,9 @@ def test_rasterio_to_snowflake_valid_raster(*args, **kwargs):
 )
 def test_append_with_different_resolution(*args, **kwargs):
     table_name = "test_different_resolution".upper()
-    connector = mocks.MockSnowflakeConnection()
+    connection = mocks.MockSnowflakeConnection()
     with pytest.raises(OSError):
-        connector.upload_raster(
+        connection.upload_raster(
             os.path.join(fixtures_dir, "mosaic_cog.tif"),
             f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
         )
@@ -721,8 +721,8 @@ def test_append_with_different_resolution(*args, **kwargs):
 @patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
 def test_rasterio_to_snowflake_with_compression(*args, **kwargs):
     table_name = "test_mosaic_compressed".upper()
-    connector = mocks.MockSnowflakeConnection()
-    success = connector.upload_raster(
+    connection = mocks.MockSnowflakeConnection()
+    success = connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
         compress=True,
@@ -781,8 +781,8 @@ def test_rasterio_to_snowflake_with_compression(*args, **kwargs):
 @patch("raster_loader.io.snowflake.write_pandas", return_value=[True])
 def test_rasterio_to_snowflake_with_compression_level(*args, **kwargs):
     table_name = "test_mosaic_compressed".upper()
-    connector = mocks.MockSnowflakeConnection()
-    success = connector.upload_raster(
+    connection = mocks.MockSnowflakeConnection()
+    success = connection.upload_raster(
         os.path.join(fixtures_dir, "mosaic_cog.tif"),
         f"{SF_DATABASE}.{SF_SCHEMA}.{table_name}",
         compress=True,

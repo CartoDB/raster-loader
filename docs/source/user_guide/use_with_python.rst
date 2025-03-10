@@ -48,7 +48,7 @@ For example:
 
 .. code-block:: python
 
-    connector.upload_raster(
+    connection.upload_raster(
         file_path = 'path/to/raster.tif',
         fqn = 'database.schema.tablename',
     )
@@ -72,7 +72,7 @@ For example:
 
 .. code-block:: python
 
-    records = connector.get_records(
+    records = connection.get_records(
         fqn = 'database.schema.tablename',
     )
 
@@ -88,7 +88,7 @@ To enable compression of the band data, which can significantly reduce storage s
 
 .. code-block:: python
 
-    connector.upload_raster(
+    connection.upload_raster(
         file_path = 'path/to/raster.tif',
         fqn = 'database.schema.tablename',
         compress = True,  # Enable gzip compression of band data
