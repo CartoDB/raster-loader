@@ -237,7 +237,12 @@ class SnowflakeConnection(DataWarehouseConnection):
                     exit()
 
             metadata = rasterio_metadata(
-                file_path, bands_info, band_rename_function, exact_stats, basic_stats
+                file_path,
+                bands_info,
+                band_rename_function,
+                exact_stats,
+                basic_stats,
+                compress,
             )
 
             overviews_records_gen = rasterio_overview_to_records(
