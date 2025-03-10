@@ -237,7 +237,12 @@ class SnowflakeConnection(DataWarehouseConnection):
                     exit()
 
             metadata = rasterio_metadata(
-                file_path, bands_info, band_rename_function, exact_stats, basic_stats
+                file_path,
+                bands_info,
+                band_rename_function,
+                exact_stats,
+                basic_stats,
+                compress,
             )
 
             overviews_records_gen = rasterio_overview_to_records(
@@ -297,7 +302,11 @@ class SnowflakeConnection(DataWarehouseConnection):
 
             print("Writing metadata to Snowflake...")
             if append_records:
+                print("Appending records to Snowflake...")
+                print(f"Metadata: {metadata}")
+                print(f"Append records: {append_records}")
                 old_metadata = self.get_metadata(fqn)
+                print(f"Old metadata: {old_metadata}")
                 check_metadata_is_compatible(metadata, old_metadata)
                 update_metadata(metadata, old_metadata)
 
