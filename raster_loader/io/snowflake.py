@@ -302,11 +302,7 @@ class SnowflakeConnection(DataWarehouseConnection):
 
             print("Writing metadata to Snowflake...")
             if append_records:
-                print("Appending records to Snowflake...")
-                print(f"Metadata: {metadata}")
-                print(f"Append records: {append_records}")
                 old_metadata = self.get_metadata(fqn)
-                print(f"Old metadata: {old_metadata}")
                 check_metadata_is_compatible(metadata, old_metadata)
                 update_metadata(metadata, old_metadata)
 
