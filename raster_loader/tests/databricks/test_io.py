@@ -314,13 +314,13 @@ def test_rasterio_to_databricks_with_raster_multiple_custom():
         [x.upper() for x in list(expected_dataframe.metadata) if x is not None],
     )
     assert sorted(
-        list(result.CUSTOM_band_1), key=lambda x: x if x is not None else b""
+        list(result.custom_band_1), key=lambda x: x if x is not None else b""
     ) == sorted(
         list(expected_dataframe.custom_band_1),
         key=lambda x: x if x is not None else b"",
     )
     assert sorted(
-        list(result.CUSTOM_BAND_2), key=lambda x: x if x is not None else b""
+        list(result.custom_BAND_2), key=lambda x: x if x is not None else b""
     ) == sorted(
         list(expected_dataframe.custom_band_2),
         key=lambda x: x if x is not None else b"",
