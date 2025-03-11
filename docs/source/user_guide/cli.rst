@@ -7,8 +7,8 @@ Most functions of the Raster Loader are accessible through the carto
 command-line interface (CLI). To start the CLI, use the ``carto`` command in a
 terminal.
 
-Currently, Raster Loader allows you to upload a local raster file to a BigQuery or Snowflake table.
-You can also download and inspect a raster file from a BigQuery or Snowflake table.
+Currently, Raster Loader allows you to upload a local raster file to a BigQuery, Snowflake, or Databricks table.
+You can also download and inspect a raster file from a BigQuery, Snowflake, or Databricks table.
 
 
 Using the Raster Loader with BigQuery
@@ -42,10 +42,23 @@ Snowflake:
 To use the snowflake utilities, use the ``carto snowflake`` command. This command has
 several subcommands, which are described below.
 
+Using the Raster Loader with Databricks
+-----------------------------------------
+
+Before you can upload a raster file, you need to have set up the following in
+Databricks:
+
+#. A Databricks server hostname
+#. A Databricks cluster id
+#. A Databricks token
+
+To use the databricks utilities, use the ``carto databricks`` command. This command has
+several subcommands, which are described below.
+
 Uploading a raster layer
 ------------------------
 
-To upload a raster file, use the ``carto [bigquery|snowflake] upload`` command.
+To upload a raster file, use the ``carto [bigquery|snowflake|databricks] upload`` command.
 
 The input raster must be a ``GoogleMapsCompatible`` raster. You can make your raster compatible
 by converting it with the following GDAL command:
@@ -61,8 +74,8 @@ generate a table name for you and create that table.
 At a minimum, the ``carto upload`` command requires a ``file_path`` to a local
 raster file that can be `read by GDAL`_ and processed with `rasterio`_. It also requires
 the ``project`` (the GCP project name) and ``dataset`` (the BigQuery dataset name)
-parameters in the case of Bigquery, or the ``database`` and ``schema`` parameters in the
-case of Snowflake.
+parameters in the case of Bigquery; the ``database`` and ``schema`` parameters in the
+case of Snowflake; or the ``catalog`` and ``schema`` parameters in the case of Databricks.
 
 There are also additional parameters, such as ``table`` (table
 name) and ``overwrite`` (to overwrite existing data). For example:
@@ -96,6 +109,23 @@ The same operation, performed with Snowflake, would be:
      --overwrite
 
 Authentication parameters are explicitly required in this case for Snowflake, since they
+are not set up in the environment.
+
+The same operation, performed with Databricks, would be:
+
+.. code-block:: bash
+
+   carto databricks upload \
+     --file_path /path/to/my/raster/file.tif \
+     --catalog my-databricks-catalog \
+     --schema my-databricks-schema \
+     --table my-databricks-table \
+     --server-hostname my-databricks-server-hostname \
+     --cluster-id my-databricks-cluster-id \
+     --token my-databricks-token \
+     --overwrite
+
+Authentication parameters are also explicitly required in the case of Databricks, since they
 are not set up in the environment.
 
 If no band is specified, the first band of the raster will be uploaded. If the
@@ -179,6 +209,21 @@ The same works for Snowflake:
      --compress \
      --compression-level 3
 
+And for Databricks:
+
+.. code-block:: bash
+
+   carto databricks upload \
+     --file_path /path/to/my/raster/file.tif \
+     --catalog my-databricks-catalog \
+     --schema my-databricks-schema \
+     --table my-databricks-table \
+     --server-hostname my-databricks-server-hostname \
+     --cluster-id my-databricks-cluster-id \
+     --token my-databricks-token \
+     --compress \
+     --compression-level 3
+
 .. seealso::
    See the :ref:`cli_details` for a full list of options.
 
@@ -210,7 +255,7 @@ Inspecting a raster file
 ------------------------------------
 
 You can also use Raster Loader to retrieve information about a raster file stored in a
-BigQuery or Snowflake table. This can be useful to make sure a raster file was transferred correctly
+BigQuery, Snowflake, or Databricks table. This can be useful to make sure a raster file was transferred correctly
 or to get information about a raster file's metadata, for example.
 
 To access a raster file in a BigQuery table, use the ``carto bigquery describe`` command.
@@ -225,6 +270,36 @@ At a minimum, this command requires a `GCP project name <GCP project>`_, a
      --project my-gcp-project \
      --dataset my-bigquery-dataset \
      --table my-bigquery-table
+
+The same operation, performed with Snowflake, would be:
+
+.. code-block:: bash
+
+   carto snowflake describe \
+     --database my-snowflake-database \
+     --schema my-snowflake-schema \
+     --table my-snowflake-table \
+     --account my-snowflake-account \
+     --username my-snowflake-user \
+     --password my-snowflake-password
+
+Authentication parameters are explicitly required in this case for Snowflake, since they
+are not set up in the environment.
+
+The same operation, performed with Databricks, would be:
+
+.. code-block:: bash
+
+   carto databricks describe \
+     --catalog my-databricks-catalog \
+     --schema my-databricks-schema \
+     --table my-databricks-table \
+     --server-hostname my-databricks-server-hostname \
+     --cluster-id my-databricks-cluster-id \
+     --token my-databricks-token
+
+Authentication parameters are also explicitly required in the case of Databricks, since they
+are not set up in the environment.
 
 .. seealso::
    See the :ref:`cli_details` for a full list of options.

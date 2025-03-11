@@ -22,13 +22,22 @@ To install from source:
    In most cases, it is recommended to install Raster Loader in a virtual environment.
    Use venv_ to create and manage your virtual environment.
 
-The above will install the dependencies required to work with both BigQuery and Snowflake and. In case you only want to work with one of them, you can install the
+The above will install the dependencies required to work with the different cloud providers (BigQuery, Snowflake, Databricks). In case you only want to work with one of them, you can install the
 dependencies for each of them separately:
 
 .. code-block:: bash
 
    pip install -U raster-loader"[bigquery]"
    pip install -U raster-loader"[snowflake]"
+   pip install -U raster-loader"[databricks]"
+
+For the case of Databricks, additionally you will need to install the databricks-connect_ package corresponding to your Databricks Runtime Version. For example, if your cluster uses DBR 15.1, install:
+
+.. code-block:: bash
+
+   pip install databricks-connect==15.1
+
+You can find your cluster's DBR version in the Databricks UI under Compute > Your Cluster > Configuration > Databricks Runtime version.
 
 After installing the Raster Loader package, you will have access to the
 :ref:`carto CLI <cli>`. To make sure the installation was successful, run the
@@ -54,3 +63,4 @@ Loader installed on your system. For example:
 .. _PyPI: https://pypi.org/project/raster-loader/
 .. _pip: https://pip.pypa.io/en/stable/
 .. _venv: https://docs.python.org/3/library/venv.html
+.. _databricks-connect: https://pypi.org/project/databricks-connect/
