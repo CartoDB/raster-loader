@@ -77,7 +77,7 @@ def band_value_as_string(
     raster_dataset: rasterio.io.DatasetReader, band: int, value: float
 ) -> str:
     tmpValue = np.array(value).astype(raster_dataset.dtypes[band - 1])
-    return str(value) if not np.isnan(tmpValue) else np.nan
+    return str(value) if not np.isnan(tmpValue) else str(np.nan)
 
 
 def band_nodata_value(raster_dataset: rasterio.io.DatasetReader, band: int) -> float:
