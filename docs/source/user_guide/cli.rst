@@ -48,9 +48,9 @@ Using the Raster Loader with Databricks
 Before you can upload a raster file, you need to have set up the following in
 Databricks:
 
-#. A Databricks server hostname
-#. A Databricks cluster id
-#. A Databricks token
+#. A `Databricks server hostname`_
+#. A `Databricks cluster id`_
+#. A `Databricks token`_
 
 To use the databricks utilities, use the ``carto databricks`` command. This command has
 several subcommands, which are described below.
@@ -321,3 +321,6 @@ The following is a detailed overview of all of the CLI's subcommands and options
 .. _`GCP project`: https://cloud.google.com/resource-manager/docs/creating-managing-projects
 .. _`BigQuery dataset`: https://cloud.google.com/bigquery/docs/datasets-intro
 .. _`BigQuery table`: https://cloud.google.com/bigquery/docs/tables-intro
+.. _`Databricks server hostname`: https://docs.databricks.com/aws/en/integrations/compute-details
+.. _`Databricks cluster id`: https://learn.microsoft.com/en-us/azure/databricks/workspace/workspace-details#cluster-url
+.. _`Databricks token`: https://docs.databricks.com/aws/en/dev-tools/auth/pat
