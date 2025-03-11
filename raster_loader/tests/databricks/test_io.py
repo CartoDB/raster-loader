@@ -49,9 +49,9 @@ def test_rasterio_to_databricks_with_raster_default_band_name():
     fqn = f"`{DB_CATALOG}`.`{DB_SCHEMA}`.`{table_name}`"
 
     connection = DatabricksConnection(
-        server_hostname="test.cloud.databricks.com",
-        access_token="test-token",
-        cluster_id="test-cluster",
+        server_hostname=DB_SERVER_HOSTNAME,
+        access_token=DB_TOKEN,
+        cluster_id=DB_CLUSTER_ID,
     )
 
     connection.upload_raster(
