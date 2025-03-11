@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
+## [0.10.5] 2025-03-11
+
+### Fixed
+
+- Fix band nodata NaN values (#170) ([a561949](https://github.com/CartoDB/raster-loader/commit/a56194978d531cbe0397088e142357f56b6a0f83) by Juan Ramón).
+- fix: matching compressions should be checked when appending rasters (#165) ([0e30d11](https://github.com/CartoDB/raster-loader/commit/0e30d116ba922b6ebc8ab7895eb7371c80d351e6) by Valentin de la Cruz Barquero).
+
 ## [0.10.4] 2025-03-07
 
 ### Fixed
