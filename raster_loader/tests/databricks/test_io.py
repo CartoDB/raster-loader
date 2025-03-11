@@ -89,7 +89,7 @@ def test_rasterio_to_databricks_with_raster_default_band_name():
 def test_rasterio_to_databricks_appending_rows():
     check_integration_config()
 
-    table_name = "test_mosaic_append_rows".upper()
+    table_name = "test_mosaic_append_rows"
     fqn = f"{DB_CATALOG}.{DB_SCHEMA}.{table_name}"
 
     connection = DatabricksConnection(
@@ -106,7 +106,7 @@ def test_rasterio_to_databricks_appending_rows():
 
     result = connection.get_records(fqn, 20)
 
-    metadata = json.loads([x for x in list(result.METADATA) if x][0])
+    metadata = json.loads([x for x in list(result.metadata) if x][0])
 
     assert metadata == {
         "pixel_resolution": 13,
@@ -138,7 +138,7 @@ def test_rasterio_to_databricks_appending_rows():
 
     result = connection.get_records(fqn, 20)
 
-    metadata = json.loads([x for x in list(result.METADATA) if x][0])
+    metadata = json.loads([x for x in list(result.metadata) if x][0])
 
     assert metadata == {
         "bands": [{"name": "band_1", "type": "uint8"}],
@@ -169,7 +169,7 @@ def test_rasterio_to_databricks_appending_rows():
 def test_rasterio_to_databricks_with_raster_custom_band_column():
     check_integration_config()
 
-    table_name = "test_mosaic_custom_band_column_1".upper()
+    table_name = "test_mosaic_custom_band_column_1"
     fqn = f"{DB_CATALOG}.{DB_SCHEMA}.{table_name}"
 
     connection = DatabricksConnection(
@@ -195,18 +195,16 @@ def test_rasterio_to_databricks_with_raster_custom_band_column():
     )
     expected_dataframe = expected_dataframe.sort_values("block")
 
-    assert sorted(result.columns) == sorted(
-        [col.upper() for col in expected_dataframe.columns]
-    )
+    assert sorted(result.columns) == sorted(expected_dataframe.columns)
     assert sorted(
         list(result.block), key=lambda x: x if x is not None else -math.inf
     ) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
     assert sorted(
-        [x.upper() for x in list(result.METADATA) if x is not None]
+        list(result.metadata), key=lambda x: x if x is not None else ""
     ) == sorted(
-        [x.upper() for x in list(expected_dataframe.metadata) if x is not None],
+        list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
     )
     assert sorted(
         list(result.customband), key=lambda x: x if x is not None else b""
@@ -219,7 +217,7 @@ def test_rasterio_to_databricks_with_raster_custom_band_column():
 def test_rasterio_to_databricks_with_raster_multiple_default():
     check_integration_config()
 
-    table_name = "test_mosaic_multiple_default_bands".upper()
+    table_name = "test_mosaic_multiple_default_bands"
     fqn = f"{DB_CATALOG}.{DB_SCHEMA}.{table_name}"
 
     connection = DatabricksConnection(
@@ -245,18 +243,16 @@ def test_rasterio_to_databricks_with_raster_multiple_default():
     )
     expected_dataframe = expected_dataframe.sort_values("block")
 
-    assert sorted(result.columns) == sorted(
-        [col.upper() for col in expected_dataframe.columns]
-    )
+    assert sorted(result.columns) == sorted(expected_dataframe.columns)
     assert sorted(
         list(result.block), key=lambda x: x if x is not None else -math.inf
     ) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
     assert sorted(
-        [x.upper() for x in list(result.METADATA) if x is not None]
+        list(result.metadata), key=lambda x: x if x is not None else ""
     ) == sorted(
-        [x.upper() for x in list(expected_dataframe.metadata) if x is not None],
+        list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
     )
     assert sorted(
         list(result.band_1), key=lambda x: x if x is not None else b""
@@ -264,7 +260,7 @@ def test_rasterio_to_databricks_with_raster_multiple_default():
         list(expected_dataframe.band_1), key=lambda x: x if x is not None else b""
     )
     assert sorted(
-        list(result.BAND_2), key=lambda x: x if x is not None else b""
+        list(result.band_2), key=lambda x: x if x is not None else b""
     ) == sorted(
         list(expected_dataframe.band_2), key=lambda x: x if x is not None else b""
     )
@@ -274,7 +270,7 @@ def test_rasterio_to_databricks_with_raster_multiple_default():
 def test_rasterio_to_databricks_with_raster_multiple_custom():
     check_integration_config()
 
-    table_name = "test_mosaic_multiple_custom_bands".upper()
+    table_name = "test_mosaic_multiple_custom_bands"
     fqn = f"{DB_CATALOG}.{DB_SCHEMA}.{table_name}"
 
     connection = DatabricksConnection(
@@ -300,18 +296,16 @@ def test_rasterio_to_databricks_with_raster_multiple_custom():
     )
     expected_dataframe = expected_dataframe.sort_values("block")
 
-    assert sorted(result.columns) == sorted(
-        [col.upper() for col in expected_dataframe.columns]
-    )
+    assert sorted(result.columns) == sorted(expected_dataframe.columns)
     assert sorted(
         list(result.block), key=lambda x: x if x is not None else -math.inf
     ) == sorted(
         list(expected_dataframe.block), key=lambda x: x if x is not None else -math.inf
     )
     assert sorted(
-        [x.upper() for x in list(result.METADATA) if x is not None]
+        list(result.metadata), key=lambda x: x if x is not None else ""
     ) == sorted(
-        [x.upper() for x in list(expected_dataframe.metadata) if x is not None],
+        list(expected_dataframe.metadata), key=lambda x: x if x is not None else ""
     )
     assert sorted(
         list(result.custom_band_1), key=lambda x: x if x is not None else b""
@@ -320,7 +314,7 @@ def test_rasterio_to_databricks_with_raster_multiple_custom():
         key=lambda x: x if x is not None else b"",
     )
     assert sorted(
-        list(result.custom_BAND_2), key=lambda x: x if x is not None else b""
+        list(result.custom_band_2), key=lambda x: x if x is not None else b""
     ) == sorted(
         list(expected_dataframe.custom_band_2),
         key=lambda x: x if x is not None else b"",
