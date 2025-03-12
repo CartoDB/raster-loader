@@ -120,6 +120,15 @@ class DatabricksConnection(DataWarehouseConnection):
             print(f"Error uploading records: {str(e)}")
             return False
 
+    def wait_for_cluster(self):
+        """Wait for the Databricks cluster to be ready."""
+        print("Waiting for Databricks cluster to be ready...")
+        try:
+            # Execute a simple SQL query that doesn't affect any tables
+            self.execute("SELECT 1")
+        except Exception as e:
+            raise RuntimeError(f"Failed to connect to Databricks cluster: {str(e)}")
+
     def upload_raster(
         self,
         file_path: str,
@@ -136,6 +145,9 @@ class DatabricksConnection(DataWarehouseConnection):
         compression_level: int = 6,
     ):
         """Write a raster file to a Databricks table."""
+        # Wait for cluster to be ready before starting the upload
+        self.wait_for_cluster()
+
         print("Loading raster file to Databricks...")
 
         bands_info = bands_info or [(1, None)]
