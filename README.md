@@ -18,18 +18,70 @@ The Raster Loader documentation is available at [raster-loader.readthedocs.io](h
 
 ```bash
 pip install -U raster-loader
-
-pip install -U raster-loader"[bigquery]"
-pip install -U raster-loader"[snowflake]"
 ```
 
-### Installing from source
+To install from source:
 
 ```bash
 git clone https://github.com/cartodb/raster-loader
 cd raster-loader
-pip install .
+pip install -U .
 ```
+
+> **Tip**: In most cases, it is recommended to install Raster Loader in a virtual environment. Use [venv](https://docs.python.org/3/library/venv.html) to create and manage your virtual environment.
+
+The above will install the dependencies required to work with all cloud providers (BigQuery, Snowflake, Databricks). If you only want to work with one of them, you can install the dependencies for each separately:
+
+```bash
+pip install -U raster-loader[bigquery]
+pip install -U raster-loader[snowflake]
+pip install -U raster-loader[databricks]
+```
+
+For Databricks, you will also need to install the [databricks-connect](https://pypi.org/project/databricks-connect/) package corresponding to your Databricks Runtime Version. For example, if your cluster uses DBR 15.1, install:
+
+```bash
+pip install databricks-connect==15.1
+```
+
+You can find your cluster's DBR version in the Databricks UI under Compute > Your Cluster > Configuration > Databricks Runtime version.
+
+To verify the installation was successful, run:
+
+```bash
+carto info
+```
+
+This command will display system information including the installed Raster Loader version.
+
+## Prerequisites
+
+Before using Raster Loader with each platform, you need to have the following set up:
+
+**BigQuery:**
+- A [GCP project](https://cloud.google.com/resource-manager/docs/creating-managing-projects)
+- A [BigQuery dataset](https://cloud.google.com/bigquery/docs/datasets-intro)
+- The `GOOGLE_APPLICATION_CREDENTIALS` environment variable set to the path of a JSON file containing your BigQuery credentials. See the [GCP documentation](https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key) for more information.
+
+**Snowflake:**
+- A Snowflake account
+- A Snowflake database
+- A Snowflake schema
+
+**Databricks:**
+- A [Databricks server hostname](https://docs.databricks.com/aws/en/integrations/compute-details)
+- A [Databricks cluster id](https://learn.microsoft.com/en-us/azure/databricks/workspace/workspace-details#cluster-url)
+- A [Databricks token](https://docs.databricks.com/aws/en/dev-tools/auth/pat)
+
+**Raster files**
+
+The input raster must be a `GoogleMapsCompatible` raster. You can make your raster compatible by converting it with the following GDAL command:
+
+```bash
+gdalwarp -of COG -co TILING_SCHEME=GoogleMapsCompatible -co COMPRESS=DEFLATE -co OVERVIEWS=IGNORE_EXISTING -co ADD_ALPHA=NO -co RESAMPLING=NEAREST -co BLOCKSIZE=512 <input_raster>.tif <output_raster>.tif
+```
+
+Your raster file must be in a format that can be [read by GDAL](https://gdal.org/drivers/raster/index.html) and processed with [rasterio](https://rasterio.readthedocs.io/en/latest/).
 
 ## Usage
 
@@ -42,105 +94,164 @@ There are two ways you can use Raster Loader:
 
 After installing Raster Loader, you can run the CLI by typing `carto` in your terminal.
 
-Currently, Raster Loader supports uploading raster data to [BigQuery](https://cloud.google.com/bigquery).
-Accessing BigQuery with Raster Loader requires the
-`GOOGLE_APPLICATION_CREDENTIALS` environment variable to be set to the path of a JSON
-file containing your BigQuery credentials. See the
-[GCP documentation](https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key)
-for more information.
+Currently, Raster Loader allows you to upload a local raster file to BigQuery, Snowflake, or Databricks tables. You can also download and inspect raster files from these platforms.
 
-Two commands are available:
+#### Uploading Raster Data
 
-#### Uploading to BigQuery
+Examples for each platform:
 
-`carto bigquery upload` loads raster data from a local file to a BigQuery table.
-At a minimum, the `carto bigquery upload` command requires a `file_path` to a local
-raster file that can be [read by GDAL](https://gdal.org/drivers/raster/index.html) and processed with [rasterio](https://rasterio.readthedocs.io/en/latest/). It also requires
-the `project` (the [GCP project name](https://cloud.google.com/resource-manager/docs/creating-managing-projects))
-and `dataset` (the [BigQuery dataset name](https://cloud.google.com/bigquery/docs/datasets-intro))
-parameters. There are also additional parameters, such as `table` ([BigQuery table
-name](https://cloud.google.com/bigquery/docs/tables-intro)) and `overwrite` (to
-overwrite existing data).
-
-For example:
-
-``` bash
-
+**BigQuery:**
+```bash
 carto bigquery upload \
     --file_path /path/to/my/raster/file.tif \
     --project my-gcp-project \
     --dataset my-bigquery-dataset \
     --table my-bigquery-table \
     --overwrite
-
 ```
 
-This command uploads the TIFF file from `/path/to/my/raster/file.tif` to a BigQuery
-project named `my-gcp-project`, a dataset named `my-bigquery-dataset`, and a table
-named `my-bigquery-table`. If the table already contains data, this data will be
-overwritten because the `--overwrite` flag is set.
+**Snowflake:**
+```bash
+carto snowflake upload \
+    --file_path /path/to/my/raster/file.tif \
+    --database my-snowflake-database \
+    --schema my-snowflake-schema \
+    --table my-snowflake-table \
+    --account my-snowflake-account \
+    --username my-snowflake-user \
+    --password my-snowflake-password \
+    --overwrite
+```
 
-#### Inspecting a raster file on BigQuery
+Note that authentication parameters are explicitly required since they are not set up in the environment.
 
-Use the `carto bigquery describe` command to retrieve information about a raster file
-stored in a BigQuery table.
+**Databricks:**
+```bash
+carto databricks upload \
+    --file_path /path/to/my/raster/file.tif \
+    --catalog my-databricks-catalog \
+    --schema my-databricks-schema \
+    --table my-databricks-table \
+    --server-hostname my-databricks-server-hostname \
+    --cluster-id my-databricks-cluster-id \
+    --token my-databricks-token \
+    --overwrite
+```
 
-At a minimum, this command requires a
-[GCP project name](https://cloud.google.com/resource-manager/docs/creating-managing-projects),
-a [BigQuery dataset name](https://cloud.google.com/bigquery/docs/datasets-intro), and a
-[BigQuery table name](https://cloud.google.com/bigquery/docs/tables-intro).
+Note that authentication parameters are explicitly required since they are not set up in the environment.
 
-For example:
+Additional features include:
+- Specifying bands with `--band` and `--band_name`
+- Enabling compression with `--compress` and `--compression-level`
+- Chunking large uploads with `--chunk_size`
 
-``` bash
+#### Inspecting Raster Data
+
+To inspect a raster file stored in any platform, use the `describe` command:
+
+**BigQuery:**
+```bash
 carto bigquery describe \
     --project my-gcp-project \
     --dataset my-bigquery-dataset \
     --table my-bigquery-table
 ```
 
-### Using Raster Loader as a Python library
-
-After installing Raster Loader, you can import the package into your Python project. For
-example:
-
-``` python
-from raster_loader import rasterio_to_bigquery, bigquery_to_records
+**Snowflake:**
+```bash
+carto snowflake describe \
+    --database my-snowflake-database \
+    --schema my-snowflake-schema \
+    --table my-snowflake-table \
+    --account my-snowflake-account \
+    --username my-snowflake-user \
+    --password my-snowflake-password
 ```
 
-Currently, Raster Loader supports uploading raster data to [BigQuery](https://cloud.google.com/bigquery). Accessing BigQuery with Raster Loader requires the
-`GOOGLE_APPLICATION_CREDENTIALS` environment variable to be set to the path of a JSON
-file containing your BigQuery credentials. See the
-[GCP documentation](https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key)
-for more information.
+Note that authentication parameters are explicitly required since they are not set up in the environment.
 
-You can use Raster Loader to upload a local raster file to an existing
-BigQuery table using the `rasterio_to_bigquery()` function:
+**Databricks:**
+```bash
+carto databricks describe \
+    --catalog my-databricks-catalog \
+    --schema my-databricks-schema \
+    --table my-databricks-table \
+    --server-hostname my-databricks-server-hostname \
+    --cluster-id my-databricks-cluster-id \
+    --token my-databricks-token
+```
 
-``` python
-rasterio_to_bigquery(
+Note that authentication parameters are explicitly required since they are not set up in the environment.
+
+For a complete list of options and commands, run `carto --help` or see the [full documentation](https://raster-loader.readthedocs.io/en/latest/user_guide/cli.html).
+
+### Using Raster Loader as a Python library
+
+After installing Raster Loader, you can use it in your Python project.
+
+First, import the corresponding connection class for your platform:
+
+```python
+# For BigQuery
+from raster_loader import BigQueryConnection
+
+# For Snowflake
+from raster_loader import SnowflakeConnection
+
+# For Databricks
+from raster_loader import DatabricksConnection
+```
+
+Then, create a connection object with the appropriate parameters:
+
+```python
+# For BigQuery
+connection = BigQueryConnection('my-project')
+
+# For Snowflake
+connection = SnowflakeConnection('my-user', 'my-password', 'my-account', 'my-database', 'my-schema')
+
+# For Databricks
+connection = DatabricksConnection('my-server-hostname', 'my-token', 'my-cluster-id')
+```
+
+#### Uploading a raster file
+
+To upload a raster file, use the `upload_raster` function:
+
+```python
+connection.upload_raster(
     file_path = 'path/to/raster.tif',
-    project_id = 'my-project',
-    dataset_id = 'my_dataset',
-    table_id = 'my_table',
+    fqn = 'database.schema.tablename'
 )
 ```
 
 This function returns `True` if the upload was successful.
 
-You can also access and inspect a raster file from a BigQuery table using the
-`bigquery_to_records()` function:
+You can enable compression of the band data to reduce storage size:
 
-``` python
-records_df = bigquery_to_records(
-    project_id = 'my-project',
-    dataset_id = 'my_dataset',
-    table_id = 'my_table',
+```python
+connection.upload_raster(
+    file_path = 'path/to/raster.tif',
+    fqn = 'database.schema.tablename',
+    compress = True,  # Enable gzip compression of band data
+    compression_level = 3  # Optional: Set compression level (1-9, default=6)
 )
 ```
 
-This function returns a DataFrame with some samples from the raster table on BigQuery
-(10 rows by default).
+#### Inspecting a raster file
+
+To access and inspect a raster file stored in any platform, use the `get_records` function:
+
+```python
+records = connection.get_records(
+    fqn = 'database.schema.tablename'
+)
+```
+
+This function returns a DataFrame with some samples from the raster table (10 rows by default).
+
+For more details, see the [full documentation](https://raster-loader.readthedocs.io/en/latest/user_guide/use_with_python.html).
 
 ## Development
 

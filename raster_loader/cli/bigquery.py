@@ -155,7 +155,7 @@ def upload(
     if token is not None:
         credentials = AccessTokenCredentials(token)
 
-    connector = BigQueryConnection(project, credentials)
+    connection = BigQueryConnection(project, credentials)
 
     source = file_path if is_local_file else file_url
 
@@ -182,7 +182,7 @@ def upload(
     click.echo("Uploading Raster to BigQuery")
 
     fqn = f"{project}.{dataset}.{table}"
-    connector.upload_raster(
+    connection.upload_raster(
         source,
         fqn,
         bands_info,
@@ -216,10 +216,10 @@ def describe(project, dataset, table, limit, token):
     if token is not None:
         credentials = AccessTokenCredentials(token)
 
-    connector = BigQueryConnection(project, credentials)
+    connection = BigQueryConnection(project, credentials)
 
     fqn = f"{project}.{dataset}.{table}"
-    df = connector.get_records(fqn, limit)
+    df = connection.get_records(fqn, limit)
     print(f"Table: {fqn}")
     print(f"Number of rows: {len(df)}")
     print(f"Number of columns: {len(df.columns)}")

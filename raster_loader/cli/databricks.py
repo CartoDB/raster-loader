@@ -4,8 +4,8 @@ from urllib.parse import urlparse
 import click
 from functools import wraps, partial
 
-from raster_loader.utils import get_default_table_name, check_private_key
-from raster_loader.io.snowflake import SnowflakeConnection
+from raster_loader.utils import get_default_table_name
+from raster_loader.io.databricks import DatabricksConnection
 
 
 def catch_exception(func=None, *, handle=Exception):
@@ -23,44 +23,30 @@ def catch_exception(func=None, *, handle=Exception):
 
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
-def snowflake(args=None):
+def databricks(args=None):
     """
-    Manage Snowflake resources.
+    Manage Databricks resources.
     """
     pass
 
 
-@snowflake.command(help="Upload a raster file to Snowflake.")
-@click.option("--account", help="The Swnoflake account.", required=True)
-@click.option("--username", help="The username.", required=False, default=None)
-@click.option("--password", help="The password.", required=False, default=None)
+@databricks.command(help="Upload a raster file to Databricks.")
 @click.option(
-    "--token",
-    help="An access token to authenticate with.",
-    required=False,
-    default=None,
+    "--server-hostname", help="The Databricks workspace hostname.", required=True
 )
+@click.option("--token", help="The Databricks access token.", required=True)
 @click.option(
-    "--private-key-path",
-    help="The path to the private key file. (PEM format)",
-    required=False,
-    default=None,
+    "--cluster-id",
+    help="The Databricks cluster ID for Spark operations.",
+    required=True,
 )
-@click.option(
-    "--private-key-passphrase",
-    help="The passphrase for the private key.",
-    required=False,
-    default=None,
-)
-@click.option("--role", help="The role to use for the file upload.", default=None)
-@click.option("--warehouse", help="Name of the default warehouse to use.", default=None)
 @click.option(
     "--file_path", help="The path to the raster file.", required=False, default=None
 )
 @click.option(
     "--file_url", help="The path to the raster file.", required=False, default=None
 )
-@click.option("--database", help="The name of the database.", required=True)
+@click.option("--catalog", help="The name of the catalog.", required=True)
 @click.option("--schema", help="The name of the schema.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
 @click.option(
@@ -80,6 +66,12 @@ def snowflake(args=None):
 )
 @click.option(
     "--chunk_size", help="The number of blocks to upload in each chunk.", default=10000
+)
+@click.option(
+    "--parallelism",
+    help="Number of partitions when uploading each chunk.",
+    default=1000,
+    type=int,
 )
 @click.option(
     "--overwrite",
@@ -125,22 +117,18 @@ def snowflake(args=None):
 )
 @catch_exception()
 def upload(
-    account,
-    username,
-    password,
+    server_hostname,
     token,
-    private_key_path,
-    private_key_passphrase,
-    role,
-    warehouse,
+    cluster_id,
     file_path,
     file_url,
-    database,
+    catalog,
     schema,
     table,
     band,
     band_name,
     chunk_size,
+    parallelism,
     compress,
     overwrite=False,
     append=False,
@@ -154,31 +142,6 @@ def upload(
         print_band_information,
         get_block_dims,
     )
-
-    if not (
-        (token is not None and username is None)
-        or (
-            token is None
-            and username is not None
-            and password is not None
-            and private_key_path is None
-        )
-        or (
-            token is None
-            and username is not None
-            and password is None
-            and private_key_path is not None
-        )
-    ):
-        raise ValueError(
-            "Either (--token) or (--username and --private-key-path) or"
-            " (--username and --password) must be provided."
-        )
-
-    if private_key_path is not None:
-        check_private_key(private_key_path, private_key_passphrase)
-        if username is None:
-            raise ValueError("--username must be provided when using a private key.")
 
     if file_path is None and file_url is None:
         raise ValueError("Either --file_path or --file_url must be provided.")
@@ -205,17 +168,10 @@ def upload(
             file_path if is_local_file else urlparse(file_url).path, band
         )
 
-    connection = SnowflakeConnection(
-        username=username,
-        password=password,
-        private_key_path=private_key_path,
-        private_key_passphrase=private_key_passphrase,
-        token=token,
-        account=account,
-        database=database,
-        schema=schema,
-        role=role,
-        warehouse=warehouse,
+    connection = DatabricksConnection(
+        server_hostname=server_hostname,
+        access_token=token,
+        cluster_id=cluster_id,
     )
 
     source = file_path if is_local_file else file_url
@@ -226,7 +182,7 @@ def upload(
     if is_local_file:
         file_size_mb = os.path.getsize(file_path) / 1024 / 1024
 
-    click.echo("Preparing to upload raster file to Snowflake...")
+    click.echo("Preparing to upload raster file to Databricks...")
     click.echo("File Path: {}".format(source))
     click.echo("File Size: {} MB".format(file_size_mb))
     print_band_information(source)
@@ -234,20 +190,22 @@ def upload(
     click.echo("Band Name: {}".format(band_name))
     click.echo("Number of Blocks: {}".format(num_blocks))
     click.echo("Block Dims: {}".format(get_block_dims(source)))
-    click.echo("Database: {}".format(database))
+    click.echo("Catalog: {}".format(catalog))
     click.echo("Schema: {}".format(schema))
     click.echo("Table: {}".format(table))
-    click.echo("Number of Records Per Snowflake Append: {}".format(chunk_size))
+    click.echo("Number of Records Per Databricks Append: {}".format(chunk_size))
+    click.echo("Parallelism: {}".format(parallelism))
     click.echo("Compress: {}".format(compress))
 
-    click.echo("Uploading Raster to Snowflake")
+    click.echo("Uploading Raster to Databricks")
 
-    fqn = f"{database}.{schema}.{table}"
+    fqn = f"`{catalog}`.`{schema}`.`{table}`"
     connection.upload_raster(
         source,
         fqn,
         bands_info,
         chunk_size,
+        parallelism,
         overwrite=overwrite,
         append=append,
         cleanup_on_failure=cleanup_on_failure,
@@ -257,91 +215,40 @@ def upload(
         compression_level=compression_level,
     )
 
-    click.echo("Raster file uploaded to Snowflake")
+    click.echo("Raster file uploaded to Databricks")
     return 0
 
 
-@snowflake.command(help="Load and describe a table from Snowflake")
-@click.option("--account", help="The Swnoflake account.", required=True)
-@click.option("--username", help="The username.", required=False, default=None)
-@click.option("--password", help="The password.", required=False, default=None)
+@databricks.command(help="Load and describe a table from Databricks")
 @click.option(
-    "--token",
-    help="An access token to authenticate with.",
-    required=False,
-    default=None,
+    "--server-hostname", help="The Databricks workspace hostname.", required=True
 )
+@click.option("--token", help="The Databricks access token.", required=True)
 @click.option(
-    "--private-key-path",
-    help="The path to the private key file. (PEM format)",
-    required=False,
-    default=None,
+    "--cluster-id",
+    help="The Databricks cluster ID for Spark operations.",
+    required=True,
 )
-@click.option(
-    "--private-key-passphrase",
-    help="The passphrase for the private key.",
-    required=False,
-    default=None,
-)
-@click.option("--role", help="The role to use for the file upload.", default=None)
-@click.option("--warehouse", help="Name of the default warehouse to use.", default=None)
-@click.option("--database", help="The name of the database.", required=True)
+@click.option("--catalog", help="The name of the catalog.", required=True)
 @click.option("--schema", help="The name of the schema.", required=True)
 @click.option("--table", help="The name of the table.", required=True)
 @click.option("--limit", help="Limit number of rows returned", default=10)
 def describe(
-    account,
-    username,
-    password,
+    server_hostname,
     token,
-    private_key_path,
-    private_key_passphrase,
-    role,
-    warehouse,
-    database,
+    cluster_id,
+    catalog,
     schema,
     table,
     limit,
 ):
-
-    if not (
-        (token is not None and username is None)
-        or (
-            token is None
-            and username is not None
-            and password is not None
-            and private_key_path is None
-        )
-        or (
-            token is None
-            and username is not None
-            and password is None
-            and private_key_path is not None
-        )
-    ):
-        raise ValueError(
-            "Either (--token) or (--username and --private-key-path) or"
-            " (--username and --password) must be provided."
-        )
-
-    if private_key_path is not None:
-        check_private_key(private_key_path, private_key_passphrase)
-        if username is None:
-            raise ValueError("--username must be provided when using a private key.")
-
-    fqn = f"{database}.{schema}.{table}"
-    connection = SnowflakeConnection(
-        username=username,
-        password=password,
-        private_key_path=private_key_path,
-        private_key_passphrase=private_key_passphrase,
-        token=token,
-        account=account,
-        database=database,
-        schema=schema,
-        role=role,
-        warehouse=warehouse,
+    fqn = f"`{catalog}`.`{schema}`.`{table}`"
+    connection = DatabricksConnection(
+        server_hostname=server_hostname,
+        access_token=token,
+        cluster_id=cluster_id,
     )
+
     df = connection.get_records(fqn, limit)
     print(f"Table: {fqn}")
     print(f"Number of rows: {len(df)}")
