@@ -249,7 +249,15 @@ of 20000 rows:
      --table my-bigquery-table \
      --chunk_size 20000
 
+For large raster files in Databricks, you might get the following error:
 
+```
+Error uploading records: Cannot convert pyarrow.lib.ChunkedArray to pyarrow.lib.Array
+```
+
+This error is due to the size of the raster file being too large to be uploaded in one go,
+and the default chunk size being too large. In this case, you can try to reduce the number of
+rows to upload at once by using the ``--chunk_size`` flag. 
 
 Inspecting a raster file
 ------------------------------------
