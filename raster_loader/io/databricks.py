@@ -89,20 +89,18 @@ class DatabricksConnection(DataWarehouseConnection):
         overwrite: bool = False,
         parallelism: int = 1000,
     ):
-        records_list = []
-        for record in records:
-            if "metadata" in record:
-                del record["metadata"]
-            records_list.append(record)
+        # Convert to Pandas DataFrame
+        data_df = pd.DataFrame(records)
 
-        if not records_list:
+        # Drop metadata column if it exists
+        if "metadata" in data_df.columns:
+            data_df = data_df.drop(columns=["metadata"])
+
+        if data_df.empty:
             print("No records to upload.")
             return True
 
         try:
-            # Convert to Pandas DataFrame
-            data_df = pd.DataFrame(records_list)
-
             # Convert Pandas DataFrame to Spark DataFrame
             spark_df = self.spark.createDataFrame(data_df)
 
