@@ -16,6 +16,19 @@ def import_error_snowflake():  # pragma: no cover
     raise ImportError(msg)
 
 
+def import_error_databricks():
+    raise ImportError(
+        "The databricks-connect package is required and must match your "
+        "Databricks Runtime version.\n"
+        "For example, if your cluster uses DBR 15.1, "
+        "run `pip install databricks-connect==15.1`\n"
+        "You can find your cluster's DBR version in the Databricks UI "
+        "under Compute > Your Cluster > Configuration > Databricks Runtime version.\n"
+        "Or you can run the following SQL query from your cluster:\n"
+        "`SELECT current_version()`"
+    )
+
+
 class IncompatibleRasterException(Exception):
     def __init__(self):
         self.message = (

@@ -3,6 +3,7 @@ from functools import partial
 
 from raster_loader.io.bigquery import BigQueryConnection
 from raster_loader.io.snowflake import SnowflakeConnection
+from raster_loader.io.databricks import DatabricksConnection
 
 
 def bigquery_client(load_error=False):
@@ -73,3 +74,64 @@ def snowflake_client(load_error=False):
 class MockSnowflakeConnection(SnowflakeConnection):
     def __init__(self, *args, **kwargs):
         self.client = snowflake_client()
+
+
+def databricks_session():
+    class SparkSession:
+        def sql(self, query):
+            class DataFrame:
+                def toPandas(self):
+                    import pandas as pd
+
+                    return pd.DataFrame({"col_1": [1, 2], "col_2": ["a", "b"]})
+
+                def collect(self):
+                    return [[1]]
+
+                def repartition(self, n):
+                    return self
+
+                def write(self):
+                    return self
+
+                def format(self, fmt):
+                    return self
+
+                def mode(self, mode):
+                    return self
+
+                def saveAsTable(self, table_name):
+                    return True
+
+            return DataFrame()
+
+        def createDataFrame(self, data, schema=None):
+            class DataFrame:
+                def repartition(self, n):
+                    return self
+
+                @property
+                def write(self):
+                    return self
+
+                def format(self, fmt):
+                    return self
+
+                def mode(self, mode):
+                    return self
+
+                def saveAsTable(self, table_name):
+                    return True
+
+            return DataFrame()
+
+    return SparkSession()
+
+
+class MockDatabricksConnection(DatabricksConnection):
+    def __init__(self, *args, **kwargs):
+        self.server_hostname = "test.cloud.databricks.com"
+        self.access_token = "test-token"
+        self.cluster_id = "test-cluster"
+        self.parallelism = 1000
+        self.spark = databricks_session()

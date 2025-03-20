@@ -143,12 +143,12 @@ class SnowflakeConnection(DataWarehouseConnection):
         fqn: str,
         overwrite: bool,
     ):
-        records_list = []
-        for record in records:
-            del record["METADATA"]
-            records_list.append(record)
+        # Convert to Pandas DataFrame
+        data_df = pd.DataFrame(records)
 
-        data_df = pd.DataFrame(records_list)
+        # Drop metadata column if it exists
+        if "METADATA" in data_df.columns:
+            data_df = data_df.drop(columns=["METADATA"])
 
         database, schema, table = fqn.upper().split(".")
 

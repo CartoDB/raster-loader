@@ -6,11 +6,6 @@ Usage with Python projects
 After installing Raster Loader, you can use it in your Python project.
 
 First, import the corresponding connection class from the ``raster_loader`` package.
-For Snowflake, use ``SnowflakeConnection``:
-
-.. code-block:: python
-
-   from raster_loader import SnowflakeConnection
 
 For BigQuery, use ``BigQueryConnection``:
 
@@ -18,13 +13,19 @@ For BigQuery, use ``BigQueryConnection``:
 
    from raster_loader import BigQueryConnection
 
-Then, create a connection object with the appropriate parameters.
-
-For Snowflake:
+For Snowflake, use ``SnowflakeConnection``:
 
 .. code-block:: python
 
-    connection = SnowflakeConnection('my-user', 'my-password', 'my-account', 'my-database', 'my-schema')
+   from raster_loader import SnowflakeConnection
+
+For Databricks, use ``DatabricksConnection``:
+
+.. code-block:: python
+
+   from raster_loader import DatabricksConnection
+
+Then, create a connection object with the appropriate parameters.
 
 For BigQuery:
 
@@ -38,7 +39,19 @@ For BigQuery:
     environment variable to be set to the path of a JSON file containing your BigQuery
     credentials. See the `GCP documentation`_ for more information.
 
-Uploading a raster file to BigQuery
+For Snowflake:
+
+.. code-block:: python
+
+    connection = SnowflakeConnection('my-user', 'my-password', 'my-account', 'my-database', 'my-schema')
+
+For Databricks:
+
+.. code-block:: python
+
+    connection = DatabricksConnection('my-server-hostname', 'my-token', 'my-cluster-id')
+
+Uploading a raster file
 -----------------------------------
 
 To upload a raster file, use the ``upload_raster`` function
@@ -48,7 +61,7 @@ For example:
 
 .. code-block:: python
 
-    connector.upload_raster(
+    connection.upload_raster(
         file_path = 'path/to/raster.tif',
         fqn = 'database.schema.tablename',
     )
@@ -72,11 +85,11 @@ For example:
 
 .. code-block:: python
 
-    records = connector.get_records(
+    records = connection.get_records(
         fqn = 'database.schema.tablename',
     )
 
-This function returns a DataFrame with some samples from the raster table on BigQuery
+This function returns a DataFrame with some samples from the raster table
 (10 rows by default).
 
 .. seealso::
@@ -88,7 +101,7 @@ To enable compression of the band data, which can significantly reduce storage s
 
 .. code-block:: python
 
-    connector.upload_raster(
+    connection.upload_raster(
         file_path = 'path/to/raster.tif',
         fqn = 'database.schema.tablename',
         compress = True,  # Enable gzip compression of band data
