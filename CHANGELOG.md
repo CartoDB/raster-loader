@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
+## [0.11.0] 2025-03-20
+
+- feat: add support for databricks (#169) (#feat: add support for databricks (#169)) ([38f6006](https://github.com/CartoDB/raster-loader/commit/38f6006415d642c13c0a38191f183b6af7fa5c8f) by Valentin de la Cruz Barquero).
+
 ## [0.10.5] 2025-03-11
 
 ### Fixed
