@@ -18,6 +18,12 @@ For BigQuery, use ``BigQueryConnection``:
 
    from raster_loader import BigQueryConnection
 
+For Databricks, use ``DatabricksConnection``:
+
+.. code-block:: python
+
+   from raster_loader import DatabricksConnection
+
 Then, create a connection object with the appropriate parameters.
 
 For Snowflake:
@@ -48,7 +54,7 @@ For example:
 
 .. code-block:: python
 
-    connector.upload_raster(
+    connection.upload_raster(
         file_path = 'path/to/raster.tif',
         fqn = 'database.schema.tablename',
     )

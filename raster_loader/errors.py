@@ -16,6 +16,15 @@ def import_error_snowflake():  # pragma: no cover
     raise ImportError(msg)
 
 
+def import_error_databricks():  # pragma: no cover
+    msg = (
+        "Databricks client is not installed.\n"
+        "Please install Databricks dependencies to use this function.\n"
+        'run `pip install -U raster-loader"[databricks]"` to install from pypi.'
+    )
+    raise ImportError(msg)
+
+
 class IncompatibleRasterException(Exception):
     def __init__(self):
         self.message = (

@@ -179,3 +179,6 @@ raster_loader/tests/fixtures/*.tif.aux.xml
 .idea/codeStyles/codeStyleConfig.xml
 .idea/codeStyles/Project.xml
 .idea/.gitignore
+
+# Vim
+*.swp
