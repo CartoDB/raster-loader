@@ -38,6 +38,11 @@ For the case of Databricks, additionally you will need to install the databricks
    pip install databricks-connect==15.1
 
 You can find your cluster's DBR version in the Databricks UI under Compute > Your Cluster > Configuration > Databricks Runtime version.
+Or you can run the following SQL query from your cluster:
+
+.. code-block:: sql
+
+   SELECT current_version();
 
 After installing the Raster Loader package, you will have access to the
 :ref:`carto CLI <cli>`. To make sure the installation was successful, run the

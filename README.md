@@ -45,6 +45,11 @@ pip install databricks-connect==15.1
 ```
 
 You can find your cluster's DBR version in the Databricks UI under Compute > Your Cluster > Configuration > Databricks Runtime version.
+Or you can run the following SQL query from your cluster:
+
+```sql
+   SELECT current_version();
+```
 
 To verify the installation was successful, run:
 
