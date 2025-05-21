@@ -483,6 +483,7 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
                 },
                 "nodata": "0",
                 "colortable": None,
+                "valuelabels": None,
             }
         ],
         "num_blocks": 1,
@@ -649,6 +650,7 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
                 },
                 "nodata": "0",
                 "colortable": None,
+                "valuelabels": None,
             }
         ],
         "num_blocks": 1,
@@ -744,6 +746,7 @@ def test_get_labels(*args, **kwargs):
                 },
                 "nodata": "0",
                 "colortable": None,
+                "valuelabels": None,
             }
         ],
         "num_blocks": 1,
@@ -802,6 +805,7 @@ def test_rasterio_to_bigquery_with_compression(*args, **kwargs):
                 },
                 "nodata": "0",
                 "colortable": None,
+                "valuelabels": None,
             }
         ],
         "num_blocks": 1,

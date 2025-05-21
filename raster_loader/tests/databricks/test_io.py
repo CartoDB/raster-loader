@@ -391,6 +391,7 @@ STANDARD_METADATA = {
             "nodata": "0",
             "colorinterp": "red",
             "colortable": None,
+            "valuelabels": None,
         }
     ],
     "num_blocks": 1,

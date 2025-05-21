@@ -4,6 +4,7 @@ import pyproj
 import shapely
 import sys
 import zlib
+import gdal
 
 from raster_loader._version import __version__
 from collections import Counter
@@ -203,6 +204,18 @@ def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
         return None
 
 
+def get_value_labels(dataset_uri: str, band: int):
+    try:
+        dataset = gdal.Open(dataset_uri)  # dataset_uri is path to .tif file
+        band = dataset.GetRasterBand(band)
+        # https://gdal.org/en/stable/doxygen/classGDALRasterBand.html#a024b33f6ceaa9c8f1f077b072982c1e0
+        rat = band.GetDefaultRAT()
+        # TODO: Convert to dict
+        return rat
+    except ValueError:
+        return None
+
+
 def rasterio_metadata(
     file_path: str,
     bands_info: List[Tuple[int, str]],
@@ -284,6 +297,7 @@ def rasterio_metadata(
                 "name": band_field_name(band_name, band, band_rename_function),
                 "colorinterp": band_colorinterp,
                 "colortable": get_color_table(raster_dataset, band),
+                "valuelabels": get_value_labels(file_path, band),
                 "stats": stats,
                 "nodata": band_nodata,
             }
@@ -311,6 +325,7 @@ def rasterio_metadata(
                 "colorinterp": e["colorinterp"],
                 "nodata": e["nodata"],
                 "colortable": e["colortable"],
+                "valuelabels": e["valuelabels"],
             }
             for e in bands_metadata
         ]
@@ -937,7 +952,8 @@ def is_valid_raster_dataset(raster_dataset: rasterio.io.DatasetReader) -> bool:
 def band_without_stats(band):
     return {
         k: band[k]
-        for k in set(list(band.keys())) - set(["stats", "colorinterp", "colortable"])
+        for k in set(list(band.keys()))
+        - set(["stats", "colorinterp", "colortable", "valuelabels"])
     }
 
 
