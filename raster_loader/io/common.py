@@ -206,11 +206,12 @@ def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
 
 def get_value_labels(dataset_uri: str, band: int):
     try:
+        # TODO: Do we support other formats than "column-name -> str-value"?
         dataset = gdal.Open(dataset_uri)  # dataset_uri is path to .tif file
         band = dataset.GetRasterBand(band)
         # https://gdal.org/en/stable/doxygen/classGDALRasterBand.html#a024b33f6ceaa9c8f1f077b072982c1e0
         rat = band.GetDefaultRAT()
-        # TODO: Convert to dict
+        # TODO: Convert to "dict of dicts"?
         return rat
     except ValueError:
         return None
