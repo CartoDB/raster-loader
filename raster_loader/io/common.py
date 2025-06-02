@@ -10,7 +10,6 @@ from collections import Counter
 from typing import Dict, Callable, Iterable, List, Tuple, Union
 from affine import Affine
 from shapely import wkt  # Can not use directly from shapely.wkt
-from osgeo import gdal
 
 import rio_cogeo
 import rasterio
@@ -206,13 +205,15 @@ def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
 
 def get_value_labels(dataset_uri: str, band: int):
     try:
-        # TODO: Do we support other formats than "column-name -> str-value"?
-        dataset = gdal.Open(dataset_uri)  # dataset_uri is path to .tif file
-        band = dataset.GetRasterBand(band)
-        # https://gdal.org/en/stable/doxygen/classGDALRasterBand.html#a024b33f6ceaa9c8f1f077b072982c1e0
-        rat = band.GetDefaultRAT()
-        # TODO: Convert to "dict of dicts"?
-        return rat
+        # from osgeo import gdal  # Move the import here
+        # # TODO: Do we support other formats than "column-name -> str-value"?
+        # dataset = gdal.Open(dataset_uri)  # dataset_uri is path to .tif file
+        # band = dataset.GetRasterBand(band)
+
+        # rat = band.GetDefaultRAT()
+        # # TODO: Convert to "dict of dicts"?
+        # return rat
+        return {"testing": "testing!!"}
     except ValueError:
         return None
 
@@ -298,7 +299,7 @@ def rasterio_metadata(
                 "name": band_field_name(band_name, band, band_rename_function),
                 "colorinterp": band_colorinterp,
                 "colortable": get_color_table(raster_dataset, band),
-                # "valuelabels": get_value_labels(file_path, band),
+                "valuelabels": get_value_labels(file_path, band),
                 "stats": stats,
                 "nodata": band_nodata,
             }
@@ -326,7 +327,7 @@ def rasterio_metadata(
                 "colorinterp": e["colorinterp"],
                 "nodata": e["nodata"],
                 "colortable": e["colortable"],
-                # "valuelabels": e["valuelabels"],
+                "valuelabels": e["valuelabels"],
             }
             for e in bands_metadata
         ]
@@ -953,8 +954,8 @@ def is_valid_raster_dataset(raster_dataset: rasterio.io.DatasetReader) -> bool:
 def band_without_stats(band):
     return {
         k: band[k]
-        for k in set(list(band.keys())) - set(["stats", "colorinterp", "colortable"])
-        # - set(["stats", "colorinterp", "colortable", "valuelabels"])
+        for k in set(list(band.keys()))
+        - set(["stats", "colorinterp", "colortable", "valuelabels"])
     }
 
 
