@@ -4,13 +4,13 @@ import pyproj
 import shapely
 import sys
 import zlib
-import gdal
 
 from raster_loader._version import __version__
 from collections import Counter
 from typing import Dict, Callable, Iterable, List, Tuple, Union
 from affine import Affine
 from shapely import wkt  # Can not use directly from shapely.wkt
+from osgeo import gdal
 
 import rio_cogeo
 import rasterio
@@ -298,7 +298,7 @@ def rasterio_metadata(
                 "name": band_field_name(band_name, band, band_rename_function),
                 "colorinterp": band_colorinterp,
                 "colortable": get_color_table(raster_dataset, band),
-                "valuelabels": get_value_labels(file_path, band),
+                # "valuelabels": get_value_labels(file_path, band),
                 "stats": stats,
                 "nodata": band_nodata,
             }
@@ -326,7 +326,7 @@ def rasterio_metadata(
                 "colorinterp": e["colorinterp"],
                 "nodata": e["nodata"],
                 "colortable": e["colortable"],
-                "valuelabels": e["valuelabels"],
+                # "valuelabels": e["valuelabels"],
             }
             for e in bands_metadata
         ]
@@ -953,8 +953,8 @@ def is_valid_raster_dataset(raster_dataset: rasterio.io.DatasetReader) -> bool:
 def band_without_stats(band):
     return {
         k: band[k]
-        for k in set(list(band.keys()))
-        - set(["stats", "colorinterp", "colortable", "valuelabels"])
+        for k in set(list(band.keys())) - set(["stats", "colorinterp", "colortable"])
+        # - set(["stats", "colorinterp", "colortable", "valuelabels"])
     }
 
 
