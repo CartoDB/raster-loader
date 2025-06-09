@@ -18,6 +18,7 @@ RUN apt-get update \
     postgresql-client \
     wget \
     python3-pip \
+    libgdal-dev \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Using a non-privileged user to own our code
