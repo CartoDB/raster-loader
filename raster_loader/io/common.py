@@ -11,6 +11,7 @@ from typing import Dict, Callable, Iterable, List, Tuple, Union
 from affine import Affine
 from shapely import wkt  # Can not use directly from shapely.wkt
 
+from raster_loader.valuelabels import get_value_labels
 import rio_cogeo
 import rasterio
 import quadbin
@@ -20,6 +21,7 @@ from raster_loader.errors import (
     error_not_google_compatible,
 )
 from raster_loader.utils import warnings
+
 
 DEFAULT_COG_BLOCK_SIZE = 256
 
@@ -199,21 +201,6 @@ def get_color_table(raster_dataset: rasterio.io.DatasetReader, band: int):
         if get_color_name(raster_dataset, band) == "palette":
             return raster_dataset.colormap(band)
         return None
-    except ValueError:
-        return None
-
-
-def get_value_labels(dataset_uri: str, band: int):
-    try:
-        # from osgeo import gdal  # Move the import here
-        # # TODO: Do we support other formats than "column-name -> str-value"?
-        # dataset = gdal.Open(dataset_uri)  # dataset_uri is path to .tif file
-        # band = dataset.GetRasterBand(band)
-
-        # rat = band.GetDefaultRAT()
-        # # TODO: Convert to "dict of dicts"?
-        # return rat
-        return {"testing": "testing!!"}
     except ValueError:
         return None
 
