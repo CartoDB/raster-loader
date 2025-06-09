@@ -1,4 +1,4 @@
-FROM osgeo/gdal:3.2.0
+FROM osgeo/gdal:ubuntu-small-3.6.0
 
 ENV HOMEAPP=/code
 ENV PATH=$PATH:$HOMEAPP/.local/bin
@@ -18,7 +18,6 @@ RUN apt-get update \
     postgresql-client \
     wget \
     python3-pip \
-    libgdal-dev \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Using a non-privileged user to own our code
