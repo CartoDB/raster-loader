@@ -1,5 +1,4 @@
 from osgeo import gdal
-from nltk import bigrams
 
 DEFAULT_VALUES_COLUMN_IDX = 0
 DEFAULT_LABELS_COLUMN_IDX = 1
@@ -23,7 +22,7 @@ def get_value_labels(dataset_uri: str, band: int):
 
         # Pick columns for values and labels
         values_column_idx = get_values_column_idx(rat)
-        labels_column_idx = get_labels_column_idx(rat)
+        labels_column_idx = get_labels_column_idx(rat, [values_column_idx])
 
         print(f"\tSelected column for Values: {rat.GetNameOfCol(values_column_idx)}")
         print(f"\tSelected column for Labels: {rat.GetNameOfCol(labels_column_idx)}")
@@ -49,7 +48,9 @@ def get_values_column_idx(rat: gdal.RasterAttributeTable) -> int:
     return values_column_idx
 
 
-def get_labels_column_idx(rat: gdal.RasterAttributeTable) -> int:
+def get_labels_column_idx(
+    rat: gdal.RasterAttributeTable, skip_columns: list[int] = []
+) -> int:
     """
     Get the column index of the labels column in a Raster Attribute Table (RAT).
 
@@ -58,7 +59,7 @@ def get_labels_column_idx(rat: gdal.RasterAttributeTable) -> int:
     1. Excluding the column already selected for values
     2. Ranking remaining columns based on:
        - Number of unique values in the column
-       - Number of meaningful text bigrams (pairs of words) in the column
+       - Number of different words in the column
     3. Selecting the column with the highest combined score
 
     Returns:
@@ -66,16 +67,17 @@ def get_labels_column_idx(rat: gdal.RasterAttributeTable) -> int:
     """
     labels_column_idx = DEFAULT_LABELS_COLUMN_IDX
     unique_values_count = count_column_unique_values(rat)
-    values_column_idx = get_values_column_idx(rat)
-    bigrams_count = count_bigrams(rat)
+
+    unique_words_count = count_column_unique_words(rat)
 
     # Ranked columns by (unique values count * bigrams count)
     ranked_columns = {}
     for col_idx in range(rat.GetColumnCount()):
-        if col_idx == values_column_idx:
-            # Skip the already selected column for values
+        if col_idx in skip_columns:
             continue
-        ranked_columns[col_idx] = unique_values_count[col_idx] * bigrams_count[col_idx]
+        ranked_columns[col_idx] = (
+            unique_values_count[col_idx] * unique_words_count[col_idx]
+        )
 
     # Sort the ranked columns by the rank
     ranked_columns = sorted(ranked_columns.items(), key=lambda x: x[1], reverse=True)
@@ -103,17 +105,15 @@ def count_column_unique_values(rat: gdal.RasterAttributeTable) -> dict[int, int]
     return unique_values_count
 
 
-def count_bigrams(rat: gdal.RasterAttributeTable) -> dict[int, int]:
-    bigrams_count = {}
+def count_column_unique_words(rat: gdal.RasterAttributeTable) -> dict[int, int]:
+    columns_words_count = {}
     for col_idx in range(rat.GetColumnCount()):
         column_text = ""
         for row_idx in range(rat.GetRowCount()):
             column_text += rat.GetValueAsString(row_idx, col_idx).lower() + " "
-        bigrams_list = set(bigrams(column_text.split()))
-        # Remove bigrams which are not text
-        bigrams_list = [
-            bg for bg in bigrams_list if bg[0].isalpha() and bg[1].isalpha()
-        ]
-        bigrams_count[col_idx] = len(bigrams_list)
+        words_list = set(column_text.split())
+        # Remove words which are not text
+        words_list = [w for w in words_list if w.isalpha()]
+        columns_words_count[col_idx] = len(words_list)
 
-    return bigrams_count
+    return columns_words_count
