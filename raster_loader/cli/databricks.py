@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import click
 from functools import wraps, partial
 
-from raster_loader.utils import get_default_table_name
+from raster_loader.lib.utils import get_default_table_name
 from raster_loader.io.databricks import DatabricksConnection
 
 

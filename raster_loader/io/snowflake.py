@@ -5,12 +5,12 @@ import pandas as pd
 from itertools import chain
 from typing import Iterable, List, Tuple
 
-from raster_loader.errors import (
+from raster_loader.lib.errors import (
     IncompatibleRasterException,
     import_error_snowflake,
 )
 
-from raster_loader.utils import ask_yes_no_question, batched
+from raster_loader.lib.utils import ask_yes_no_question, batched
 
 from raster_loader.io.common import (
     rasterio_metadata,

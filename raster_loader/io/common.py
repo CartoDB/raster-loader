@@ -10,17 +10,17 @@ from collections import Counter
 from typing import Dict, Callable, Iterable, List, Tuple, Union
 from affine import Affine
 from shapely import wkt  # Can not use directly from shapely.wkt
+from raster_loader.lib.valuelabels import get_value_labels
 
-from raster_loader.valuelabels import get_value_labels
 import rio_cogeo
 import rasterio
 import quadbin
 
-from raster_loader.geo import raster_bounds
-from raster_loader.errors import (
+from raster_loader.lib.geo import raster_bounds
+from raster_loader.lib.errors import (
     error_not_google_compatible,
 )
-from raster_loader.utils import warnings
+from raster_loader.lib.utils import warnings
 
 
 DEFAULT_COG_BLOCK_SIZE = 256
@@ -510,7 +510,7 @@ def compute_quantiles(data: List[Union[int, float]], cast_function: Callable) ->
 
 def get_stats(
     raster_dataset: rasterio.io.DatasetReader, band: int
-) -> rasterio.Statistics:
+) -> rasterio._io.Statistics:
     """Get statistics for a raster band."""
     try:
         # stats method is supported since rasterio 1.4.0 and statistics

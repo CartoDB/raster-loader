@@ -3,8 +3,11 @@ import pandas as pd
 import rasterio
 
 from itertools import chain
-from raster_loader.errors import import_error_databricks, IncompatibleRasterException
-from raster_loader.utils import ask_yes_no_question, batched
+from raster_loader.lib.errors import (
+    import_error_databricks,
+    IncompatibleRasterException,
+)
+from raster_loader.lib.utils import ask_yes_no_question, batched
 from raster_loader.io.common import (
     check_metadata_is_compatible,
     get_number_of_blocks,

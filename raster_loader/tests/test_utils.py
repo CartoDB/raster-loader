@@ -1,7 +1,7 @@
 import builtins
 from unittest.mock import patch
 
-from raster_loader.utils import ask_yes_no_question
+from raster_loader.lib.utils import ask_yes_no_question
 
 
 def test_ask_yes_no_question_answer_yes():
