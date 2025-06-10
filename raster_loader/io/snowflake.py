@@ -208,6 +208,7 @@ class SnowflakeConnection(DataWarehouseConnection):
         basic_stats: bool = False,
         compress: bool = False,
         compression_level: int = 6,
+        interactive_value_labels: bool = False,
     ) -> bool:
         """Write a raster file to a Snowflake table."""
 
@@ -243,6 +244,7 @@ class SnowflakeConnection(DataWarehouseConnection):
                 exact_stats,
                 basic_stats,
                 compress,
+                interactive_value_labels,
             )
 
             overviews_records_gen = rasterio_overview_to_records(

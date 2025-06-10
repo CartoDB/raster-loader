@@ -123,6 +123,12 @@ def snowflake(args=None):
     type=int,
     default=6,
 )
+@click.option(
+    "--interactive-value-labels",
+    help="Interactive selection of columns from Raster Attribute Table (RAT) for value labels.",
+    default=False,
+    is_flag=True,
+)
 @catch_exception()
 def upload(
     account,
@@ -148,6 +154,7 @@ def upload(
     exact_stats=False,
     basic_stats=False,
     compression_level=6,
+    interactive_value_labels=False,
 ):
     from raster_loader.io.common import (
         get_number_of_blocks,
@@ -255,6 +262,7 @@ def upload(
         basic_stats=basic_stats,
         compress=compress,
         compression_level=compression_level,
+        interactive_value_labels=interactive_value_labels,
     )
 
     click.echo("Raster file uploaded to Snowflake")

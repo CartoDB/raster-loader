@@ -212,6 +212,7 @@ def rasterio_metadata(
     exact_stats: bool = False,
     basic_stats: bool = False,
     compress: bool = False,
+    interactive_value_labels: bool = False,
 ):
     """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
@@ -286,7 +287,9 @@ def rasterio_metadata(
                 "name": band_field_name(band_name, band, band_rename_function),
                 "colorinterp": band_colorinterp,
                 "colortable": get_color_table(raster_dataset, band),
-                "valuelabels": get_value_labels(file_path, band),
+                "valuelabels": get_value_labels(
+                    file_path, band, interactive_value_labels
+                ),
                 "stats": stats,
                 "nodata": band_nodata,
             }

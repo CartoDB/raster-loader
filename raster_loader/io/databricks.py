@@ -144,6 +144,7 @@ class DatabricksConnection(DataWarehouseConnection):
         basic_stats: bool = False,
         compress: bool = False,
         compression_level: int = 6,
+        interactive_value_labels: bool = False,
     ):
         """Write a raster file to a Databricks table."""
         # Wait for cluster to be ready before starting the upload
@@ -177,6 +178,7 @@ class DatabricksConnection(DataWarehouseConnection):
                 exact_stats,
                 basic_stats,
                 compress=compress,
+                interactive_value_labels=interactive_value_labels,
             )
 
             overviews_records_gen = rasterio_overview_to_records(

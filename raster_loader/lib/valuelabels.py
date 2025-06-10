@@ -1,3 +1,4 @@
+import click
 from osgeo import gdal
 
 DEFAULT_VALUES_COLUMN_IDX = 0
@@ -6,26 +7,48 @@ DEFAULT_LABELS_COLUMN_IDX = 1
 gdal.UseExceptions()
 
 
-def get_value_labels(dataset_uri: str, band: int):
+def get_value_labels(dataset_uri: str, band_idx: int, interactive: bool = False):
     """
     Get the value labels for a given dataset and band.
     """
-    print(f"Computing value labels for band {band}")
+    print(f"Computing value labels for band {band_idx}")
     try:
         dataset = gdal.Open(dataset_uri)  # dataset_uri is path to .tif file
-        band = dataset.GetRasterBand(band)
+        band = dataset.GetRasterBand(band_idx)
 
         rat = band.GetDefaultRAT()
         if rat is None:
-            print(f"\tNo Raster Attribute Table (RAT) found for band {band}")
+            print(f"No Raster Attribute Table (RAT) found for band {band_idx}")
             return None
 
-        # Pick columns for values and labels
-        values_column_idx = get_values_column_idx(rat)
-        labels_column_idx = get_labels_column_idx(rat, [values_column_idx])
+        print(f"Available columns in Raster Attribute Table (RAT) for band {band_idx}:")
+        for col_idx in range(rat.GetColumnCount()):
+            print(f"\t{col_idx}: {rat.GetNameOfCol(col_idx)}")
 
-        print(f"\tSelected column for Values: {rat.GetNameOfCol(values_column_idx)}")
-        print(f"\tSelected column for Labels: {rat.GetNameOfCol(labels_column_idx)}")
+        if interactive:
+            values_column_idx = click.prompt(
+                f"Introduce the column index for Values for band {band_idx}",
+                type=int,
+                default=DEFAULT_VALUES_COLUMN_IDX,
+            )
+            labels_column_idx = click.prompt(
+                f"Introduce the column index for Labels for band {band_idx}",
+                type=int,
+                default=DEFAULT_LABELS_COLUMN_IDX,
+            )
+        else:
+            # Guess columns for values and labels
+            values_column_idx = get_values_column_idx(rat)
+            labels_column_idx = get_labels_column_idx(rat, [values_column_idx])
+
+        print(
+            f"\tSelected column for Values: "
+            f"[{values_column_idx}: {rat.GetNameOfCol(values_column_idx)}]"
+        )
+        print(
+            f"\tSelected column for Labels: "
+            f"[{labels_column_idx}: {rat.GetNameOfCol(labels_column_idx)}]"
+        )
 
         # Convert RAT to dictionary
         value_labels = {}
@@ -56,11 +79,16 @@ def get_labels_column_idx(
 
     This function uses a heuristic approach to identify the most likely column
     containing descriptive labels by:
-    1. Excluding the column already selected for values
+    1. Excluding columns specified in skip_columns (typically the values column)
     2. Ranking remaining columns based on:
        - Number of unique values in the column
-       - Number of different words in the column
-    3. Selecting the column with the highest combined score
+       - Number of unique words in the column
+    3. Selecting the column with the highest combined score (unique values * unique words)
+       If no column has a score > 0, falls back to selecting the column with most unique values
+
+    Args:
+        rat: GDAL Raster Attribute Table
+        skip_columns: List of column indices to exclude from consideration
 
     Returns:
         int: The index of the column most likely to contain labels
