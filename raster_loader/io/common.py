@@ -10,7 +10,7 @@ from collections import Counter
 from typing import Dict, Callable, Iterable, List, Tuple, Union
 from affine import Affine
 from shapely import wkt  # Can not use directly from shapely.wkt
-from raster_loader.lib.valuelabels import get_value_labels
+from raster_loader.lib.valuelabels import get_band_valuelabels
 
 import rio_cogeo
 import rasterio
@@ -212,7 +212,8 @@ def rasterio_metadata(
     exact_stats: bool = False,
     basic_stats: bool = False,
     compress: bool = False,
-    interactive_value_labels: bool = False,
+    rat_valuelabels_mode: str = "auto",
+    band_valuelabels: List[Dict[int, str]] = [],
 ):
     """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
@@ -281,14 +282,15 @@ def rasterio_metadata(
                 band_nodata = band_value_as_string(
                     raster_dataset, band, band_nodata_value(raster_dataset, band)
                 )
+
             meta = {
                 "band": band,
                 "type": raster_band_type(raster_dataset, band),
                 "name": band_field_name(band_name, band, band_rename_function),
                 "colorinterp": band_colorinterp,
                 "colortable": get_color_table(raster_dataset, band),
-                "valuelabels": get_value_labels(
-                    file_path, band, interactive_value_labels
+                "valuelabels": get_band_valuelabels(
+                    file_path, band, band_valuelabels, rat_valuelabels_mode
                 ),
                 "stats": stats,
                 "nodata": band_nodata,

@@ -1,3 +1,4 @@
+from typing import Literal
 import click
 from osgeo import gdal
 
@@ -7,7 +8,24 @@ DEFAULT_LABELS_COLUMN_IDX = 1
 gdal.UseExceptions()
 
 
-def get_value_labels(dataset_uri: str, band_idx: int, interactive: bool = False):
+def get_band_valuelabels(
+    file_path: str,
+    band: int,
+    band_valuelabels: list[dict[int, str]],
+    rat_valuelabels_mode: Literal["auto", "interactive"],
+) -> dict[int, str]:
+    if len(band_valuelabels) >= band and band_valuelabels[band - 1] is not None:
+        # Using valuelabels provided by the user
+        valuelabels = band_valuelabels[band - 1]
+    else:
+        # Computing valuelabels from the Raster Attribute Table (RAT)
+        valuelabels = get_valuelabels_from_rat(file_path, band, rat_valuelabels_mode)
+    return valuelabels
+
+
+def get_valuelabels_from_rat(
+    dataset_uri: str, band_idx: int, mode: Literal["auto", "interactive"]
+) -> dict[int, str]:
     """
     Get the value labels for a given dataset and band.
     """
@@ -25,7 +43,7 @@ def get_value_labels(dataset_uri: str, band_idx: int, interactive: bool = False)
         for col_idx in range(rat.GetColumnCount()):
             print(f"\t{col_idx}: {rat.GetNameOfCol(col_idx)}")
 
-        if interactive:
+        if mode == "interactive":
             values_column_idx = click.prompt(
                 f"Introduce the column index for Values for band {band_idx}",
                 type=int,

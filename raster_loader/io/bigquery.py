@@ -18,7 +18,7 @@ from raster_loader.io.common import (
     update_metadata,
 )
 
-from typing import Iterable, List, Tuple
+from typing import Dict, Iterable, List, Tuple
 from functools import partial
 
 try:
@@ -111,7 +111,8 @@ class BigQueryConnection(DataWarehouseConnection):
         basic_stats: bool = False,
         compress: bool = False,
         compression_level: int = 6,
-        interactive_value_labels: bool = False,
+        rat_valuelabels_mode: str = "auto",
+        band_valuelabels: List[Dict[int, str]] = [],
     ):
         """Write a raster file to a BigQuery table."""
         print("Loading raster file to BigQuery...")
@@ -140,7 +141,8 @@ class BigQueryConnection(DataWarehouseConnection):
                 exact_stats,
                 basic_stats,
                 compress=compress,
-                interactive_value_labels=interactive_value_labels,
+                rat_valuelabels_mode=rat_valuelabels_mode,
+                band_valuelabels=band_valuelabels,
             )
 
             overviews_records_gen = rasterio_overview_to_records(
