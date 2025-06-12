@@ -6,6 +6,7 @@ from functools import wraps, partial
 
 from raster_loader.lib.utils import get_default_table_name, check_private_key
 from raster_loader.io.snowflake import SnowflakeConnection
+from raster_loader.lib.valuelabels import validate_band_valuelabels
 
 
 def catch_exception(func=None, *, handle=Exception):
@@ -124,10 +125,26 @@ def snowflake(args=None):
     default=6,
 )
 @click.option(
-    "--interactive-value-labels",
-    help="Interactive selection of columns from Raster Attribute Table (RAT) for value labels.",
-    default=False,
-    is_flag=True,
+    "--band-valuelabels",
+    help="Custom data for valuelabels in JSON format, or 'None' to use the RAT if present. "
+    "i.e: '{<value_1>: <label_1>, <value_2>: <label_2>, ...}'. "
+    "Could repeat --band-valuelabels to specify multiple bands data. "
+    "They will be considered in the order they appear in the file. "
+    "Note that you can set any value to 'None' to use the RAT for the corresponding band. "
+    "Also see --rat-valuelabels-mode parameter.",
+    type=str,
+    default=[],
+    multiple=True,
+    callback=validate_band_valuelabels,
+)
+@click.option(
+    "--rat-valuelabels-mode",
+    help="The Raster Attribute Table (RAT) will be used for valuelabels if it's present. "
+    "If 'auto' (default), two columns will be chosen automatically for "
+    "Values and Labels based on their content. "
+    "If 'interactive', the user will be prompted to select the columns.",
+    type=click.Choice(["auto", "interactive"]),
+    default="auto",
 )
 @catch_exception()
 def upload(
@@ -154,7 +171,8 @@ def upload(
     exact_stats=False,
     basic_stats=False,
     compression_level=6,
-    interactive_value_labels=False,
+    band_valuelabels=[],
+    rat_valuelabels_mode="auto",
 ):
     from raster_loader.io.common import (
         get_number_of_blocks,
@@ -262,7 +280,8 @@ def upload(
         basic_stats=basic_stats,
         compress=compress,
         compression_level=compression_level,
-        interactive_value_labels=interactive_value_labels,
+        band_valuelabels=band_valuelabels,
+        rat_valuelabels_mode=rat_valuelabels_mode,
     )
 
     click.echo("Raster file uploaded to Snowflake")

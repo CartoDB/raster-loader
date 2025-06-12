@@ -18,7 +18,7 @@ from raster_loader.io.common import (
     update_metadata,
 )
 
-from typing import Iterable, List, Tuple
+from typing import Dict, Iterable, List, Literal, Tuple
 
 try:
     from databricks.connect import DatabricksSession
@@ -144,7 +144,8 @@ class DatabricksConnection(DataWarehouseConnection):
         basic_stats: bool = False,
         compress: bool = False,
         compression_level: int = 6,
-        interactive_value_labels: bool = False,
+        band_valuelabels: List[Dict[int, str]] = [],
+        rat_valuelabels_mode: Literal["auto", "interactive"] = "auto",
     ):
         """Write a raster file to a Databricks table."""
         # Wait for cluster to be ready before starting the upload
@@ -178,7 +179,8 @@ class DatabricksConnection(DataWarehouseConnection):
                 exact_stats,
                 basic_stats,
                 compress=compress,
-                interactive_value_labels=interactive_value_labels,
+                band_valuelabels=band_valuelabels,
+                rat_valuelabels_mode=rat_valuelabels_mode,
             )
 
             overviews_records_gen = rasterio_overview_to_records(

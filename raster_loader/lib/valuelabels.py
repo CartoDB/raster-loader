@@ -1,3 +1,4 @@
+import json
 from typing import Literal
 import click
 from osgeo import gdal
@@ -163,3 +164,15 @@ def count_column_unique_words(rat: gdal.RasterAttributeTable) -> dict[int, int]:
         columns_words_count[col_idx] = len(words_list)
 
     return columns_words_count
+
+
+def validate_band_valuelabels(_, __, value):
+    """
+    Validate the band valuelabels parameter for click library callback.
+    """
+    try:
+        return [json.loads(item) if item != "None" else None for item in value]
+    except json.JSONDecodeError:
+        raise click.BadParameter(
+            "Invalid JSON format. Please provide a valid JSON object."
+        )
