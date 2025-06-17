@@ -61,11 +61,11 @@ def get_valuelabels_from_rat(
             labels_column_idx = get_labels_column_idx(rat, [values_column_idx])
 
         print(
-            f"\tSelected column for Values: "
+            f"Selected RAT column for Values: "
             f"[{values_column_idx}: {rat.GetNameOfCol(values_column_idx)}]"
         )
         print(
-            f"\tSelected column for Labels: "
+            f"Selected RAT column for Labels: "
             f"[{labels_column_idx}: {rat.GetNameOfCol(labels_column_idx)}]"
         )
 
