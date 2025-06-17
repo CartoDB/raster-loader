@@ -16,7 +16,7 @@ def get_band_valuelabels(
     rat_valuelabels_mode: Literal["auto", "interactive"],
 ) -> dict[int, str]:
     if len(band_valuelabels) >= band and band_valuelabels[band - 1] is not None:
-        # Using valuelabels provided by the user
+        print(f"Using the provided valuelabels for band {band}")
         valuelabels = band_valuelabels[band - 1]
     else:
         # Computing valuelabels from the Raster Attribute Table (RAT)

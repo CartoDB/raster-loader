@@ -10,6 +10,7 @@ from raster_loader.cli import main
 here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 fixtures = os.path.join(here, "fixtures")
 tiff = os.path.join(fixtures, "mosaic_cog.tif")
+tiff_with_rat = os.path.join(fixtures, "cog_rat.tif")
 
 
 @patch("raster_loader.cli.bigquery.BigQueryConnection.upload_raster", return_value=None)
@@ -306,6 +307,59 @@ def test_bigquery_describe(*args, **kwargs):
         ],
     )
     assert result.exit_code == 0
+
+
+@patch(
+    "raster_loader.cli.bigquery.BigQueryConnection.upload_records", return_value=None
+)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
+def test_bigquery_upload_rat_valuelabels_mode_auto_default(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--file_path",
+            f"{tiff_with_rat}",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Selected RAT column for Values: [0: Value]" in result.output
+    assert "Selected RAT column for Labels: [1: Class]" in result.output
+
+
+@patch(
+    "raster_loader.cli.bigquery.BigQueryConnection.upload_records", return_value=None
+)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
+def test_bigquery_upload_custom_valuelabels(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+            "--band-valuelabels",
+            '{"90": "Woody Wetlands", "52": "Shrub/Scrub"}',
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Using the provided valuelabels for band 1" in result.output
 
 
 def test_info(*args, **kwargs):
