@@ -1,10 +1,11 @@
 import json
 import click
+from typing import Dict, List, Optional
 
 
 def get_band_valuelabels(
-    file_path: str, band: int, band_valuelabels: list[dict[int, str]]
-) -> dict[int, str] | None:
+    file_path: str, band: int, band_valuelabels: List[Dict[int, str]]
+) -> Optional[Dict[int, str]]:
     valuelabels = None
     if len(band_valuelabels) >= band and band_valuelabels[band - 1] is not None:
         print(f"Using the provided valuelabels for band {band}")
