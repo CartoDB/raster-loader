@@ -16,8 +16,6 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
-      - name: Install GDAL dependencies
-        run: sudo apt install -y libgdal-dev
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
