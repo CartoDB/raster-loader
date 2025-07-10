@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.11.1] 2025-06-10
 
-- feat: add --band-valuelabels command line parameter (#175) (#feat: add --band-valuelabels command line parameter (#175)) ([9060dfd](https://github.com/CartoDB/raster-loader/commit/9060dfd78e3adc33acc8b6b1a921ff968fbf11f8) by Juan Ramón).
+- feat: add --band-valuelabels command line parameter (#175) ([9060dfd](https://github.com/CartoDB/raster-loader/commit/9060dfd78e3adc33acc8b6b1a921ff968fbf11f8) by Juan Ramón).
 
 ## [0.11.0] 2025-03-20
 
