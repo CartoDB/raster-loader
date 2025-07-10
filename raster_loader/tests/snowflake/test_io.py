@@ -462,6 +462,7 @@ def test_rasterio_to_table_overwrite(*args, **kwargs):
                 "nodata": "0",
                 "colorinterp": "red",
                 "colortable": None,
+                "valuelabels": None,
             }
         ],
         "num_blocks": 1,
@@ -629,6 +630,7 @@ def test_rasterio_to_table_invalid_raster(*args, **kwargs):
                 "nodata": "0",
                 "colorinterp": "red",
                 "colortable": None,
+                "valuelabels": None,
             }
         ],
         "num_blocks": 1,
@@ -712,6 +714,7 @@ def test_append_with_different_resolution(*args, **kwargs):
                 "nodata": "0",
                 "colorinterp": "red",
                 "colortable": None,
+                "valuelabels": None,
             }
         ],
         "num_blocks": 1,
@@ -772,6 +775,7 @@ def test_rasterio_to_snowflake_with_compression(*args, **kwargs):
                 "nodata": "0",
                 "colorinterp": "red",
                 "colortable": None,
+                "valuelabels": None,
             }
         ],
         "num_blocks": 1,

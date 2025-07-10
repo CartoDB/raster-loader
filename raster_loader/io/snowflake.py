@@ -3,14 +3,14 @@ import rasterio
 import pandas as pd
 
 from itertools import chain
-from typing import Iterable, List, Tuple
+from typing import Dict, Iterable, List, Tuple
 
-from raster_loader.errors import (
+from raster_loader.lib.errors import (
     IncompatibleRasterException,
     import_error_snowflake,
 )
 
-from raster_loader.utils import ask_yes_no_question, batched
+from raster_loader.lib.utils import ask_yes_no_question, batched
 
 from raster_loader.io.common import (
     rasterio_metadata,
@@ -208,6 +208,7 @@ class SnowflakeConnection(DataWarehouseConnection):
         basic_stats: bool = False,
         compress: bool = False,
         compression_level: int = 6,
+        band_valuelabels: List[Dict[int, str]] = [],
     ) -> bool:
         """Write a raster file to a Snowflake table."""
 
@@ -243,6 +244,7 @@ class SnowflakeConnection(DataWarehouseConnection):
                 exact_stats,
                 basic_stats,
                 compress,
+                band_valuelabels,
             )
 
             overviews_records_gen = rasterio_overview_to_records(

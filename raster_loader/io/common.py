@@ -10,16 +10,18 @@ from collections import Counter
 from typing import Dict, Callable, Iterable, List, Tuple, Union
 from affine import Affine
 from shapely import wkt  # Can not use directly from shapely.wkt
+from raster_loader.lib.valuelabels import get_band_valuelabels
 
 import rio_cogeo
 import rasterio
 import quadbin
 
-from raster_loader.geo import raster_bounds
-from raster_loader.errors import (
+from raster_loader.lib.geo import raster_bounds
+from raster_loader.lib.errors import (
     error_not_google_compatible,
 )
-from raster_loader.utils import warnings
+from raster_loader.lib.utils import warnings
+
 
 DEFAULT_COG_BLOCK_SIZE = 256
 
@@ -210,6 +212,7 @@ def rasterio_metadata(
     exact_stats: bool = False,
     basic_stats: bool = False,
     compress: bool = False,
+    band_valuelabels: List[Dict[int, str]] = [],
 ):
     """Open a raster file with rasterio."""
     raster_info = rio_cogeo.cog_info(file_path).dict()
@@ -278,12 +281,14 @@ def rasterio_metadata(
                 band_nodata = band_value_as_string(
                     raster_dataset, band, band_nodata_value(raster_dataset, band)
                 )
+
             meta = {
                 "band": band,
                 "type": raster_band_type(raster_dataset, band),
                 "name": band_field_name(band_name, band, band_rename_function),
                 "colorinterp": band_colorinterp,
                 "colortable": get_color_table(raster_dataset, band),
+                "valuelabels": get_band_valuelabels(file_path, band, band_valuelabels),
                 "stats": stats,
                 "nodata": band_nodata,
             }
@@ -311,6 +316,7 @@ def rasterio_metadata(
                 "colorinterp": e["colorinterp"],
                 "nodata": e["nodata"],
                 "colortable": e["colortable"],
+                "valuelabels": e["valuelabels"],
             }
             for e in bands_metadata
         ]
@@ -506,7 +512,7 @@ def compute_quantiles(data: List[Union[int, float]], cast_function: Callable) ->
 
 def get_stats(
     raster_dataset: rasterio.io.DatasetReader, band: int
-) -> rasterio.Statistics:
+) -> rasterio._io.Statistics:
     """Get statistics for a raster band."""
     try:
         # stats method is supported since rasterio 1.4.0 and statistics
@@ -937,7 +943,8 @@ def is_valid_raster_dataset(raster_dataset: rasterio.io.DatasetReader) -> bool:
 def band_without_stats(band):
     return {
         k: band[k]
-        for k in set(list(band.keys())) - set(["stats", "colorinterp", "colortable"])
+        for k in set(list(band.keys()))
+        - set(["stats", "colorinterp", "colortable", "valuelabels"])
     }
 
 

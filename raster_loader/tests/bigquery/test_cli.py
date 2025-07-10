@@ -308,6 +308,33 @@ def test_bigquery_describe(*args, **kwargs):
     assert result.exit_code == 0
 
 
+@patch(
+    "raster_loader.cli.bigquery.BigQueryConnection.upload_records", return_value=None
+)
+@patch("raster_loader.cli.bigquery.BigQueryConnection.__init__", return_value=None)
+def test_bigquery_upload_custom_valuelabels(*args, **kwargs):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "bigquery",
+            "upload",
+            "--file_path",
+            f"{tiff}",
+            "--project",
+            "project",
+            "--dataset",
+            "dataset",
+            "--table",
+            "table",
+            "--band-valuelabels",
+            '{"90": "Woody Wetlands", "52": "Shrub/Scrub"}',
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Using the provided valuelabels for band 1" in result.output
+
+
 def test_info(*args, **kwargs):
     runner = CliRunner()
     result = runner.invoke(main, ["info"])

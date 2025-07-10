@@ -3,8 +3,11 @@ import pandas as pd
 import rasterio
 
 from itertools import chain
-from raster_loader.errors import import_error_databricks, IncompatibleRasterException
-from raster_loader.utils import ask_yes_no_question, batched
+from raster_loader.lib.errors import (
+    import_error_databricks,
+    IncompatibleRasterException,
+)
+from raster_loader.lib.utils import ask_yes_no_question, batched
 from raster_loader.io.common import (
     check_metadata_is_compatible,
     get_number_of_blocks,
@@ -15,7 +18,7 @@ from raster_loader.io.common import (
     update_metadata,
 )
 
-from typing import Iterable, List, Tuple
+from typing import Dict, Iterable, List, Tuple
 
 try:
     from databricks.connect import DatabricksSession
@@ -141,6 +144,7 @@ class DatabricksConnection(DataWarehouseConnection):
         basic_stats: bool = False,
         compress: bool = False,
         compression_level: int = 6,
+        band_valuelabels: List[Dict[int, str]] = [],
     ):
         """Write a raster file to a Databricks table."""
         # Wait for cluster to be ready before starting the upload
@@ -174,6 +178,7 @@ class DatabricksConnection(DataWarehouseConnection):
                 exact_stats,
                 basic_stats,
                 compress=compress,
+                band_valuelabels=band_valuelabels,
             )
 
             overviews_records_gen = rasterio_overview_to_records(
