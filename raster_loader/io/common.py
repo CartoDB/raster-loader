@@ -637,10 +637,9 @@ def raster_band_stats(
     print("Removing masked data...")
     qdata = raster_band.compressed()
 
-    if basic_stats:
-        quantiles = None
-        most_common = None
-    else:
+    quantiles = None
+    most_common = None
+    if not basic_stats:
         casting_function = (
             int if np.issubdtype(raster_band.dtype, np.integer) else float
         )
