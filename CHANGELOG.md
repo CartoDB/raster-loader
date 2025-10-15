@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
+## [0.11.2] - 2025-09-15
+
+### Fixed
+
+- Fix most_common variable not initialized with --exact_stats option ([2cc14cf](https://github.com/CartoDB/raster-loader/commit/2cc14cfe2e331b393ef1d483d0338b542ddacca0))
+
 ## [0.11.1] 2025-06-10
 
 - feat: add --band-valuelabels command line parameter (#175) ([9060dfd](https://github.com/CartoDB/raster-loader/commit/9060dfd78e3adc33acc8b6b1a921ff968fbf11f8) by Juan Ramón).
