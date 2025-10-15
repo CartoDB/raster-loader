@@ -7,8 +7,15 @@ except ImportError:
 import click
 from click_plugins import with_plugins
 
+# Handle different entry_points API versions
+try:
+    # Python 3.10+ with group parameter
+    eps = entry_points(group="raster_loader.cli")
+except TypeError:
+    # Python 3.8-3.9 without group parameter
+    eps = entry_points().get("raster_loader.cli", [])
 
-@with_plugins(cmd for cmd in list(entry_points(group="raster_loader.cli")))
+@with_plugins(cmd for cmd in list(eps))
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
 def main(args=None):
     """
