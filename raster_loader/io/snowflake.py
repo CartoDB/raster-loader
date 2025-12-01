@@ -86,6 +86,17 @@ class SnowflakeConnection(DataWarehouseConnection):
     def band_rename_function(self, band_name: str):
         return band_name
 
+    def add_clustering(self, fqn: str):
+        """Add clustering by BLOCK column for query optimization."""
+        fqn = fqn.upper()
+        try:
+            cluster_query = f"ALTER TABLE {fqn} CLUSTER BY (BLOCK)"
+            self.execute(cluster_query)
+        except Exception:
+            # Clustering might fail if table already has clustering,
+            # so we silently ignore errors
+            pass
+
     def write_metadata(
         self,
         metadata,
@@ -309,6 +320,11 @@ class SnowflakeConnection(DataWarehouseConnection):
                 update_metadata(metadata, old_metadata)
 
             self.write_metadata(metadata, append_records, fqn)
+
+            # Add clustering on new tables for query optimization
+            if not append_records:
+                print("Adding clustering by BLOCK column...")
+                self.add_clustering(fqn)
 
         except IncompatibleRasterException as e:
             raise IOError("Error uploading to Snowflake: {}".format(e.message))
