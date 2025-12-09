@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
+## [0.11.3] - 2025-12-09
+
+- feat: Add BLOCK column clustering for Snowflake tables ([5087dee](https://github.com/CartoDB/raster-loader/commit/5087dee1479f7e50670c8931bd55bb96353cb16b))
+- feat: add --billing_project parameter for BQ ([96e97b6](https://github.com/CartoDB/raster-loader/commit/96e97b6e83a51d4b31ce26aec4d8466b9884b4de))
+
 ## [0.11.2] - 2025-09-15
 
 ### Fixed
