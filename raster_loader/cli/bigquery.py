@@ -43,6 +43,12 @@ def bigquery(args=None):
 @click.option("--dataset", help="The name of the dataset.", required=True)
 @click.option("--table", help="The name of the table.", default=None)
 @click.option(
+    "--billing_project",
+    help="The name of the billing project. "
+         "Default value is the --project parameter.",
+         default=None,
+    )
+@click.option(
     "--band",
     help="Band(s) within raster to upload. "
     "Could repeat --band to specify multiple bands.",
@@ -122,6 +128,7 @@ def upload(
     token,
     dataset,
     table,
+    billing_project,
     band,
     band_name,
     chunk_size,
@@ -169,7 +176,9 @@ def upload(
     if token is not None:
         credentials = AccessTokenCredentials(token)
 
-    connection = BigQueryConnection(project, credentials)
+    # Use billing_project for BigQuery connection (billing), default to project if not provided
+    effective_billing_project = billing_project if billing_project is not None else project
+    connection = BigQueryConnection(effective_billing_project, credentials)
 
     source = file_path if is_local_file else file_url
 
@@ -188,6 +197,7 @@ def upload(
     click.echo("Number of Blocks: {}".format(num_blocks))
     click.echo("Block Dims: {}".format(get_block_dims(source)))
     click.echo("Project: {}".format(project))
+    click.echo("Billing Project: {}".format(effective_billing_project))
     click.echo("Dataset: {}".format(dataset))
     click.echo("Table: {}".format(table))
     click.echo("Number of Records Per BigQuery Append: {}".format(chunk_size))
