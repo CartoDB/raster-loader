@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
+## [Unreleased]
+
+### Changed
+
+- perf: read windows inside the raster without boundless, about 3x faster record building on large rasters (#184) ([f9bf972](https://github.com/CartoDB/raster-loader/commit/f9bf972471e87067efe5e34c6057a9d8ce03eb68))
+
+### Fixed
+
+- fix(cli): load plugins with importlib.metadata instead of pkg_resources, so the CLI starts with setuptools >= 81 (#184) ([26446de](https://github.com/CartoDB/raster-loader/commit/26446dea19b7032f70239f92887d2eeed4d6486f))
+
 ## [0.11.3] - 2025-12-09
 
 - feat: Add BLOCK column clustering for Snowflake tables ([5087dee](https://github.com/CartoDB/raster-loader/commit/5087dee1479f7e50670c8931bd55bb96353cb16b))
