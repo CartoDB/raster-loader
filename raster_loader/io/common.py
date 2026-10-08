@@ -358,6 +358,21 @@ def read_masked(
         return raster_dataset.read(band, masked=True, **args)
 
 
+def is_window_inside(window: rasterio.windows.Window, raster_dataset) -> bool:
+    """Whether ``window`` lies entirely within the raster.
+
+    Only a window that overruns the raster needs a ``boundless`` read: rasterio
+    serves those through a VRT built for each call, which is much slower than a
+    direct read and gives the same pixels inside the raster.
+    """
+    return (
+        window.col_off >= 0
+        and window.row_off >= 0
+        and window.col_off + window.width <= raster_dataset.width
+        and window.row_off + window.height <= raster_dataset.height
+    )
+
+
 def read_filled(
     raster_dataset: rasterio.io.DatasetReader, band: int, no_data_value, **args
 ) -> np.array:
@@ -822,7 +837,7 @@ def rasterio_overview_to_records(
                                 tile_window.width // factor,
                                 tile_window.height // factor,
                             ),
-                            boundless=True,
+                            boundless=not is_window_inside(tile_window, raster_dataset),
                         )
                         newrecord = array_to_record(
                             tile_data,
@@ -884,7 +899,11 @@ def rasterio_windows_to_records(
             no_data_value = get_nodata_value(raster_dataset)
             for band, band_name in bands_info:
                 tile_data = read_filled(
-                    raster_dataset, band, no_data_value, window=window, boundless=True
+                    raster_dataset,
+                    band,
+                    no_data_value,
+                    window=window,
+                    boundless=not is_window_inside(window, raster_dataset),
                 )
                 newrecord = array_to_record(
                     tile_data,
