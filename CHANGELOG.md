@@ -7,15 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- insertion marker -->
 
-## [Unreleased]
+## [0.11.4] - 2026-10-22
 
 ### Changed
 
-- perf: read windows inside the raster without boundless, about 3x faster record building on large rasters (#184) ([f9bf972](https://github.com/CartoDB/raster-loader/commit/f9bf972471e87067efe5e34c6057a9d8ce03eb68))
+- perf: read windows inside the raster without boundless, about 3x faster record building on large rasters (#184) ([fd480f2](https://github.com/CartoDB/raster-loader/commit/fd480f278e7defb07664e33206012e5f373ee2bb))
 
 ### Fixed
 
-- fix(cli): load plugins with importlib.metadata instead of pkg_resources, so the CLI starts with setuptools >= 81 (#184) ([26446de](https://github.com/CartoDB/raster-loader/commit/26446dea19b7032f70239f92887d2eeed4d6486f))
+- fix(cli): load plugins with importlib.metadata instead of pkg_resources, so the CLI starts with setuptools >= 81 (#184) ([fd480f2](https://github.com/CartoDB/raster-loader/commit/fd480f278e7defb07664e33206012e5f373ee2bb))
 
 ## [0.11.3] - 2025-12-09
 
